@@ -15,7 +15,8 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar">
+<header class="site-head">
+<div class="topbar">
   <a class="brand" href="#home" data-nav="home">
     <img src="icons/logo-blue-bar-64.png" alt="" width="30" height="30">
     <span>RelaisÉcho Link</span>
@@ -27,12 +28,13 @@
       <option value="fr">Français</option>
       <option value="iu">ᐃᓄᒃᑎᑐᑦ</option>
     </select>
+    <button type="button" class="link-btn" id="btnText" aria-pressed="false" title="Larger text">A+</button>
     <button type="button" class="link-btn" id="btnTheme" aria-pressed="false" title="Switch between light and dark">Dark</button>
     <span id="netStatus" class="pill" aria-live="polite"></span>
     <button data-i18n="nav.board" type="button" class="link-btn" data-nav="board">Board</button>
     <button data-i18n="nav.history" type="button" class="link-btn" data-nav="history">History</button>
   </div>
-</header>
+</div>
 <p id="langNotice" class="lang-notice" hidden></p>
 <div class="profile-bar" id="profileBar">
   <label for="profileSel">Checkups for</label>
@@ -41,6 +43,7 @@
   <span id="demoBadge" class="tag pub" hidden>SAMPLE DATA</span>
 </div>
 <p id="restoreMsg" class="sr-only" aria-live="polite"></p>
+</header>
 
 <main id="main">
   <!-- HOME -->
@@ -66,6 +69,18 @@
     </div>
     <p class="fine"><button data-i18n="home.quality" type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
     <p class="fine">Reviewing for someone else? <button type="button" class="link-btn" data-nav="review">Open a review packet</button></p>
+    <p class="fine">First time on this device? <button type="button" class="link-btn" data-nav="device">Check this device</button>: camera speed, face model, offline readiness.</p>
+    <div class="card tour">
+      <h2 data-i18n="tour.h">Try it in one minute, no camera needed</h2>
+      <ol>
+        <li><button type="button" class="link-btn" data-tour="demo">Explore with sample data</button>: two weeks of invented checkups.</li>
+        <li><button type="button" class="link-btn" data-nav="board">Mission board</button>: today's checklist, sleep pressure, radiation budget, NASA crew data.</li>
+        <li><button type="button" class="link-btn" data-nav="history">History</button>: trends against the baseline and the noise band.</li>
+        <li><button type="button" class="link-btn" data-tour="packet">Nurse view</button>: a sample review packet.</li>
+      </ol>
+      <p class="fine">Or watch it play by itself: <button type="button" class="link-btn" data-reel="play">30 second captioned demo</button> · <button type="button" class="link-btn" data-reel="record" id="btnReelRecord">Record it as a video file</button> · <button type="button" class="link-btn" data-reel="srt">Captions file (.srt)</button></p>
+      <p class="fine" id="reelNote" role="status"></p>
+    </div>
   </section>
 
   <!-- MISSION BOARD -->
@@ -74,9 +89,12 @@
     <h1 data-i18n="board.h1" id="h-board">Keep the habits that keep you flying.</h1>
     <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
+    <nav class="jump" aria-label="Jump to a tile">
+      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-crew">Crew data</a>
+    </nav>
     <div class="tiles">
       <article class="tile wide" aria-labelledby="h-t-today">
-        <header><h2 id="h-t-today">Today</h2><span class="tag live">LIVE</span></header>
+        <header><h2 data-i18n="board.t.today" id="h-t-today">Today</h2><span class="tag live">LIVE</span></header>
         <p id="todayMsg" class="okline"></p>
         <ul id="todayList" class="today-list"></ul>
       </article>
@@ -103,17 +121,53 @@
         <p class="fine">Process S of the two process model (Daan, Beersma and Borbély 1984). The time of day swing is shown as a band of ±0.12 around the sleep threshold because the phase of your body clock is not measured here. For orientation only. <button type="button" class="link-btn" data-evidence="sleep">Evidence</button></p>
       </article>
 
+      <article class="tile" aria-labelledby="h-t-day">
+        <header><h2 data-i18n="board.t.day" id="h-t-day">Daylight</h2><span class="tag">MODELED</span></header>
+        <label for="dayPlace">Place</label>
+        <select id="dayPlace" class="select"></select>
+        <label id="dayLatWrap" hidden>Latitude, degrees north<input type="number" id="dayLat" min="-89" max="89" step="0.1" value="60" inputmode="decimal"></label>
+        <div id="dayBody" aria-live="polite"></div>
+        <p class="fine">Sunrise to sunset, from the date and the latitude. Twilight, weather and hills are not counted. <button type="button" class="link-btn" data-evidence="daylight">Evidence</button></p>
+      </article>
+
       <article class="tile" aria-labelledby="h-t-rad">
         <header><h2 data-i18n="board.t.rad" id="h-t-rad">Radiation budget</h2><span class="tag pub">PUBLISHED</span></header>
-        <label for="radDays">Days on the ISS: <strong id="radDaysOut">180</strong></label>
-        <input type="range" id="radDays" min="0" max="1000" step="10" value="180">
+        <p class="fine">Missions: <span id="radPresets"></span></p>
+        <div class="grid3">
+          <label>Low Earth orbit, days<input type="number" id="radLeo" min="0" max="3000" step="10" value="180" inputmode="numeric"></label>
+          <label>Deep space transit, days<input type="number" id="radTransit" min="0" max="3000" step="10" value="0" inputmode="numeric"></label>
+          <label>Mars surface, days<input type="number" id="radSurface" min="0" max="3000" step="10" value="0" inputmode="numeric"></label>
+        </div>
         <div id="radBody" aria-live="polite"></div>
         <div class="budget" aria-hidden="true"><div class="budget-range" id="radBar"></div></div>
-        <p class="fine">Range from published ISS crew doses applied to your number of days; not a personal dose. Career limit from NASA-STD-3001. <button type="button" class="link-btn" data-evidence="radiation">Evidence</button></p>
+        <p class="fine">Published crew and instrument figures multiplied by your days; not a personal dose. Career limit from NASA-STD-3001. <button type="button" class="link-btn" data-evidence="radiation">Evidence</button></p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-sw">
+        <header><h2 data-i18n="board.t.sw" id="h-t-sw">Space weather</h2><span class="tag pub">NASA DATA</span></header>
+        <div id="swBody" aria-live="polite"></div>
+        <p class="fine">Solar flares and particle events from NASA's DONKI database, loaded from api.nasa.gov only when you ask. Nothing about you is sent. <button type="button" class="link-btn" data-evidence="spaceweather">Evidence</button></p>
+        <details class="fine">
+          <summary>Use your own NASA API key (optional)</summary>
+          <label for="swKey">The shared demonstration key has a low hourly limit. A free key from api.nasa.gov lifts it. The key stays on this device.</label>
+          <input type="text" id="swKey" autocomplete="off" spellcheck="false" placeholder="DEMO_KEY">
+        </details>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-delay">
+        <header><h2 data-i18n="board.t.delay" id="h-t-delay">Signal delay</h2><span class="tag">MODELED</span></header>
+        <div id="delayBody"></div>
+        <p class="fine">Straight line light time from today's planet positions. Relays and antenna schedules add more. <button type="button" class="link-btn" data-evidence="delay">Evidence</button></p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-eye">
+        <header><h2 data-i18n="board.t.eye" id="h-t-eye">Eye grid</h2><span class="tag">EXPERIMENTAL</span></header>
+        <div id="eyeBody"></div>
+        <p class="fine">What you mark, compared with your own first check. Not a test for any disease. <button type="button" class="link-btn" data-evidence="amsler">Evidence</button></p>
       </article>
 
       <article class="tile" aria-labelledby="h-t-crew">
-        <header><h2 id="h-t-crew">Crew blood data</h2><span class="tag pub">NASA DATA</span></header>
+        <header><h2 data-i18n="board.t.crew" id="h-t-crew">Crew blood data</h2><span class="tag pub">NASA DATA</span></header>
         <div id="crewTileBody"><p>Blood tests from the Inspiration4 crew show how a person can move a lot and still look "normal" on a population range.</p></div>
         <p><button type="button" class="btn" data-nav="crew">Explore the crew data</button></p>
       </article>
@@ -164,24 +218,26 @@
   <!-- CREW DATA (NASA OSDR) -->
   <section id="screen-crew" class="screen" hidden aria-labelledby="h-crew">
     <p class="step">NASA open data · Inspiration4</p>
-    <h1 id="h-crew">Why your own baseline matters</h1>
+    <h1 data-i18n="crew.h1" id="h-crew">Why your own baseline matters</h1>
     <p class="lede">Real blood tests from the four Inspiration4 crew members, before and after their 3 day flight in 2021. Grey is the lab's normal range for everyone (when one exists); blue is each person's own range before flight.</p>
     <p id="crewSummary"></p>
     <label for="crewAnalyte">Blood test</label>
     <select id="crewAnalyte" class="select"></select>
     <div id="crewCharts" class="crew-grid"></div>
     <div id="crewTable"></div>
-    <p class="fine">Source: NASA Open Science Data Repository, OSD-575, Inspiration4 comprehensive metabolic panel and Eve Technologies inflammation panels. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
+    <p class="row"><button type="button" class="btn" id="btnCrewCsv">Download this test (.csv)</button></p>
+    <p class="fine">Source: NASA Open Science Data Repository, OSD-575 (<a href="https://doi.org/10.26030/mc5d-p710" rel="noopener">doi 10.26030/mc5d-p710</a>), Inspiration4 comprehensive metabolic panel and Eve Technologies inflammation panels. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
   </section>
 
   <!-- PRACTITIONER REVIEW -->
   <section id="screen-review" class="screen" hidden aria-labelledby="h-review">
     <p class="step">For the reviewing nurse or clinician</p>
-    <h1 id="h-review">Open a review packet</h1>
+    <h1 data-i18n="review.h1" id="h-review">Open a review packet</h1>
     <p class="lede">Load a packet file (.json) that someone exported from RelaisÉcho Link. It opens here, in this browser, with no upload and no account.</p>
     <p class="row"><label class="btn primary file-btn" for="reviewFile">Choose packet file</label>
-      <input type="file" id="reviewFile" accept="application/json,.json" class="sr-only">
-      <button type="button" class="btn" id="btnSamplePacket">Show a sample packet</button></p>
+      <input type="file" id="reviewFile" accept="application/json,.json,.gz,application/gzip" class="sr-only">
+      <button type="button" class="btn" id="btnSamplePacket">Show a sample packet</button>
+      <button type="button" class="btn" data-print>Print</button></p>
     <div id="reviewOut" aria-live="polite"></div>
   </section>
 
@@ -209,6 +265,11 @@
           <label for="fileInput">Choose a recording of yourself (face and shoulders, 40 seconds or more)</label>
           <input id="fileInput" type="file" accept="video/*">
         </div>
+        <div id="camPickWrap" hidden>
+          <label for="camPick">Which camera</label>
+          <select id="camPick" class="select"></select>
+          <p class="fine">Shown when this device has more than one camera. Pick the built in one, not a virtual camera from a video call app.</p>
+        </div>
         <p class="fine">Use the same camera and a similar spot each time. Light facing you works best.</p>
       </fieldset>
       <fieldset>
@@ -226,8 +287,13 @@
           <label><input type="radio" name="glasses" value="yes"> Yes</label>
         </div>
       </fieldset>
-      <label for="symptoms">Anything new?</label>
-      <textarea id="symptoms" rows="3" placeholder="For example: tooth sensitivity, gum soreness, headache"></textarea>
+      <fieldset>
+        <legend>Any of these today?</legend>
+        <div class="seg ticks" id="symptomTicks"></div>
+        <p class="warnline" id="urgentNote" role="alert" hidden></p>
+      </fieldset>
+      <label for="symptoms">Anything else new?</label>
+      <textarea id="symptoms" rows="3" placeholder="For example: when it started, what makes it better or worse"></textarea>
       <p class="fine">New or severe symptoms: contact your clinician now. Do not wait for this checkup.</p>
       <label class="check"><input type="checkbox" id="speakToggle"> Speak the instructions aloud (useful when you cannot read the screen while holding still)</label>
       <p class="fine">Video is processed in this browser. Only a packet you choose to export leaves the device.</p>
@@ -314,34 +380,153 @@
     <h1 id="h-packet">Review packet</h1>
     <ol class="status-row" aria-label="Packet status">
       <li class="good">Saved on this device</li>
-      <li class="warn">Not sent</li>
-      <li>Not acknowledged</li>
+      <li class="warn" id="stSent">Not sent</li>
+      <li id="stAck">Not acknowledged</li>
     </ol>
+    <div id="replyBox"></div>
     <pre id="packetText" class="packet-text"></pre>
     <label class="check"><input type="checkbox" id="includeImages"> Include dental photos in the file</label>
     <p class="row between"><span>Packet size</span><strong id="packetSize"></strong></p>
     <div class="row">
       <button type="button" class="btn primary" id="btnDownload">Download packet (.json)</button>
+      <button type="button" class="btn" id="btnDownloadGz">Download compressed (.json.gz)</button>
+      <label class="btn file-btn" for="replyFile">Load reviewer reply</label>
+      <input type="file" id="replyFile" accept="application/json,.json" class="sr-only">
       <button type="button" class="btn" id="btnCopy">Copy text summary</button>
       <button type="button" class="btn" id="btnQr">Show QR code</button>
+      <button type="button" class="btn" data-print>Print</button>
       <button type="button" class="btn" data-nav="home">Done</button>
     </div>
     <div id="qrBox" class="qr-box" hidden></div>
-    <p class="fine">Sending over a satellite or mission link is a planned feature. For now, export the file and send it through an approved channel.</p>
+    <p class="fine" id="gzNote"></p>
+    <p class="fine">Send the file through an approved channel (clinic email, secure messaging). The reviewer can open it in this app and send back a small reply file, which you load here to mark the packet acknowledged.</p>
+  </section>
+
+  <!-- EYE GRID -->
+  <section id="screen-vision" class="screen" hidden aria-labelledby="h-vision">
+    <p class="step">Eye self check · experimental</p>
+    <h1 id="h-vision">Eye grid</h1>
+    <div id="visIntro">
+      <p class="lede">One eye at a time, you look at the dot in the middle of a grid and mark any squares where the lines look wavy, blurred, dim or missing. About one minute per eye.</p>
+      <ul>
+        <li>Wear the glasses or lenses you read with.</li>
+        <li>Same device and the same distance each time, so results compare fairly.</li>
+        <li>Your first check on this device becomes your reference.</li>
+      </ul>
+      <p class="warnline">! Sudden new distortion, a dark patch or loss of vision needs urgent eye care. Do not wait for this check.</p>
+      <details class="card">
+        <summary>Make the grid true size on this screen (optional, once per device)</summary>
+        <p>Hold a bank card or ID card flat against the screen. Move the slider until the box is exactly as wide as the card.</p>
+        <div id="visCard" class="vis-card" aria-hidden="true"></div>
+        <label for="visScale">Box width</label>
+        <input type="range" id="visScale" min="2.4" max="9" step="0.02">
+        <div class="row"><button type="button" class="btn" id="btnVisCal">Save this size</button><button type="button" class="link-btn" id="btnVisCalReset">Use the default</button></div>
+        <p class="fine" id="visCalNote" role="status"></p>
+      </details>
+      <div class="row">
+        <button type="button" class="btn primary" id="btnVisStart">Start with the right eye</button>
+        <button type="button" class="btn" data-nav="board">Cancel</button>
+      </div>
+    </div>
+    <div id="visRun" hidden>
+      <h2 id="visEyeTitle" tabindex="-1"></h2>
+      <p id="visEyeHelp"></p>
+      <div id="visGridWrap" class="vis-wrap">
+        <svg id="visGrid" class="vis-grid" role="application" tabindex="0" aria-describedby="visKeysHelp visCount"></svg>
+      </div>
+      <p class="fine" id="visKeysHelp">Tap or drag over squares to mark them; tap again to clear. Keyboard: arrow keys move, space marks.</p>
+      <p id="visCount" role="status"></p>
+      <p class="fine" id="visSizeNote"></p>
+      <div class="row">
+        <button type="button" class="btn primary" id="btnVisNext">Done with this eye</button>
+        <button type="button" class="btn" id="btnVisClear">Clear marks</button>
+        <button type="button" class="btn" data-nav="board">Cancel</button>
+      </div>
+    </div>
+    <div id="visResult" hidden></div>
+  </section>
+
+  <!-- YOUR DATA -->
+  <section id="screen-privacy" class="screen" hidden aria-labelledby="h-privacy">
+    <h1 id="h-privacy">Your data</h1>
+    <p class="lede">Everything this app knows about you is on this device. There is no account and no server.</p>
+    <div class="card">
+      <h2>Kept on this device</h2>
+      <div id="privInventory"></div>
+    </div>
+    <div class="card">
+      <h2>Leaves this device only when you send it</h2>
+      <ul id="privExports"></ul>
+    </div>
+    <div class="card">
+      <h2>What the app fetches from the internet</h2>
+      <div id="privNetwork"></div>
+      <ul id="privNever"></ul>
+    </div>
+    <div class="card">
+      <h2>Community and mission use</h2>
+      <p>Because nothing is collected centrally, the person or the community decides where a packet goes. A real deployment would still have to follow the health data rules of the community or the agency it serves. This prototype has no such agreement and claims none.</p>
+    </div>
+    <div class="card">
+      <h2>Controls</h2>
+      <div class="row">
+        <button type="button" class="btn" id="btnPrivBackup">Save a backup (.json)</button>
+        <button type="button" class="btn" data-nav="history">Open History to delete single records</button>
+        <button type="button" class="btn danger" id="btnErase">Erase everything on this device</button>
+      </div>
+      <p class="fine" id="privNote" role="status"></p>
+    </div>
+  </section>
+
+  <!-- DEVICE CHECK -->
+  <section id="screen-device" class="screen" hidden aria-labelledby="h-device">
+    <h1 id="h-device">Check this device</h1>
+    <p>Finds out, before a checkup, whether this browser, camera and connection can run one. Nothing is saved or sent.</p>
+    <div class="card">
+      <h2>Browser</h2>
+      <ul id="devBasics" class="dev-list"></ul>
+      <p class="fine" id="devMeta"></p>
+    </div>
+    <div class="card">
+      <h2>Camera and face tracking</h2>
+      <p>Opens the camera for about 6 seconds, measures the real frame rate and brightness, loads the face model and times it. Sit where you would for a checkup.</p>
+      <div class="row"><button type="button" class="btn primary" id="btnDevCam">Test the camera</button></div>
+      <video id="devVideo" class="dev-video" muted playsinline hidden></video>
+      <p id="devStatus" role="status"></p>
+    </div>
+    <div class="card">
+      <h2>Result</h2>
+      <ul id="devVerdict" class="dev-list" aria-live="polite"></ul>
+    </div>
+    <div class="card">
+      <h2>Report to share</h2>
+      <p class="fine">Technical lines only: no names, no measurements, no pictures. Paste it to whoever is helping you.</p>
+      <pre id="devReport" class="dev-report" tabindex="0"></pre>
+      <div class="row">
+        <button type="button" class="btn" id="btnDevCopy">Copy report</button>
+        <button type="button" class="btn" id="btnDevSave">Save as text</button>
+        <button type="button" class="btn" data-nav="home">Back</button>
+      </div>
+      <p class="fine" id="devCopied" role="status"></p>
+    </div>
   </section>
 
   <!-- HISTORY -->
   <section id="screen-history" class="screen" hidden aria-labelledby="h-history">
-    <h1 id="h-history">History</h1>
+    <h1 data-i18n="history.h1" id="h-history">History</h1>
     <p class="fine">Stored only in this browser, for the person chosen above. The first baseline is kept as the original reference.</p>
+    <p class="fine" id="storageNote"></p>
     <div id="trendBox"></div>
+    <div id="symptomBox"></div>
     <div id="benchSummary"></div>
     <div id="historyList"></div>
     <div class="row">
       <button type="button" class="btn" id="btnBenchCsv">Export bench test CSV</button>
       <button type="button" class="btn" id="btnExportAll">Export all (.json)</button>
+      <button type="button" class="btn" id="btnResultsCsv">Export results (.csv)</button>
       <label class="btn file-btn" for="restoreFile">Restore from backup (.json)</label>
       <input type="file" id="restoreFile" accept="application/json,.json" class="sr-only">
+      <button type="button" class="btn" id="btnStripPhotos">Remove photos older than 30 days</button>
       <button type="button" class="btn danger" id="btnClear">Delete this person's checkups</button>
       <button type="button" class="btn danger" id="btnDeleteProfile" hidden>Remove this person</button>
     </div>
@@ -364,9 +549,21 @@
   <form method="dialog"><button class="btn">Close</button></form>
 </dialog>
 
+<div id="reelLayer" hidden>
+  <div id="reelCard" class="reel-card" hidden></div>
+  <span class="reel-tag" aria-hidden="true">SAMPLE DATA</span>
+  <div class="reel-bar">
+    <div class="reel-progress" aria-hidden="true"><div id="reelProg"></div></div>
+    <p id="reelCaption" aria-live="polite"></p>
+    <button type="button" id="reelStop" class="reel-stop">Stop</button>
+  </div>
+</div>
+
 <footer class="foot">
   <span>Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.</span>
   <span id="modelNote"></span>
+  <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button></span>
+  <span>RelaisÉcho Link <span id="appVersion">v0.56</span></span>
 </footer>
 </body>
 </html>

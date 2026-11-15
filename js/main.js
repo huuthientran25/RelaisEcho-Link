@@ -1,18 +1,22 @@
 // RelaisÉcho Link app controller: screens, camera or file source, frame loop.
 import { CONFIG } from './config.js';
-import { getFaceLandmarker, getModelSource, detect } from './vision.js';
+import { getFaceLandmarker, getModelSource, getDelegate, MODEL_URLS, detect } from './vision.js';
 import { faceGeometry, keypointArray, motionSpeed, pulseRois, pulseRegions, PULSE_REGIONS, torsoRoi, neckRoi, LIPS_OUTER } from './geometry.js';
-import { roiMeanRGB, rowProfile } from './frame.js';
+import { roiMeanRGB, rowProfile, makeFrameClock } from './frame.js';
 import { makeTemplate, defaultTemplate, compareToTemplate } from './align.js';
 import { estimatePulse, livePulse, estimateWindow, estimatePulseRegions } from './pulse.js';
 import { TorsoTracker, estimateRespMulti } from './resp.js';
 import { DentalCapture, VIEWS } from './dental.js';
-import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, setProfile, getProfile, countByProfile, allIds, DEFAULT_PROFILE } from './store.js';
+import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, deleteSession, setProfile, getProfile, countByProfile, allIds, everySession, eraseDatabase, DEFAULT_PROFILE } from './store.js';
+import { NETWORK, EXPORTS, NEVER, inventory, inventoryLines, fmtBytes } from './privacy.js';
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
-import { sleepPressure, issMissionDose, consistency, RADIATION, todaySteps } from './board.js';
+import { sleepPressure, missionDose, MISSION_PRESETS, consistency, RADIATION, todaySteps } from './board.js';
+import { loadSpaceWeather, isFresh } from './spaceweather.js';
+import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts } from './symptoms.js';
+import { dayLength, fmtHours, PLACES, ISS_SUNRISES_PER_DAY } from './daylight.js';
 import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
-import { applyLang } from './i18n.js';
+import { applyLang, phrase } from './i18n.js';
 import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS } from './change.js';
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
 import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from './crew.js';
@@ -20,8 +24,14 @@ import { eyeAspect, EyeTracker } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
 import { makeDemoSessions, DEMO_PROFILE, DEMO_NAME } from './demo.js';
-import { validatePacket, safeImage } from './review.js';
+import { validatePacket, safeImage, standouts } from './review.js';
 import { analyzeMouth, compareMouth, changeMap, mouthMask } from './dentalcmp.js';
+import { REPLY_STATUSES, makeReply, validateReply, gzipText, readMaybeGzip } from './reply.js';
+import { reminderIcs, stripOldPhotos, resultsCsv, cameraOptions, cameraConstraints } from './extras.js';
+import { featureList, fpsFromTimes, median, verdicts, overall, reportText } from './devicecheck.js';
+import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType } from './reel.js';
+import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
+import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -43,18 +53,36 @@ const acan = document.createElement('canvas');
 const actx = acan.getContext('2d', { willReadFrequently: true });
 
 /* ---------- navigation ---------- */
+// Screens where the camera may be running. Leaving them (for the board, history, home...) stops the
+// camera, drops an unfinished scan and keeps any dental photos already taken.
+const LIVE_SCREENS = ['scan', 'results', 'dental'];
+function abandonCapture() {
+  if (state.scan && !state.scan.finished) state.scan.finished = true;
+  const d = state.dental;
+  if (d && !d.finished) {
+    d.finished = true;
+    if (state.session && Object.values(d.results).some((r) => r.captured)) { state.session.dental = d.results; saveSession(state.session); }
+  }
+  stopSource();
+}
+let curLang = 'en'; // set by setLang
 const pvt = { running: false }; // alertness test state; declared early because show() reads it
+const dev = { r: { env: {} }, meta: {}, running: false, stream: null, token: null }; // device check state; show() reads it too
 function show(name) {
   state.screen = name;
   if (name !== 'alertness' && pvt.running) pvtAbort();
   document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.id !== `screen-${name}`; });
   window.scrollTo(0, 0);
-  if (name === 'home') stopSource();
+  if (!LIVE_SCREENS.includes(name)) abandonCapture();
   if (name === 'history') renderHistory();
   if (name === 'setup') prepareSetup();
   if (name === 'board') renderBoard();
   if (name === 'alertness') pvtReset();
   if (name === 'crew') renderCrew();
+  if (name !== 'device') devStop();
+  if (name === 'vision') visReset();
+  if (name === 'privacy') renderPrivacy();
+  if (name === 'device') renderDevice();
   const h = document.querySelector(`#screen-${name} h1`);
   if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
@@ -83,9 +111,24 @@ function openEvidence(key) {
   $('evidenceDialog').showModal();
 }
 
+// Offline readiness: the app shell is cached, and whether the face model is cached too.
+const offline = { shell: false, model: false };
+async function checkOffline() {
+  try {
+    const keys = await caches.keys();
+    for (const k of keys) {
+      const c = await caches.open(k);
+      if (await c.match('index.html') || await c.match('./')) offline.shell = true;
+      const reqs = await c.keys();
+      if (reqs.some((r) => /face_landmarker\.task/.test(r.url))) offline.model = true;
+    }
+  } catch { /* caches unavailable (private mode) */ }
+  updateNet();
+}
 function updateNet() {
   const on = navigator.onLine;
-  $('netStatus').textContent = on ? 'Online' : 'Offline: still works';
+  $('netStatus').textContent = on ? (offline.model ? 'Online · works offline' : 'Online') : (offline.model ? 'Offline: checkups still work' : 'Offline: board and history work');
+  $('netStatus').title = offline.model ? 'The app and the face model are saved on this device.' : offline.shell ? 'The app is saved on this device; the face model downloads on first use of the camera.' : 'Open the app once online to save it on this device.';
   $('netStatus').classList.toggle('off', !on);
 }
 window.addEventListener('online', updateNet);
@@ -94,10 +137,15 @@ updateNet();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Service worker not registered', e));
+  navigator.serviceWorker.ready.then(() => setTimeout(checkOffline, 1500)).catch(() => {});
 }
 
 /* ---------- setup ---------- */
 async function prepareSetup() {
+  // A new checkup starts with nothing ticked, so yesterday's symptoms are never carried over by accident.
+  document.querySelectorAll('#symptomTicks input').forEach((i) => { i.checked = false; });
+  $('urgentNote').hidden = true; $('symptoms').value = '';
+  refreshCameraList();
   const { original } = await baselineAndRecent();
   const base = document.querySelector('input[name=kind][value=baseline]');
   const follow = document.querySelector('input[name=kind][value=followup]');
@@ -123,10 +171,18 @@ $('setupForm').addEventListener('submit', async (e) => {
   state.session = {
     id: newId(), createdAt: new Date().toISOString(), kind: f.get('kind') || 'baseline',
     source: src === 'file' ? 'file' : 'camera', facing: src === 'file' ? null : src,
-    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim() },
+    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim(), checklist: tickedSymptoms() },
     complete: false, dental: {},
   };
   await startScan(src, file);
+});
+// Symptom checklist in the setup form.
+$('symptomTicks').innerHTML = SYMPTOMS.map((x) => `<label><input type="checkbox" name="sym" value="${x.id}"> ${esc(x.label)}</label>`).join('');
+function tickedSymptoms() { return [...document.querySelectorAll('#symptomTicks input:checked')].map((i) => i.value); }
+$('symptomTicks').addEventListener('change', () => {
+  const urgent = hasUrgent(tickedSymptoms());
+  $('urgentNote').hidden = !urgent;
+  $('urgentNote').textContent = urgent ? `! ${URGENT_TEXT}` : '';
 });
 
 /* ---------- source handling ---------- */
@@ -156,9 +212,15 @@ async function startSource(kind, file) {
     v.src = state.fileUrl; v.loop = false;
     state.session && (state.session.cameraLabel = `file: ${file.name}`);
   } else {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: kind, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: CONFIG.perf.cameraFps } }, audio: false,
-    });
+    const picked = $('camPick').value || '';
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia(cameraConstraints(kind, picked, CONFIG.perf.cameraFps)); }
+    catch (err) {
+      // The saved camera was unplugged or renamed: fall back to the automatic choice once.
+      if (!picked || (err.name !== 'OverconstrainedError' && err.name !== 'NotFoundError')) throw err;
+      prefs.set('camId', ''); $('camPick').value = '';
+      stream = await navigator.mediaDevices.getUserMedia(cameraConstraints(kind, '', CONFIG.perf.cameraFps));
+    }
     state.stream = stream;
     v.srcObject = stream;
     if (state.session) state.session.cameraLabel = stream.getVideoTracks()[0]?.label || kind;
@@ -185,9 +247,10 @@ function startLoop(handler) {
   const token = {};
   state.loop = token;
   const rvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+  const clock = makeFrameClock(state.sourceKind === 'file');
   const step = (now, meta) => {
     if (state.loop !== token) return;
-    const t = meta && Number.isFinite(meta.mediaTime) ? meta.mediaTime * 1000 : performance.now();
+    const t = clock(meta);
     try { handler(t, meta); } catch (err) { console.error(err); }
     schedule();
   };
@@ -200,7 +263,7 @@ function startLoop(handler) {
 
 async function ensureModel(coachEl) {
   if (state.landmarker) return state.landmarker;
-  coachEl.textContent = 'Loading the face model…';
+  coachEl.textContent = phrase(curLang, 'Loading the face model…');
   state.landmarker = await getFaceLandmarker();
   $('modelNote').textContent = `Face landmarks: MediaPipe Face Landmarker, ${getModelSource()}.`;
   return state.landmarker;
@@ -212,14 +275,14 @@ function sourceError(err, coachEl) {
   coachEl.textContent = name === 'NotAllowedError'
     ? 'Camera permission was denied. Allow the camera in your browser settings, or choose "Video file" in setup.'
     : name === 'NotFoundError' ? 'No camera found. Choose "Video file" in setup.'
-      : `Could not start: ${err.message || err}`;
+      : `Could not start: ${err.message || err}. "Check this device" on the home page shows what is missing.`;
 }
 
 /* ---------- resting scan ---------- */
 async function startScan(src, file) {
   show('scan');
   moveStage('scanStageSlot');
-  $('coach').textContent = 'Starting…';
+  $('coach').textContent = phrase(curLang, 'Starting…');
   try {
     await ensureModel($('coach'));
     await startSource(src, file);
@@ -343,9 +406,9 @@ function scanFrame(t, meta) {
   drawScanOverlay(g, regs ? regs.map((r) => r.box) : rois, torso, neck, al);
   if (t - state.uiT > 150 || t < state.uiT) {
     state.uiT = t;
-    const chipsHtml = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(c.label)}</span>`).join('');
+    const chipsHtml = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(phrase(curLang, c.label))}</span>`).join('');
     if (chipsHtml !== s.chipsHtml) { $('chips').innerHTML = chipsHtml; s.chipsHtml = chipsHtml; }
-    const coach = coachMessage(lm, checks, al);
+    const coach = phrase(curLang, coachMessage(lm, checks, al));
     if ($('coach').textContent !== coach) $('coach').textContent = coach;
     const target = CONFIG.scan.targetUsableSeconds;
     $('usableBar').style.transform = `scaleX(${Math.min(1, s.usable / target).toFixed(3)})`;
@@ -488,7 +551,7 @@ async function renderResults() {
       return vals.length ? `${Math.min(...vals)} to ${Math.max(...vals)}` : '-';
     };
     html += `<table><caption class="fine" style="text-align:left">Compared with your own earlier checkups</caption>
-      <thead><tr><th scope="col"></th><th scope="col">Today</th><th scope="col">Original baseline<br><span class="fine">${fmtDate(original.createdAt)}</span></th><th scope="col">Last ${recent.length || 0}</th></tr></thead>
+      <thead><tr><th scope="col"><span class="sr-only">Measure</span></th><th scope="col">Today</th><th scope="col">Original baseline<br><span class="fine">${fmtDate(original.createdAt)}</span></th><th scope="col">Last ${recent.length || 0}</th></tr></thead>
       <tbody><tr><th scope="row">Pulse, bpm</th><td>${sess.pulse.bpm ?? '-'}</td><td>${original.pulse?.bpm ?? '-'}</td><td>${range('p', (r) => r.pulse?.bpm)}</td></tr>
       <tr><th scope="row">Breathing, /min</th><td>${sess.resp.rpm ?? '-'}</td><td>${original.resp?.rpm ?? '-'}</td><td>${range('r', (r) => r.resp?.rpm)}</td></tr></tbody></table>
       <p class="fine">The original baseline is kept on purpose, so slow drift never becomes the new normal. No value here is a diagnosis.</p>`;
@@ -582,7 +645,7 @@ function dentalFrame() {
   const lm = detect(state.landmarker, v);
   const g = lm ? faceGeometry(lm, state.AW, state.AH) : null;
   const st = d.update(v, lm, g);
-  $('dentalCoach').textContent = st.msg ? `${d.done ? '' : `${d.currentView.label}: `}${st.msg}` : '';
+  $('dentalCoach').textContent = st.msg ? phrase(curLang, `${d.done ? '' : `${d.currentView.label}: `}${st.msg}`) : '';
   if (!d.done) $('dentalCoach').title = d.currentView.hint;
   $('dentalBar').style.width = `${Math.round((st.progress || 0) * 100)}%`;
   drawMouthGuide(lm, st.ok);
@@ -708,7 +771,7 @@ $('btnToPacket').addEventListener('click', async () => { await renderPacket(); s
 let lastPacket = null;
 async function renderPacket() {
   const sess = state.session;
-  sess.complete = sess.kind !== 'baseline' || !!sess.template;
+  if (sess.complete === undefined) sess.complete = sess.kind !== 'baseline' || !!sess.template;
   await saveSession(sess);
   const cmp = await baselineAndRecent(sess.id);
   const alert = (await listSessions()).filter((x) => x.kind === 'alertness'
@@ -720,8 +783,16 @@ async function renderPacket() {
     change = { pulse: { ...changeVsBaseline(sess.pulse?.bpm, cmp.original.pulse?.bpm, pf.value), band: pf.value, band_source: pf.source },
       breathing: { ...changeVsBaseline(sess.resp?.rpm, cmp.original.resp?.rpm, rf.value), band: rf.value, band_source: rf.source } };
   }
-  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change });
+  const visAll = (await listSessions()).filter((x) => x.kind === 'vision' && x.vision);
+  const visRec = visAll.filter((x) => Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 7 * 24 * 3600 * 1000).pop() || null;
+  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]) });
   $('packetText').textContent = packetText(lastPacket.packet);
+  renderPacketStatus(sess);
+  gzipText(lastPacket.json).then((gz) => {
+    lastPacket.gz = gz;
+    $('btnDownloadGz').hidden = !gz;
+    $('gzNote').textContent = gz ? `Compressed file: ${(gz.length / 1024).toFixed(1)} KB instead of ${(lastPacket.bytes / 1024).toFixed(1)} KB, useful on small satellite data plans.` : '';
+  });
   const kb = lastPacket.bytes / 1024;
   $('packetSize').textContent = kb < 10 ? `${kb.toFixed(1)} KB` : `${Math.round(kb)} KB`;
 }
@@ -750,18 +821,29 @@ async function renderHistory() {
   const b = benchError(all);
   const row = (label, x, unit) => (x.n ? `<li>${label}: ${x.n} pair${x.n === 1 ? '' : 's'}, mean error ${x.mae} ${unit}, bias ${x.bias > 0 ? '+' : ''}${x.bias} ${unit}${x.n < MIN_BENCH_PAIRS ? ` (${MIN_BENCH_PAIRS - x.n} more to replace the published noise band)` : ' (now used as your noise band)'}</li>` : `<li>${label}: no reference values yet</li>`);
   $('trendBox').innerHTML = trendHtml(all.slice().reverse());
+  const sc = symptomCounts(all);
+  $('symptomBox').innerHTML = sc.rows.length ? `<div class="card"><h2>Symptoms ticked, last 14 days</h2>
+    <p class="fine">Out of ${sc.checkups} checkup${sc.checkups === 1 ? '' : 's'}. A count of what was ticked, not a score.</p>
+    <ul class="sym-counts">${sc.rows.map((r) => `<li><span class="sym-n">${r.count}</span> ${esc(r.label)}${r.urgent ? ' <span class="tag alert">URGENT ITEM</span>' : ''}</li>`).join('')}</ul></div>` : '';
+  if (navigator.storage?.estimate) navigator.storage.estimate().then((e) => { $('storageNote').textContent = `This browser holds about ${(e.usage / 1048576).toFixed(1)} MB of app data on this device.`; }).catch(() => {});
   $('btnDeleteProfile').hidden = getProfile() === DEFAULT_PROFILE;
   $('benchSummary').innerHTML = `<div class="card"><h2>Your bench test</h2>
     <p>Enter a watch, oximeter or counted breaths reference on the results screen. Once there are ${MIN_BENCH_PAIRS} pairs, comparisons use your own measured error instead of published figures.</p>
     <ul>${row('Pulse', b.pulse, 'bpm')}${row('Breathing', b.resp, '/min')}</ul></div>`;
   const currentOriginal = (await baselineAndRecent()).original?.id;
   const pvtLine = (s) => `<div class="hist-item"><span><strong>alertness</strong> · ${fmtDate(s.createdAt)}</span>
-      <span>Median ${s.alertness.medianMs ?? '-'} ms · lapses ${s.alertness.lapses} · false starts ${s.alertness.falseStarts}</span></div>`;
-  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : `<div class="hist-item">
+      <span>Median ${s.alertness.medianMs ?? '-'} ms · lapses ${s.alertness.lapses} · false starts ${s.alertness.falseStarts}</span>
+      <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
+  const visLine = (s) => `<div class="hist-item"><span><strong>eye grid</strong> · ${fmtDate(s.createdAt)}</span>
+      <span>Right eye: ${esc(amsSummary(s.vision?.right).text)} · Left eye: ${esc(amsSummary(s.vision?.left).text)}</span>
+      <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
+  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
       ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
-      · dental ${Object.values(s.dental || {}).filter((d) => d.captured).length}/3</span>
+      · dental ${Object.values(s.dental || {}).filter((d) => d.captured).length}/3${s.context?.checklist?.length ? ` · ticked: ${symptomLabels(s.context.checklist).map(esc).join(', ')}` : ''}</span>
+      <button type="button" class="link-btn" data-open-packet="${esc(s.id)}">Packet</button>
+      <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button>
       ${s.kind === 'baseline' && s.complete ? (s.id === currentOriginal ? '<span class="tag live">ORIGINAL BASELINE</span>' : `<button type="button" class="link-btn" data-make-original="${esc(s.id)}">Use as original baseline</button>`) : ''}</div>`).join('')
     : '<p class="fine">No checkups yet.</p>';
 }
@@ -790,6 +872,7 @@ $('btnClear').addEventListener('click', async () => {
 });
 
 /* ---------- sample replay ---------- */
+$('btnSample').hidden = !CONFIG.sampleReplay; // shown only when a recording is bundled (see js/config.js)
 $('btnSample').addEventListener('click', async () => {
   try {
     const r = await fetch('samples/sample.mp4');
@@ -831,19 +914,24 @@ async function renderBoard() {
     body.innerHTML = `<p class="big-num">${c.daysThisWeek}<span class="unit"> of 7 days</span></p>
       <div class="dots">${dots}</div>
       <p>${c.total} checkup${c.total === 1 ? '' : 's'} saved, ${c.thisWeek} this week. Last one ${fmtDate(c.last.createdAt)}.</p>${timeMsg}
-      <p>${c.daysThisWeek >= 3 ? 'Steady rhythm. Regular checkups make real changes easier to spot.' : 'A few checkups a week at the same time of day give the clearest comparison.'}</p>`;
+      <p>${c.daysThisWeek >= 3 ? 'Steady rhythm. Regular checkups make real changes easier to spot.' : 'A few checkups a week at the same time of day give the clearest comparison.'}</p>
+      <p class="fine">Reminder in your calendar at ${fmtClock(new Date(c.original.createdAt))}: <button type="button" class="link-btn" data-ics="DAILY">daily</button> · <button type="button" class="link-btn" data-ics="WEEKLY">weekly</button></p>`;
   }
   // Sleep form defaults: last saved values, else last night 23:00 to 07:00.
   const saved = prefs.get('sleep');
   const now = new Date();
   const wake = new Date(now); wake.setHours(7, 0, 0, 0); if (wake > now) wake.setDate(wake.getDate() - 1);
   const bed = new Date(+wake - 8 * H_MS);
-  $('sleepStart').value = saved?.start || toLocalInput(bed);
-  $('sleepEnd').value = saved?.end || toLocalInput(wake);
+  // Saved times are reused only while they still describe last night; older entries would make the
+  // model show many hours awake that never happened.
+  const savedEnd = saved?.end ? +new Date(saved.end) : NaN;
+  const fresh = Number.isFinite(savedEnd) && savedEnd <= +now + 60000 && +now - savedEnd < 20 * H_MS;
+  $('sleepStart').value = fresh ? saved.start : toLocalInput(bed);
+  $('sleepEnd').value = fresh ? saved.end : toLocalInput(wake);
   $('usualSleep').value = saved?.usual ?? '';
-  const days = prefs.get('radDays');
-  if (Number.isFinite(days)) $('radDays').value = days;
-  updateSleepTile(); updateRadTile();
+  const mission = prefs.get('radMission');
+  if (mission) { $('radLeo').value = mission.leoDays ?? 180; $('radTransit').value = mission.transitDays ?? 0; $('radSurface').value = mission.surfaceDays ?? 0; }
+  updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile();
   renderAlertTile();
   renderCrewTile();
 }
@@ -880,21 +968,113 @@ function updateSleepTile() {
 }
 
 function updateRadTile() {
-  const days = Number($('radDays').value);
-  prefs.set('radDays', days);
-  $('radDaysOut').textContent = String(days);
-  const d = issMissionDose(days);
+  const m = { leoDays: Number($('radLeo').value) || 0, transitDays: Number($('radTransit').value) || 0, surfaceDays: Number($('radSurface').value) || 0 };
+  prefs.set('radMission', m);
+  const d = missionDose(m);
+  const over = d.fracLow >= 1;
   const pct = (f) => Math.min(100, f * 100);
-  $('radBar').style.left = `${pct(d.fracLow)}%`;
-  $('radBar').style.width = `${Math.max(0.8, pct(d.fracHigh) - pct(d.fracLow))}%`;
-  const over = d.high >= RADIATION.careerLimitMsv;
-  $('radBody').innerHTML = `<p class="big-num">${Math.round(d.low)} to ${Math.round(d.high)}<span class="unit"> mSv</span></p>
-    <p>That is ${Math.round(d.fracLow * 100)} to ${Math.round(d.fracHigh * 100)}% of NASA's ${RADIATION.careerLimitMsv} mSv career limit.${over ? ' <strong>The high estimate reaches or passes the limit.</strong>' : ''}</p>
-    <p class="fine">Beyond low Earth orbit, daily doses are higher; a Mars round trip could approach or pass this limit (see Evidence).</p>`;
+  const bar = $('radBar');
+  bar.classList.toggle('over', over);
+  bar.style.left = over ? '0%' : `${pct(d.fracLow)}%`;
+  bar.style.width = over ? '100%' : `${Math.max(0.8, pct(d.fracHigh) - pct(d.fracLow))}%`;
+  const span = (lo, hi) => (Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)} to ${Math.round(hi)}`);
+  const parts = [];
+  if (d.leoDays) parts.push(`low Earth orbit ${span(...d.parts.leo)}`);
+  if (d.transitDays) parts.push(`transit ${span(...d.parts.transit)}`);
+  if (d.surfaceDays) parts.push(`Mars surface ${span(...d.parts.surface)}`);
+  const limit = RADIATION.careerLimitMsv;
+  const verdict = over ? ` <strong>About ${(d.low / limit).toFixed(1)} times the limit.</strong>`
+    : d.fracHigh >= 1 ? ' <strong>The high estimate reaches or passes the limit.</strong>' : '';
+  $('radBody').innerHTML = `<p class="big-num">${span(d.low, d.high)}<span class="unit"> mSv</span></p>
+    <p>That is ${span(d.fracLow * 100, d.fracHigh * 100)}% of NASA's ${limit} mSv career limit.${verdict}</p>
+    ${parts.length > 1 ? `<p class="fine">In mSv: ${parts.join(' · ')}.</p>` : ''}
+    ${d.transitDays || d.surfaceDays ? '<p class="fine">Deep space figures were measured by the Curiosity mission\'s RAD instrument in 2011 to 2013, a time of low to moderate solar activity. A large solar particle event would add to them.</p>' : ''}`;
+  document.querySelectorAll('#radPresets [data-mission]').forEach((b) => {
+    const p = MISSION_PRESETS.find((x) => x.id === b.dataset.mission);
+    b.setAttribute('aria-pressed', p && p.leoDays === d.leoDays && p.transitDays === d.transitDays && p.surfaceDays === d.surfaceDays ? 'true' : 'false');
+  });
 }
+$('radPresets').innerHTML = MISSION_PRESETS.map((p) => `<button type="button" class="link-btn" data-mission="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join(' · ');
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mission]');
+  if (!b) return;
+  const p = MISSION_PRESETS.find((x) => x.id === b.dataset.mission);
+  if (!p) return;
+  $('radLeo').value = p.leoDays; $('radTransit').value = p.transitDays; $('radSurface').value = p.surfaceDays;
+  updateRadTile();
+});
+['radLeo', 'radTransit', 'radSurface'].forEach((id) => $(id).addEventListener('input', updateRadTile));
+
+/* ---------- daylight tile ---------- */
+$('dayPlace').innerHTML = PLACES.map((p) => `<option value="${p.id}">${esc(p.name)} (${p.lat}°N)</option>`).join('') + '<option value="custom">Other latitude…</option>';
+function renderDaylight() {
+  const sel = $('dayPlace');
+  const savedPlace = prefs.get('dayPlace');
+  if (savedPlace && !sel.dataset.ready) { sel.value = [...sel.options].some((o) => o.value === savedPlace.id) ? savedPlace.id : 'iqaluit'; if (savedPlace.lat != null) $('dayLat').value = savedPlace.lat; }
+  sel.dataset.ready = '1';
+  const custom = sel.value === 'custom';
+  $('dayLatWrap').hidden = !custom;
+  const place = custom ? { name: `Latitude ${$('dayLat').value}°`, lat: Number($('dayLat').value) } : PLACES.find((p) => p.id === sel.value);
+  prefs.set('dayPlace', { id: sel.value, lat: custom ? place.lat : null });
+  const now = new Date();
+  const d = dayLength(place.lat, now);
+  if (!d) { $('dayBody').innerHTML = '<p class="warnline">! Enter a latitude between 89 south (-89) and 89 north.</p>'; return; }
+  const mtl = dayLength(45.5, now);
+  const big = d.kind === 'polarNight' ? 'Polar night</p><p><strong>The Sun does not rise today.</strong>'
+    : d.kind === 'midnightSun' ? 'Midnight sun</p><p><strong>The Sun does not set today.</strong>'
+      : `${fmtHours(d.hours)}<span class="unit"> of daylight today</span>`;
+  $('dayBody').innerHTML = `<p class="big-num">${big}</p>
+    <div class="daybar" role="img" aria-label="${Math.round((d.hours / 24) * 100)} percent of the 24 hours are daylight"><div style="width:${((d.hours / 24) * 100).toFixed(1)}%"></div></div>
+    <p>${sel.value === 'montreal' ? '' : `Montreal today: ${fmtHours(mtl.hours)}. `}On the ISS: about ${ISS_SUNRISES_PER_DAY} sunrises and sunsets every 24 hours.</p>
+    <p>Light is the body clock's main time signal. Very short days, days with no night and 16 sunrises a day all blur it, which is why station crews live by one fixed clock. A regular checkup time helps for the same reason.</p>`;
+}
+$('dayPlace').addEventListener('change', renderDaylight);
+$('dayLat').addEventListener('input', renderDaylight);
+
+/* ---------- space weather tile (NASA DONKI, loaded on request) ---------- */
+const fmtDay = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? '' : d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }); };
+function spaceWeatherHtml(d, note) {
+  const c = d.counts;
+  const list = [c.X && `${c.X} X class`, c.M && `${c.M} M class`, c.C && `${c.C} C class`, c.other && `${c.other} weaker`].filter(Boolean).join(', ');
+  const head = d.strongest
+    ? `<p class="big-num">${esc(d.strongest.cls)}<span class="unit"> strongest solar flare, last 7 days</span></p>
+       <p>${d.flares} flare${d.flares === 1 ? '' : 's'} recorded: ${list}. X is the strongest class, then M, then C.${d.strongest.peak ? ` The strongest peaked on ${fmtDay(d.strongest.peak)}.` : ''}</p>`
+    : '<p class="big-num">Quiet<span class="unit"> no flares recorded in the last 7 days</span></p>';
+  return `${head}
+    <p><strong>${d.sepEvents}</strong> solar energetic particle event${d.sepEvents === 1 ? '' : 's'} in the last 30 days${d.lastSep ? ` (latest ${fmtDay(d.lastSep)})` : ''}. Particle events are what raise crew dose beyond Earth's magnetic shield; flares mostly disturb radio.</p>
+    ${note ? `<p class="warnline">! ${esc(note)}</p>` : ''}
+    <p class="fine">NASA DONKI, read ${fmtDate(d.fetchedAt)} · <button type="button" class="link-btn" data-sw="refresh">Refresh</button></p>`;
+}
+async function refreshSpaceWeather(force) {
+  const body = $('swBody');
+  const saved = prefs.get('sw');
+  $('swKey').value = prefs.get('swKey') || '';
+  if (!force && !prefs.get('swAuto')) {
+    body.innerHTML = `<p>Solar flares and particle storms are the fast changing part of the radiation picture.</p>
+      <p><button type="button" class="btn primary" data-sw="load">Load live data from NASA</button></p>`;
+    return;
+  }
+  if (!force && isFresh(saved)) { body.innerHTML = spaceWeatherHtml(saved); return; }
+  if (!navigator.onLine) {
+    body.innerHTML = saved ? spaceWeatherHtml(saved, 'Offline: showing the last saved copy.') : '<p>Offline. Space weather needs internet once; everything else on this board works without it.</p>';
+    return;
+  }
+  body.innerHTML = '<p>Loading from NASA DONKI…</p>';
+  try {
+    const d = await loadSpaceWeather({ key: prefs.get('swKey') || undefined });
+    prefs.set('sw', d); prefs.set('swAuto', true);
+    body.innerHTML = spaceWeatherHtml(d);
+  } catch (err) {
+    const why = err && err.message === 'rate' ? 'NASA\'s shared demonstration key is over its hourly limit. Try later or add your own free key below.'
+      : 'Could not reach NASA DONKI (no connection, blocked, or the service is down).';
+    body.innerHTML = saved ? spaceWeatherHtml(saved, `${why} Showing the last saved copy.`)
+      : `<p class="warnline">! ${esc(why)}</p><p><button type="button" class="btn" data-sw="load">Try again</button></p>`;
+  }
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-sw]')) refreshSpaceWeather(true); });
+$('swKey').addEventListener('change', (e) => { prefs.set('swKey', e.target.value.trim()); });
 
 $('sleepForm').addEventListener('input', updateSleepTile);
-$('radDays').addEventListener('input', () => requestAnimationFrame(updateRadTile));
 
 /* ---------- alertness check (brief PVT) ---------- */
 const pvtTests = async () => (await listSessions()).filter((x) => x.kind === 'alertness' && x.alertness);
@@ -1048,12 +1228,14 @@ async function pvtFinish() {
       : cmp.verdict === 'similar' ? `Similar to your reference test (${cmp.pct > 0 ? '+' : ''}${cmp.pct}% median).`
         : cmp.verdict === 'slower' ? `${cmp.pct}% slower than your reference test. Short sleep, illness and time of day can all do this; rest before demanding tasks if you can.`
           : `${Math.abs(cmp.pct)}% faster than your reference test. Practice also speeds people up over the first few tests.`;
+  const sameWay = before.filter((x) => !!x.alertness.withEyes === pvt.withEyes).length;
+  const practiceNote = pvt.save && sameWay < 3 ? ' Early tests are still affected by practice, so the comparison firms up after about three tests.' : '';
   $('pvtRun').hidden = true; $('pvtIntro').hidden = true; $('pvtResult').hidden = false;
   $('pvtResult').innerHTML = `<div class="card result">
       <p><span class="tag live">LIVE</span><span class="tag">EXPERIMENTAL</span></p>
       <p class="big">${sum.medianMs ?? '-'}<span class="unit"> ms median reaction time</span></p>
       <p>${sum.lapses} lapse${sum.lapses === 1 ? '' : 's'} (355 ms or slower, or missed) · ${sum.falseStarts} false start${sum.falseStarts === 1 ? '' : 's'} · ${sum.valid} of ${sum.stimuli} responses counted</p>
-      <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${esc(verdict)}</p>
+      <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${esc(verdict + practiceNote)}</p>
       ${eyes ? pvtEyesHtml(eyes, ref && ref.eyes) : pvt.eyeError ? `<p class="fine">${esc(pvt.eyeError)}</p>` : ''}
       <svg class="spark" viewBox="0 0 600 180" role="img" aria-label="Reaction time for each response across the test">${pvtChart(rts)}</svg>
       <p class="fine">Each dot is one response, left to right through the test; the dashed line is the 355 ms lapse threshold. Device delay is included, so compare only on this device.</p>
@@ -1114,7 +1296,7 @@ const speaker = makeSpeaker({ synth: window.speechSynthesis, Utterance: window.S
 if (!('speechSynthesis' in window)) { $('speakToggle').disabled = true; $('speakToggle').closest('label').append(' (not available in this browser)'); }
 speaker.setEnabled(!!prefs.get('speak'));
 $('speakToggle').checked = !!prefs.get('speak');
-$('speakToggle').addEventListener('change', (e) => { prefs.set('speak', e.target.checked); speaker.setEnabled(e.target.checked); if (e.target.checked) speaker.say('Spoken instructions on.'); });
+$('speakToggle').addEventListener('change', (e) => { prefs.set('speak', e.target.checked); speaker.setEnabled(e.target.checked); if (e.target.checked) speaker.say(phrase(curLang, 'Spoken instructions on.')); });
 for (const id of ['coach', 'dentalCoach']) {
   new MutationObserver(() => { if (!$(id).closest('.screen').hidden) speaker.say($(id).textContent); })
     .observe($(id), { childList: true, characterData: true, subtree: true });
@@ -1160,6 +1342,7 @@ $('restoreFile').addEventListener('change', async (e) => {
 /* ---------- language ---------- */
 function setLang(code) {
   const { code: used, notice } = applyLang(code);
+  curLang = used;
   speaker.setLang(used === 'fr' ? 'fr-CA' : 'en-CA');
   $('langSel').value = used;
   $('langNotice').hidden = !notice;
@@ -1194,7 +1377,8 @@ async function renderCrewTile() {
     const d = await loadCrew();
     const r = rangeDisagreements(d);
     $('crewTileBody').innerHTML = `<p class="big-num">${r.normalButUnusual}<span class="unit"> of ${r.r1Total}</span></p>
-      <p>results the day after landing were inside the lab's normal range but outside that person's own pre-flight values. A population range alone would not notice them.</p>`;
+      <p>results the day after landing were inside the lab's normal range but outside that person's own pre-flight values. A population range alone would not notice them.</p>
+      ${(() => { const il6 = d.analytes.find((x) => x.key === 'il_6'); if (!il6) return ''; const sm = Object.values(summarizeCrew(il6, d.timepoints)).filter(Boolean); const up = sm.filter((v) => v.r1 > v.preMax).length; return `<p><strong>IL-6</strong>, an inflammation marker with no lab range, rose above its own pre-flight values in ${up} of ${sm.length} crew members the day after landing.</p>`; })()}`;
   } catch { /* data file missing: keep the static text */ }
 }
 
@@ -1283,7 +1467,7 @@ window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; }
 /* ---------- today checklist ---------- */
 async function renderToday() {
   const all = await listSessions();
-  const t = todaySteps({ sessions: all.filter((x) => x.kind !== 'alertness' && x.kind !== 'demo'), alertTests: all.filter((x) => x.kind === 'alertness'), sleep: state.lastSleep });
+  const t = todaySteps({ sessions: all.filter((x) => x.kind !== 'alertness' && x.kind !== 'vision' && x.kind !== 'demo'), alertTests: all.filter((x) => x.kind === 'alertness'), sleep: state.lastSleep });
   $('todayMsg').textContent = t.message;
   $('todayList').innerHTML = t.steps.map((st) => `<li class="${st.done ? 'done' : ''}"><span class="mark-box" aria-hidden="true">${st.done ? '✓' : ''}</span>
     <span>${esc(st.text)}</span>${!st.done && st.nav ? ` <button type="button" class="link-btn" data-nav="${st.nav}">Go</button>` : ''}</li>`).join('');
@@ -1381,9 +1565,10 @@ $('reviewFile').addEventListener('change', async (e) => {
   e.target.value = '';
   if (!file) return;
   let p = null;
-  try { p = JSON.parse(await file.text()); } catch { /* handled below */ }
+  try { p = JSON.parse(await readMaybeGzip(file)); } catch { /* handled below */ }
   const err = p ? validatePacket(p) : 'This file is not valid JSON.';
-  $('reviewOut').innerHTML = err ? `<p class="warnline">! ${esc(err)}</p>` : reviewHtml(p);
+  $('reviewOut').innerHTML = err ? `<p class="warnline">! ${esc(err)}</p>` : reviewHtml(p) + replyFormHtml();
+  if (!err) wireReplyForm(p);
 });
 
 function reviewHtml(p) {
@@ -1399,24 +1584,33 @@ function reviewHtml(p) {
     return `<figure class="review-photo"><figcaption><strong>${esc(d.view)}</strong>: ${d.captured ? 'captured' : 'not captured'}${d.reviewer_marks?.length ? ` · ${d.reviewer_marks.length} mark(s): ${d.reviewer_marks.map((m, i) => `${i + 1}. ${esc(m.note || 'no note')}`).join('; ')}` : ''}</figcaption>
       ${auHtml}${img ? `<div class="cmp review-img"><img src="${img}" alt="${esc(d.view)} dental photo">${marks}</div>` : d.captured ? '<p class="fine">Photo not included in this packet (the sender left images out to keep it small).</p>' : ''}</figure>`;
   }).join('');
-  return `<div class="card result">
+  const so = standouts(p);
+  const soMark = { urgent: '!', change: '▲', caution: '?', note: '·' };
+  const soHtml = `<div class="card standouts"><h2>Read first</h2>${so.length ? `<ul>${so.map((x) => `<li class="so-${x.level}"><span aria-hidden="true">${soMark[x.level]}</span> ${esc(x.text)}</li>`).join('')}</ul>` : '<p>Nothing in this packet is flagged: results sit inside the noise band and nothing was ticked.</p>'}
+      <p class="fine">A reading order built from the lines below. Not a score and not a finding.</p></div>`;
+  return `${soHtml}<div class="card result">
       <p><span class="tag">${esc(p.checkup.kind)}</span> captured ${when(p.checkup.capturedAt)} · ${esc(p.checkup.source)} · packet ${esc(p.schema)}</p>
-      <table><thead><tr><th scope="col"></th><th scope="col">This checkup</th><th scope="col">Original baseline${c.original_baseline ? `<br><span class="fine">${when(c.original_baseline.date)}</span>` : ''}</th><th scope="col">Quality</th></tr></thead>
+      <table><thead><tr><th scope="col"><span class="sr-only">Measure</span></th><th scope="col">This checkup</th><th scope="col">Original baseline${c.original_baseline ? `<br><span class="fine">${when(c.original_baseline.date)}</span>` : ''}</th><th scope="col">Quality</th></tr></thead>
       <tbody><tr><th scope="row">Pulse, bpm</th><td>${r.pulse_bpm.value ?? '-'}</td><td>${c.original_baseline?.pulse_bpm ?? '-'}</td><td>${esc(r.pulse_bpm.quality)} · ${esc(r.pulse_bpm.windows)}</td></tr>
       <tr><th scope="row">Breathing, /min</th><td>${r.breathing_per_min.value ?? '-'}</td><td>${c.original_baseline?.breathing_per_min ?? '-'}</td><td>${esc(r.breathing_per_min.quality)}</td></tr></tbody></table>
       ${ch ? `<ul class="change-list">${chLine('Pulse', ch.pulse)}${chLine('Breathing', ch.breathing)}</ul>` : '<p class="fine">No original baseline in this packet, so no change is assessed.</p>'}
       ${r.pulse_bpm.note ? `<p class="fine">Pulse note: ${esc(r.pulse_bpm.note)}</p>` : ''}${r.breathing_per_min.note ? `<p class="fine">Breathing note: ${esc(r.breathing_per_min.note)}</p>` : ''}
       ${c.recent?.length ? `<p class="fine">Recent: ${c.recent.map((x) => `${when(x.date)} pulse ${x.pulse_bpm ?? '-'}, breathing ${x.breathing_per_min ?? '-'}`).join(' · ')}</p>` : ''}
       ${p.alertness ? `<p><strong>Alertness test</strong> ${when(p.alertness.date)}: median ${esc(p.alertness.median_ms)} ms, ${esc(p.alertness.lapses)} lapses, ${esc(p.alertness.false_starts)} false starts <span class="fine">(${esc(p.alertness.label)})</span></p>` : ''}
+      ${p.vision_self_check ? `<p><strong>Eye grid self check</strong> ${when(p.vision_self_check.date)}: right eye ${esc(p.vision_self_check.right_eye)}; left eye ${esc(p.vision_self_check.left_eye)}.${p.vision_self_check.new_vs_reference ? ` <span class="${p.vision_self_check.new_vs_reference.right + p.vision_self_check.new_vs_reference.left ? 'warnline' : ''}">New against the reference of ${when(p.vision_self_check.new_vs_reference.reference_date)}: right ${esc(p.vision_self_check.new_vs_reference.right)}, left ${esc(p.vision_self_check.new_vs_reference.left)} squares.</span>` : ' First check, so nothing to compare with.'} <span class="fine">(${esc(p.vision_self_check.label)})</span></p>` : ''}
+      ${p.self_report_urgent ? `<p class="warnline">! The person ticked chest pain or shortness of breath. ${esc(URGENT_TEXT)}</p>` : ''}
+      ${p.self_report_checklist?.length ? `<p><strong>Symptoms ticked:</strong> ${p.self_report_checklist.map(esc).join(', ')}</p>` : ''}
       ${p.self_report ? `<p><strong>Self report:</strong> ${esc(p.self_report)}</p>` : ''}
       <p><strong>Capture:</strong> ${esc(r.capture?.usable_seconds)} usable of ${esc(r.capture?.elapsed_seconds)} seconds.</p>
+      ${r.pulse_regions_used ? `<p class="fine">Pulse skin regions used: ${r.pulse_regions_used.map(esc).join(', ')}</p>` : ''}
+      ${r.eyes_during_scan ? `<p class="fine">Eyes during the scan: ${esc(r.eyes_during_scan.blinks_per_min)} blinks per minute, closed ${esc(r.eyes_during_scan.closed_pct)}% of the time, ${esc(r.eyes_during_scan.long_closures)} long closures (experimental, shown not judged).</p>` : ''}
     </div>
     ${dental ? `<h2>Dental photos</h2>${dental}` : ''}
     <div class="card"><h2>Not assessed</h2><ul>${(p.not_assessed || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
 }
 
 // A sample packet built from the invented demo data, so a reviewer can see the nurse view without a file.
-$('btnSamplePacket').addEventListener('click', () => {
+$('btnSamplePacket').addEventListener('click', async () => {
   const demo = makeDemoSessions(new Date());
   const checkups = demo.filter((x) => x.kind !== 'alertness');
   const sess = checkups.at(-1), original = checkups[0];
@@ -1425,9 +1619,16 @@ $('btnSamplePacket').addEventListener('click', () => {
   const change = { pulse: { ...changeVsBaseline(sess.pulse.bpm, original.pulse.bpm, pf.value), band: pf.value, band_source: pf.source },
     breathing: { ...changeVsBaseline(sess.resp.rpm, original.resp.rpm, rf.value), band: rf.value, band_source: rf.source } };
   const alert = demo.filter((x) => x.kind === 'alertness').at(-1);
-  const { packet } = buildPacket({ ...sess, context: { symptoms: 'Slept badly two nights, mild headache. (Invented sample.)' } },
-    { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change });
-  $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${reviewHtml(packet)}`;
+  // Drawn (not photographed) sample mouths so the dental part of the nurse view is filled in too.
+  const lips = Array.from({ length: 20 }, (_, k) => { const t = (k / 20) * 2 * Math.PI; return [0.5 + 0.31 * Math.cos(t), 0.5 + 0.17 * Math.sin(t)]; });
+  const baseImg = drawSampleMouth([178, 98, 104], [232, 226, 210]);
+  const todayImg = drawSampleMouth([206, 72, 88], [236, 224, 186]);
+  const auto = await sampleDentalAuto(todayImg, baseImg, lips);
+  const sessD = { ...sess, dental: { front: { view: 'front', captured: true, image: todayImg, lips, marks: [{ x: 0.42, y: 0.43, note: 'Gum looks redder here (sample)' }], auto } },
+    context: { symptoms: 'Slept badly two nights, mild headache. Gums sore when brushing. (Invented sample.)', checklist: ['headache', 'sleep', 'mouth'] } };
+  const { packet } = buildPacket(sessD, { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change, includeImages: true });
+  $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${reviewHtml(packet)}${replyFormHtml()}`;
+  wireReplyForm(packet);
 });
 
 /* ---------- automatic dental comparison ---------- */
@@ -1466,3 +1667,642 @@ async function dentalAuto(cmp, out, today, base) {
   cmp.appendChild(ov);
   out.querySelector('.show-map').addEventListener('change', (e) => { ov.hidden = !e.target.checked; });
 }
+
+/* ---------- print ---------- */
+document.addEventListener('click', (e) => { if (e.target.closest('[data-print]')) window.print(); });
+
+/* ---------- reviewer reply and compressed packets ---------- */
+function replyFormHtml() {
+  return `<div class="card"><h2>Reply to the sender</h2>
+    <fieldset><legend>Outcome</legend><div class="seg">
+      ${Object.entries(REPLY_STATUSES).map(([k, v], i) => `<label><input type="radio" name="replyStatus" value="${k}"${i === 0 ? ' checked' : ''}> ${esc(v)}</label>`).join('')}
+    </div></fieldset>
+    <label for="replyNote">Note (optional)</label>
+    <textarea id="replyNote" rows="2" maxlength="1000" placeholder="For example: pulse a bit higher than usual, recheck tomorrow morning"></textarea>
+    <p class="row"><button type="button" class="btn primary" id="btnReply">Download reply (.json)</button></p>
+    <p class="fine">The reply is a small file you send back the same way the packet came. Nothing is uploaded.</p></div>`;
+}
+function wireReplyForm(packet) {
+  $('btnReply').addEventListener('click', () => {
+    const status = document.querySelector('input[name=replyStatus]:checked').value;
+    const reply = makeReply(packet, status, $('replyNote').value);
+    download(`relaisecho-reply-${packet.checkup.id}.json`, JSON.stringify(reply, null, 2), 'application/json');
+  });
+}
+function renderPacketStatus(sess) {
+  const r = sess.reply;
+  $('stAck').className = r ? (r.status === 'ok' ? 'good' : 'warn') : '';
+  $('stAck').textContent = r ? 'Acknowledged' : 'Not acknowledged';
+  if (r) { $('stSent').className = 'good'; $('stSent').textContent = 'Sent'; }
+  $('replyBox').innerHTML = r ? `<div class="card"><p><strong>${esc(r.status_text)}</strong> · reviewed ${fmtDate(r.reviewed_at)}</p>${r.note ? `<p>${esc(r.note)}</p>` : ''}</div>` : '';
+}
+$('btnDownloadGz').addEventListener('click', () => {
+  if (!lastPacket?.gz) return;
+  const url = URL.createObjectURL(new Blob([lastPacket.gz], { type: 'application/gzip' }));
+  const a = document.createElement('a'); a.href = url; a.download = `relaisecho-packet-${state.session.id}.json.gz`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+$('replyFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let r = null;
+  try { r = JSON.parse(await file.text()); } catch { /* handled below */ }
+  const v = validateReply(r, await listSessions());
+  if (v.error) { window.alert(v.error); return; }
+  v.session.reply = r;
+  await saveSession(v.session);
+  if (state.session && state.session.id === v.session.id) state.session.reply = r;
+  renderPacketStatus(v.session);
+});
+// Tour links on the home page.
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tour]');
+  if (!t) return;
+  if (t.dataset.tour === 'demo') $('btnDemo').click();
+  if (t.dataset.tour === 'packet') { show('review'); $('btnSamplePacket').click(); }
+});
+
+/* ---------- calendar reminder, photo clean-up, larger text ---------- */
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-ics]');
+  if (!b) return;
+  const { original } = await baselineAndRecent();
+  if (!original) return;
+  const at = new Date(original.createdAt), start = new Date();
+  start.setHours(at.getHours(), at.getMinutes(), 0, 0);
+  if (start < new Date()) start.setDate(start.getDate() + 1);
+  download(`relaisecho-reminder-${b.dataset.ics.toLowerCase()}.ics`, reminderIcs({ start, freq: b.dataset.ics }), 'text/calendar');
+});
+$('btnStripPhotos').addEventListener('click', async () => {
+  const changed = stripOldPhotos(await listSessions(), 30);
+  if (!changed.length) { window.alert('No photos older than 30 days (the original baseline always keeps its photos).'); return; }
+  if (!window.confirm(`Remove dental photos from ${changed.length} checkup${changed.length === 1 ? '' : 's'} older than 30 days? Results stay; the original baseline keeps its photos.`)) return;
+  for (const x of changed) await saveSession(x);
+  renderHistory();
+});
+function applyTextSize(big) {
+  document.documentElement.classList.toggle('big-text', big);
+  $('btnText').setAttribute('aria-pressed', big ? 'true' : 'false');
+  $('btnText').textContent = big ? 'A−' : 'A+';
+  $('btnText').title = big ? 'Normal text size' : 'Larger text';
+}
+$('btnText').addEventListener('click', () => { const big = !document.documentElement.classList.contains('big-text'); prefs.set('bigText', big); applyTextSize(big); });
+applyTextSize(!!prefs.get('bigText'));
+
+$('btnResultsCsv').addEventListener('click', async () => { download('relaisecho-results.csv', resultsCsv(await listSessions()), 'text/csv'); });
+
+// A simple drawn mouth: dark mouth opening, gum band, a row of teeth, lips around.
+function drawSampleMouth(gum, tooth) {
+  const W = 960, H = 540, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgb(196,150,128)'; x.fillRect(0, 0, W, H);                       // skin
+  x.fillStyle = 'rgb(170,92,96)'; x.beginPath(); x.ellipse(W / 2, H / 2, 0.33 * W, 0.2 * H, 0, 0, Math.PI * 2); x.fill(); // lips
+  x.fillStyle = 'rgb(40,18,20)'; x.beginPath(); x.ellipse(W / 2, H / 2, 0.29 * W, 0.15 * H, 0, 0, Math.PI * 2); x.fill(); // opening
+  x.save(); x.beginPath(); x.ellipse(W / 2, H / 2, 0.29 * W, 0.15 * H, 0, 0, Math.PI * 2); x.clip();
+  x.fillStyle = `rgb(${gum.join(',')})`; x.fillRect(0, H / 2 - 0.15 * H, W, 0.06 * H);   // gums
+  x.fillStyle = `rgb(${tooth.join(',')})`;
+  for (let i = -5; i <= 5; i++) x.fillRect(W / 2 + i * 0.05 * W - 0.022 * W, H / 2 - 0.09 * H, 0.044 * W, 0.12 * H); // teeth
+  x.restore();
+  return c.toDataURL('image/jpeg', 0.85);
+}
+async function sampleDentalAuto(todaySrc, baseSrc, lips) {
+  const W = 240, H = 135, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const read = async (src) => { ctx.clearRect(0, 0, W, H); ctx.drawImage(await loadImg(src), 0, 0, W, H); return ctx.getImageData(0, 0, W, H).data; };
+  const mask = mouthMask(W, H, innerLips(lips));
+  const A = analyzeMouth(await read(todaySrc), W, H, mask), B = analyzeMouth(await read(baseSrc), W, H, mask);
+  return { ...compareMouth(A, B), changedPct: changeMap(A.lab, B.lab, mask).changedPct };
+}
+
+// Reopen the review packet of any past checkup from History.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-open-packet]');
+  if (!b) return;
+  const sess = (await listSessions()).find((x) => x.id === b.dataset.openPacket);
+  if (!sess) return;
+  state.session = sess;
+  await renderPacket();
+  show('packet');
+});
+
+// Delete one record. Deleting the original baseline is allowed but warned about, since comparisons depend on it.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-delete-one]');
+  if (!b) return;
+  const all = await listSessions();
+  const sess = all.find((x) => x.id === b.dataset.deleteOne);
+  if (!sess) return;
+  const { original } = await baselineAndRecent();
+  const isOrig = original && original.id === sess.id;
+  const msg = isOrig
+    ? 'This is your original baseline. Every comparison uses it. Delete it anyway? The next baseline (if any) becomes the reference.'
+    : `Delete this ${sess.kind} from ${fmtDate(sess.createdAt)}? This cannot be undone.`;
+  if (!window.confirm(msg)) return;
+  await deleteSession(sess.id);
+  renderHistory();
+});
+
+
+$('btnCrewCsv').addEventListener('click', () => {
+  if (!crewData) return;
+  const a = crewData.analytes[Number($('crewAnalyte').value) || 0];
+  const rows = [['crew', ...crewData.timepoints, 'lab_range_min', 'lab_range_max', 'unit'].join(',')];
+  for (const c of crewData.crew) rows.push([c, ...a.series[c].map((v) => (v == null ? '' : v)), a.rangeMin ?? '', a.rangeMax ?? '', a.unit].join(','));
+  download(`osd575-${a.key}.csv`, `# ${a.name}. Source: NASA OSDR OSD-575, doi 10.26030/mc5d-p710\n${rows.join('\n')}\n`, 'text/csv');
+});
+
+/* ---------- device check ---------- */
+function devEnv() {
+  let webgl2 = false;
+  try { webgl2 = !!document.createElement('canvas').getContext('webgl2'); } catch { webgl2 = false; }
+  return {
+    secure: window.isSecureContext, getUserMedia: !!navigator.mediaDevices?.getUserMedia, wasm: typeof WebAssembly === 'object',
+    indexedDb: 'indexedDB' in window, webgl2, rvfc: 'requestVideoFrameCallback' in HTMLVideoElement.prototype,
+    serviceWorker: 'serviceWorker' in navigator, compression: 'CompressionStream' in window, speech: 'speechSynthesis' in window,
+  };
+}
+async function devMeta() {
+  const m = { version: $('appVersion').textContent, when: fmtDate(new Date().toISOString()), userAgent: navigator.userAgent,
+    screen: `${window.screen.width}x${window.screen.height} at ${window.devicePixelRatio || 1}x`, cores: navigator.hardwareConcurrency, memoryGb: navigator.deviceMemory, online: navigator.onLine };
+  try {
+    const keys = await caches.keys();
+    m.cache = keys.join(', ') || 'none';
+    m.modelCached = !!(await caches.match(MODEL_URLS.remote)) || !!(await caches.match(MODEL_URLS.local));
+  } catch { m.cache = 'not available'; }
+  try { const e = await navigator.storage.estimate(); m.storage = `${((e.quota - e.usage) / 1073741824).toFixed(1)} GB free`; } catch { /* not reported by this browser */ }
+  return m;
+}
+function devPaint() {
+  const list = verdicts(dev.r, CONFIG);
+  const mark = { ok: '✓', warn: '!', fail: '✕' };
+  const cls = { ok: 'okline', warn: 'warnline', fail: 'warnline' };
+  const tested = dev.r.camera || dev.r.cameraError;
+  const head = !list.length ? '' : overall(list) === 'ok' ? '<li class="okline">✓ This device can run a checkup.</li>'
+    : overall(list) === 'warn' ? '<li class="warnline">! This device can run a checkup, with the cautions below.</li>'
+      : '<li class="warnline">✕ Something needed for a live checkup is missing or too slow. See below.</li>';
+  $('devVerdict').innerHTML = `${tested ? head : ''}${list.map((v) => `<li class="${cls[v.level]}">${mark[v.level]} ${esc(v.text)}</li>`).join('')}
+    ${tested ? '' : '<li class="plain">– Camera not tested yet. Press "Test the camera" above.</li>'}`;
+  $('devReport').textContent = reportText(dev.r, list, dev.meta);
+}
+async function renderDevice() {
+  dev.r = { env: devEnv() };
+  $('devStatus').textContent = '';
+  $('devCopied').textContent = '';
+  $('devBasics').innerHTML = featureList(dev.r.env).map((f) => `<li class="${f.ok ? 'okline' : f.need === 'nice' ? 'plain' : 'warnline'}">${f.ok ? '✓' : f.need === 'nice' ? '–' : '!'} ${esc(f.label)}${f.ok ? '' : `: ${esc(f.ifMissing)}`}</li>`).join('');
+  devPaint();
+  dev.meta = await devMeta();
+  $('devMeta').textContent = `${dev.meta.online ? 'Online' : 'Offline'} · offline copy: ${dev.meta.cache} · face model ${dev.meta.modelCached ? 'saved on this device' : 'not saved yet (downloads on the first scan)'}${dev.meta.storage ? ` · ${dev.meta.storage}` : ''}`;
+  devPaint();
+}
+function devStop() {
+  dev.token = null; dev.running = false;
+  if (dev.stream) { dev.stream.getTracks().forEach((t) => t.stop()); dev.stream = null; }
+  const v = $('devVideo');
+  if (v) { v.pause(); v.srcObject = null; v.hidden = true; }
+}
+// Calls fn(timeMs, index) for each camera frame during `ms` milliseconds, then resolves.
+function devFrames(v, ms, alive, fn) {
+  return new Promise((res) => {
+    const rvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+    const start = performance.now();
+    let i = 0, done = false;
+    const finish = () => { if (!done) { done = true; res(); } };
+    const step = () => {
+      if (done) return;
+      if (!alive()) return finish();
+      const t = performance.now();
+      try { fn(t, i); } catch (err) { console.error(err); }
+      i += 1;
+      if (t - start >= ms) return finish();
+      next();
+    };
+    const next = () => (rvfc ? v.requestVideoFrameCallback(step) : requestAnimationFrame(step));
+    next();
+    setTimeout(finish, ms + 4000); // a camera that never delivers a frame must not hang the test
+  });
+}
+async function devCameraTest() {
+  if (dev.running) return;
+  dev.running = true;
+  const token = {}; dev.token = token;
+  const alive = () => dev.token === token;
+  const say = (t) => { $('devStatus').textContent = t; };
+  dev.r = { env: dev.r.env };
+  devPaint();
+  const v = $('devVideo');
+  try {
+    say('Opening the camera…');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: CONFIG.perf.cameraFps } }, audio: false });
+    if (!alive()) { stream.getTracks().forEach((t) => t.stop()); return; }
+    dev.stream = stream;
+    v.srcObject = stream; v.muted = true; v.playsInline = true; v.hidden = false;
+    await waitForDims(v);
+    await v.play();
+    const settings = stream.getVideoTracks()[0]?.getSettings?.() || {};
+    say('Measuring the camera frame rate and brightness…');
+    const c = document.createElement('canvas'); c.width = 64; c.height = 36;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    const times = [], lumas = [];
+    await devFrames(v, 2500, alive, (t, i) => {
+      times.push(t);
+      if (i % 8 !== 0) return;
+      cx.drawImage(v, 0, 0, 64, 36);
+      const d = cx.getImageData(0, 0, 64, 36).data;
+      let sum = 0;
+      for (let k = 0; k < d.length; k += 4) sum += 0.299 * d[k] + 0.587 * d[k + 1] + 0.114 * d[k + 2];
+      lumas.push(sum / (d.length / 4));
+    });
+    if (!alive()) return;
+    const f = fpsFromTimes(times);
+    dev.r.camera = { width: v.videoWidth, height: v.videoHeight, reportedFps: settings.frameRate ? Math.round(settings.frameRate) : null, fps: f.fps, seconds: f.seconds, luma: median(lumas) };
+    devPaint();
+    say('Loading the face model (the first time needs internet and can take a minute)…');
+    const t0 = performance.now();
+    let lm = null;
+    try {
+      lm = await getFaceLandmarker();
+      dev.r.model = { ok: true, seconds: +((performance.now() - t0) / 1000).toFixed(1), source: getModelSource(), delegate: getDelegate() };
+    } catch (err) { dev.r.model = { ok: false, error: err.message || String(err) }; }
+    if (!alive()) return;
+    devPaint();
+    if (lm) {
+      say('Timing face tracking…');
+      const ms = [], tt = [];
+      let found = 0;
+      await devFrames(v, 2500, alive, (t) => {
+        const a = performance.now();
+        const face = detect(lm, v);
+        ms.push(performance.now() - a);
+        if (face) found += 1;
+        tt.push(t);
+      });
+      if (!alive()) return;
+      const steady = ms.length > 6 ? ms.slice(3) : ms; // the first detections include one-off start up work
+      dev.r.track = { medianMs: median(steady) ?? 0, fps: fpsFromTimes(tt).fps, facePct: ms.length ? (100 * found) / ms.length : 0 };
+    }
+    say('Done. The camera is off again.');
+  } catch (err) {
+    const name = err && err.name;
+    dev.r.cameraError = name === 'NotAllowedError' ? 'permission was denied. Allow the camera for this site (the camera icon in the address bar), then test again.'
+      : name === 'NotFoundError' ? 'no camera was found on this device.'
+        : name === 'NotReadableError' ? 'the camera is in use by another app, such as a video call or the Camera app. Close it and test again.'
+          : `could not start (${(err && err.message) || err}).`;
+    say('The camera test stopped.');
+  } finally {
+    if (alive()) { devStop(); devPaint(); }
+  }
+}
+$('btnDevCam').addEventListener('click', devCameraTest);
+$('btnDevCopy').addEventListener('click', async () => {
+  const text = $('devReport').textContent;
+  try { await navigator.clipboard.writeText(text); $('devCopied').textContent = 'Copied. Paste it into a message.'; }
+  catch {
+    const range = document.createRange(); range.selectNodeContents($('devReport'));
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    $('devCopied').textContent = 'Could not copy by itself. The report is selected: press Ctrl+C (or Cmd+C).';
+  }
+});
+$('btnDevSave').addEventListener('click', () => download('relaisecho-device-report.txt', $('devReport').textContent, 'text/plain'));
+
+/* ---------- demo reel: 30 seconds, captioned, on the sample data ---------- */
+const reel = { on: false, t0: 0, tick: null, idx: -1, timers: [], recorder: null, prevProfile: null };
+const reelLater = (ms, fn) => { reel.timers.push(setTimeout(() => { if (reel.on) fn(); }, ms)); };
+function reelScroll(sel, block = 'start') {
+  const el = document.querySelector(sel);
+  if (!el) return;
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block });
+}
+function reelCard(html) { const c = $('reelCard'); c.hidden = !html; c.innerHTML = html || ''; }
+const REEL_TITLE = `<div><img src="icons/logo-blue-128.png" alt=""><h2>RelaisÉcho Link</h2><p>A guided camera checkup, compared with your own baseline</p><p>NASA Space Apps Challenge 2026 · Montreal</p></div>`;
+const REEL_END = `<div><img src="icons/logo-blue-128.png" alt=""><h2>RelaisÉcho Link</h2><p>Runs in the browser. Works offline. Video never leaves the device.</p><p>Research prototype, not a diagnostic device. Sample data shown.</p></div>`;
+const REEL_ACTIONS = {
+  title: () => { show('home'); reelCard(REEL_TITLE); },
+  setup: () => { reelCard(null); show('setup'); reelLater(1700, () => reelScroll('#symptomTicks', 'center')); },
+  board: () => { show('board'); reelLater(2300, () => reelScroll('#h-t-sleep')); },
+  space: () => {
+    document.querySelector('[data-mission="mars"]')?.click();
+    reelScroll('#h-t-rad');
+    reelLater(2600, () => reelScroll('#h-t-crew'));
+  },
+  history: () => { show('history'); reelLater(1900, () => reelScroll('#symptomBox', 'center')); },
+  packet: () => { show('review'); $('btnSamplePacket').click(); reelLater(2400, () => reelScroll('.review-photo', 'center')); },
+  end: () => { reelCard(REEL_END); },
+};
+function reelFrame() {
+  if (!reel.on) return;
+  const t = (performance.now() - reel.t0) / 1000;
+  const total = reelTotal();
+  $('reelProg').style.width = `${Math.min(100, (t / total) * 100).toFixed(2)}%`;
+  // An in-app recording stops just before the 30 second mark, so the saved video never runs over.
+  if (reel.recorder && reel.recorder.state === 'recording' && t >= total - 0.15) { try { reel.recorder.stop(); } catch { /* already stopped */ } }
+  const at = sceneAt(t);
+  if (!at) { reelFinish(); return; }
+  if (at.index !== reel.idx) {
+    reel.idx = at.index;
+    $('reelCaption').textContent = at.scene.caption;
+    try { REEL_ACTIONS[at.scene.id]?.(); } catch (err) { console.error(err); }
+  }
+}
+async function reelLoadSample() {
+  reel.prevProfile = getProfile();
+  reel.prevMission = prefs.get('radMission');
+  if (!profiles().some((p) => p.id === DEMO_PROFILE)) prefs.set('profiles', [...profiles(), { id: DEMO_PROFILE, name: DEMO_NAME }]);
+  setProfile(DEMO_PROFILE);
+  await clearAll();
+  for (const x of makeDemoSessions(new Date())) await saveSession(x);
+  prefs.set('profile', DEMO_PROFILE);
+  renderProfileBar();
+}
+// countdown: seconds of "start your recorder" before the first scene (0 when the app records by itself).
+async function reelStart({ countdown = 3, onBegin = null } = {}) {
+  if (reel.on) return;
+  reel.on = true; reel.idx = -1;
+  await reelLoadSample();
+  if (!reel.on) return;
+  document.body.classList.add('reel-on');
+  $('reelLayer').hidden = false;
+  $('reelProg').style.width = '0%';
+  $('reelCaption').textContent = countdown ? 'Start your screen recorder now. Press Esc to stop.' : '';
+  for (let n = countdown; n > 0 && reel.on; n -= 1) {
+    reelCard(`<div><p>The 30 second demo starts in</p><p class="reel-count">${n}</p></div>`);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  if (!reel.on) return;
+  if (onBegin) onBegin();
+  reel.t0 = performance.now();
+  reelFrame();
+  reel.tick = setInterval(reelFrame, 100);
+}
+// Called when the 30 seconds are over: the closing card stays up so a recording ends cleanly.
+function reelFinish() {
+  clearInterval(reel.tick); reel.tick = null;
+  $('reelProg').style.width = '100%';
+  reel.timers.push(setTimeout(() => {
+    if (!reel.on) return;
+    reelCard(`${REEL_END.replace('</div>', '')}<div class="row"><button type="button" class="btn primary" data-reel="again">Play again</button><button type="button" class="btn" data-reel="close">Close</button></div></div>`);
+    $('reelCaption').textContent = '';
+  }, 3000));
+}
+function reelStop() {
+  if (!reel.on) return;
+  reel.on = false;
+  clearInterval(reel.tick); reel.tick = null;
+  reel.timers.forEach(clearTimeout); reel.timers = [];
+  const rec = reel.recorder;
+  if (rec && rec.state !== 'inactive') { try { rec.stop(); } catch { /* already stopped */ } }
+  reelCard(null);
+  $('reelLayer').hidden = true;
+  document.body.classList.remove('reel-on');
+  // Put back what the reel changed: the person's own profile and their radiation mission.
+  if (reel.prevMission) prefs.set('radMission', reel.prevMission);
+  if (reel.prevProfile && reel.prevProfile !== getProfile()) { setProfile(reel.prevProfile); prefs.set('profile', reel.prevProfile); renderProfileBar(); }
+  show('home');
+}
+// Records this tab while the reel plays and saves the video. The browser asks which tab to share.
+async function reelRecord() {
+  const note = $('reelNote');
+  const type = window.MediaRecorder ? pickRecordingType((t) => MediaRecorder.isTypeSupported(t)) : null;
+  if (!type || !navigator.mediaDevices?.getDisplayMedia) {
+    note.textContent = 'This browser cannot record its own tab. Play the demo and use your screen recorder instead (Windows: Win+Alt+R, Mac: Shift+Cmd+5).';
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30, width: { ideal: 1920 }, height: { ideal: 1080 }, cursor: 'never' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
+  } catch {
+    note.textContent = 'Recording was not started (sharing was cancelled or blocked). You can still play the demo and use your own screen recorder.';
+    return;
+  }
+  const chunks = [];
+  const rec = new MediaRecorder(stream, { mimeType: type.mimeType, videoBitsPerSecond: 5_000_000 });
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    reel.recorder = null;
+    const blob = new Blob(chunks, { type: type.mimeType.split(';')[0] });
+    if (blob.size) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `relaisecho-link-demo-30s.${type.ext}`; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      note.textContent = `Saved relaisecho-link-demo-30s.${type.ext} (${(blob.size / 1048576).toFixed(1)} MB). Watch it once before you upload it.`;
+    } else note.textContent = 'The recording came out empty. Play the demo and use your own screen recorder instead.';
+  };
+  stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (rec.state !== 'inactive') rec.stop(); }); // the person pressed "Stop sharing"
+  reel.recorder = rec;
+  note.textContent = 'Recording…';
+  await reelStart({ countdown: 0, onBegin: () => rec.start(1000) });
+  if (!reel.on && rec.state === 'inactive') { stream.getTracks().forEach((t) => t.stop()); reel.recorder = null; } // stopped before it began
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-reel]');
+  if (!b) return;
+  const what = b.dataset.reel;
+  if (what === 'play') reelStart();
+  if (what === 'record') reelRecord();
+  if (what === 'srt') download('relaisecho-link-demo-captions.srt', reelSrt(), 'application/x-subrip');
+  if (what === 'again') { reelStop(); reelStart(); }
+  if (what === 'close') reelStop();
+});
+$('reelStop').addEventListener('click', reelStop);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && reel.on) reelStop(); });
+if (new URLSearchParams(location.search).has('reel')) reelStart();
+
+/* ---------- signal delay tile ---------- */
+function renderDelay() {
+  const now = new Date();
+  const d = earthMars(now), c = marsCycle(now);
+  const span = c.max.oneWaySec - c.min.oneWaySec;
+  const pos = span > 0 ? Math.max(0, Math.min(100, ((d.oneWaySec - c.min.oneWaySec) / span) * 100)) : 50;
+  const mon = (x) => x.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
+  const day = (x) => x.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+  const inPause = c.conjunction && +c.conjunction.start - +now < 86400000;
+  $('delayBody').innerHTML = `<p class="big-num">${fmtDelay(d.oneWaySec)}</p>
+    <p>for a signal from Earth to Mars today, one way.</p>
+    <div class="delaybar" role="img" aria-label="Today's delay sits ${Math.round(pos)} percent of the way from the shortest to the longest of this cycle"><div style="left:${pos.toFixed(1)}%"></div></div>
+    <p class="fine delay-ends"><span>shortest ${fmtDelay(c.min.oneWaySec)} · ${mon(c.min.date)}</span><span>longest ${fmtDelay(c.max.oneWaySec)} · ${mon(c.max.date)}</span></p>
+    <p>A question and its answer take at least <strong>${fmtDelay(2 * d.oneWaySec)}</strong> across ${Math.round(d.km / 1e6)} million km. To the Moon it is ${fmtDelay(moonOneWaySec())} each way.</p>
+    ${c.conjunction ? `<p>${inPause ? 'Now' : `From about ${day(c.conjunction.start)}`}, Mars passes behind the Sun as seen from Earth. NASA stops sending commands to its Mars spacecraft for about two weeks each time.</p>` : ''}
+    <p>Nobody can coach a checkup live across that gap. So the app coaches, checks the capture and packs the result by itself, and the reviewer answers later. The same design fits a clinic that is a flight away, or a connection that is down.</p>`;
+}
+
+/* ---------- eye grid (Amsler) ---------- */
+const vis = { step: 'intro', eye: 'right', cells: { right: new Set(), left: new Set() }, cursor: Math.floor(AMS_N / 2) * AMS_N + Math.floor(AMS_N / 2), size: null, paint: null };
+const visPxPerMm = () => { const v = Number(prefs.get('pxPerMm')); return v >= 2 && v <= 12 ? v : DEFAULT_PX_PER_MM; };
+const visRecords = async () => (await listSessions()).filter((x) => x.kind === 'vision' && x.vision);
+function visGridSvg(size, cells, { ref = [], cursor = null, fresh = [] } = {}) {
+  const c = size.cellPx, w = size.sizePx;
+  const rect = (cell, cls) => `<rect class="${cls}" x="${(cell % AMS_N) * c + 1}" y="${Math.floor(cell / AMS_N) * c + 1}" width="${c - 2}" height="${c - 2}"/>`;
+  let h = '';
+  for (let i = 1; i < AMS_N; i += 1) h += `<line x1="${i * c}" y1="0" x2="${i * c}" y2="${w}"/><line x1="0" y1="${i * c}" x2="${w}" y2="${i * c}"/>`;
+  h += [...cells].map((x) => rect(x, 'vis-mark')).join('') + ref.map((x) => rect(x, 'vis-ref')).join('');
+  h += `<circle cx="${w / 2}" cy="${w / 2}" r="${Math.max(3, c * 0.22)}" fill="#000"/>`;
+  if (cursor != null) h += rect(cursor, 'vis-cursor');
+  return h;
+}
+function visDraw() {
+  const g = $('visGrid'), size = vis.size;
+  g.setAttribute('width', size.sizePx); g.setAttribute('height', size.sizePx); g.setAttribute('viewBox', `0 0 ${size.sizePx} ${size.sizePx}`);
+  g.innerHTML = visGridSvg(size, vis.cells[vis.eye], { cursor: document.activeElement === g ? vis.cursor : null });
+  const sum = amsSummary([...vis.cells[vis.eye]]);
+  g.setAttribute('aria-label', `Grid for the ${vis.eye} eye, ${AMS_N} by ${AMS_N} squares. ${sum.text}.`);
+  $('visCount').textContent = sum.count ? `${sum.text[0].toUpperCase()}${sum.text.slice(1)}.` : 'Nothing marked yet. If every line looks straight and complete, press "Done with this eye".';
+}
+function visReset() {
+  vis.step = 'intro'; vis.eye = 'right'; vis.cells = { right: new Set(), left: new Set() }; vis.paint = null;
+  $('visIntro').hidden = false; $('visRun').hidden = true; $('visResult').hidden = true;
+  const ppm = visPxPerMm();
+  $('visScale').value = ppm;
+  $('visCard').style.width = `${(CARD_MM * ppm).toFixed(1)}px`;
+  $('visCalNote').textContent = prefs.get('pxPerMm') ? 'A saved size is in use on this device.' : 'Using the default size. On phones and some laptops the grid then comes out smaller or larger than 10 cm.';
+}
+function visEye(eye) {
+  vis.step = 'run'; vis.eye = eye;
+  vis.cursor = Math.floor(AMS_N / 2) * AMS_N + Math.floor(AMS_N / 2); // the keyboard cursor starts beside the centre dot for each eye
+  $('visIntro').hidden = true; $('visResult').hidden = true; $('visRun').hidden = false;
+  const wrap = $('visGridWrap');
+  vis.size = gridSize(visPxPerMm(), Math.min(wrap.clientWidth || 320, window.innerHeight - 40) - 8);
+  const other = eye === 'right' ? 'left' : 'right';
+  $('visEyeTitle').textContent = `${eye === 'right' ? 'Right' : 'Left'} eye: cover your ${other} eye`;
+  $('visEyeHelp').textContent = `Hold the screen about ${vis.size.readCm} cm from your eye. Look only at the dot in the middle. Without moving your eye, mark any squares where the lines look wavy, blurred, dim or missing.`;
+  $('visSizeNote').textContent = vis.size.trueSize ? `Grid ${vis.size.mm} mm wide${prefs.get('pxPerMm') ? '' : ' if this screen uses standard pixels (not calibrated)'}.`
+    : `This screen fits a ${vis.size.mm} mm grid instead of 100 mm, so the distance is shortened to match.`;
+  $('btnVisNext').textContent = eye === 'right' ? 'Done with this eye' : 'Done, show the result';
+  visDraw();
+  $('visEyeTitle').focus({ preventScroll: true });
+  wrap.scrollIntoView({ block: 'center' });
+}
+function visCellAt(e) {
+  const r = $('visGrid').getBoundingClientRect();
+  const x = Math.floor(((e.clientX - r.left) / r.width) * AMS_N), y = Math.floor(((e.clientY - r.top) / r.height) * AMS_N);
+  return x < 0 || y < 0 || x >= AMS_N || y >= AMS_N ? null : y * AMS_N + x;
+}
+function visSet(cell, on) { const set = vis.cells[vis.eye]; if (on) set.add(cell); else set.delete(cell); }
+$('visGrid').addEventListener('pointerdown', (e) => {
+  const cell = visCellAt(e);
+  if (cell == null) return;
+  e.preventDefault();
+  vis.paint = !vis.cells[vis.eye].has(cell); // the first square decides whether this stroke marks or clears
+  vis.cursor = cell;
+  visSet(cell, vis.paint);
+  try { $('visGrid').setPointerCapture(e.pointerId); } catch { /* not supported */ }
+  visDraw();
+});
+$('visGrid').addEventListener('pointermove', (e) => {
+  if (vis.paint == null) return;
+  const cell = visCellAt(e);
+  if (cell == null || vis.cells[vis.eye].has(cell) === vis.paint) return;
+  visSet(cell, vis.paint);
+  visDraw();
+});
+['pointerup', 'pointercancel'].forEach((t) => $('visGrid').addEventListener(t, () => { vis.paint = null; }));
+$('visGrid').addEventListener('keydown', (e) => {
+  const move = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -AMS_N, ArrowDown: AMS_N }[e.key];
+  if (move) {
+    const col = vis.cursor % AMS_N;
+    if ((e.key === 'ArrowLeft' && col === 0) || (e.key === 'ArrowRight' && col === AMS_N - 1)) { e.preventDefault(); return; }
+    const next = vis.cursor + move;
+    if (next >= 0 && next < AMS_N * AMS_N) vis.cursor = next;
+    e.preventDefault(); visDraw();
+  } else if (e.key === ' ' || e.key === 'Enter') {
+    visSet(vis.cursor, !vis.cells[vis.eye].has(vis.cursor));
+    e.preventDefault(); visDraw();
+  }
+});
+$('visGrid').addEventListener('focus', visDraw);
+$('visGrid').addEventListener('blur', visDraw);
+$('btnVisClear').addEventListener('click', () => { vis.cells[vis.eye].clear(); visDraw(); });
+$('btnVisStart').addEventListener('click', () => visEye('right'));
+$('btnVisNext').addEventListener('click', () => { if (vis.eye === 'right') visEye('left'); else visFinish(); });
+$('visScale').addEventListener('input', (e) => { $('visCard').style.width = `${(CARD_MM * Number(e.target.value)).toFixed(1)}px`; });
+$('btnVisCal').addEventListener('click', () => { prefs.set('pxPerMm', Number($('visScale').value)); $('visCalNote').textContent = 'Saved. The grid is now drawn at true size where the screen is large enough.'; });
+$('btnVisCalReset').addEventListener('click', () => { prefs.set('pxPerMm', null); visReset(); });
+async function visFinish() {
+  const before = await visRecords();
+  const refRec = before[0] || null;
+  const rec = { id: newId(), createdAt: new Date().toISOString(), kind: 'vision', source: 'device', complete: false,
+    vision: { right: cleanCells([...vis.cells.right]), left: cleanCells([...vis.cells.left]), squares: AMS_N, mm: vis.size.mm, readCm: vis.size.readCm, trueSize: vis.size.trueSize, calibrated: !!prefs.get('pxPerMm') } };
+  await saveSession(rec);
+  vis.step = 'result';
+  $('visRun').hidden = true; $('visResult').hidden = false;
+  const small = gridSize(visPxPerMm() * 0.5, 240);
+  const eyeHtml = (eye) => {
+    const cmp = compareEye(rec.vision[eye], refRec ? refRec.vision[eye] : null);
+    const refCells = refRec ? cleanCells(refRec.vision[eye]) : [];
+    return `<figure><figcaption>${eye === 'right' ? 'Right' : 'Left'} eye</figcaption>
+      <svg class="vis-grid" width="${small.sizePx}" height="${small.sizePx}" viewBox="0 0 ${small.sizePx} ${small.sizePx}" role="img" aria-label="${eye} eye grid: ${esc(cmp.text)}">${visGridSvg(small, rec.vision[eye], { ref: refCells })}</svg>
+      <p class="${cmp.verdict === 'new' ? 'warnline' : ''}">${cmp.verdict === 'new' ? '! ' : ''}${esc(cmp.line)}</p></figure>`;
+  };
+  const anyNew = refRec && (compareEye(rec.vision.right, refRec.vision.right).verdict === 'new' || compareEye(rec.vision.left, refRec.vision.left).verdict === 'new');
+  $('visResult').innerHTML = `<div class="card result">
+      <p><span class="tag">EXPERIMENTAL</span> <span class="tag">SHOWN, NOT JUDGED</span></p>
+      <div class="vis-pair">${eyeHtml('right')}${eyeHtml('left')}</div>
+      <p class="fine">Pink squares: marked today.${refRec ? ` Dashed outlines: marked in your reference check of ${fmtDate(refRec.createdAt)}.` : ''}</p>
+      ${anyNew ? '<p>New marks can come from a different distance, lighting or tiredness. Repeat the check once, the same way as your reference. If the new marks stay, tell your clinician or flight surgeon; if the change was sudden, treat it as urgent.</p>' : ''}
+      <p class="fine">Saved on this device${refRec ? '' : ' as your reference'}. The latest check from the last 7 days is added to your next review packet as counts, not as a picture.</p>
+      <div class="row"><button type="button" class="btn primary" data-nav="board">Back to the board</button><button type="button" class="btn" data-nav="vision">Check again</button></div>
+    </div>`;
+  $('visResult').scrollIntoView({ block: 'start' });
+}
+async function renderEyeTile() {
+  const recs = await visRecords();
+  const body = $('eyeBody');
+  if (!recs.length) {
+    body.innerHTML = `<p>A one minute per eye grid check. On the ISS, crew vision checks include an Amsler grid like this one, because spaceflight can change the back of the eye.</p>
+      <p><button type="button" class="btn primary" data-nav="vision">Do the eye grid</button></p>`;
+    return;
+  }
+  const last = recs[recs.length - 1], ref = recs.length > 1 ? recs[0] : null;
+  const r = compareEye(last.vision.right, ref ? ref.vision.right : null), l = compareEye(last.vision.left, ref ? ref.vision.left : null);
+  const fresh = r.fresh.length + l.fresh.length;
+  body.innerHTML = `<p class="big-num">${r.count + l.count}<span class="unit"> square${r.count + l.count === 1 ? '' : 's'} marked, both eyes</span></p>
+    <p>Right eye ${r.count} · left eye ${l.count} · ${fmtDate(last.createdAt)}</p>
+    <p class="${fresh ? 'warnline' : 'okline'}">${!ref ? 'This is your reference check.' : fresh ? `! ${fresh} square${fresh === 1 ? '' : 's'} marked that ${fresh === 1 ? 'was' : 'were'} clear in your reference. Repeat the check; if it stays, tell your clinician.` : '✓ No new marks against your reference.'}</p>
+    <p><button type="button" class="btn" data-nav="vision">Check again</button></p>`;
+}
+
+/* ---------- your data ---------- */
+async function renderPrivacy() {
+  const inv = inventory(await everySession(), getProfile());
+  const list = (c) => `<ul>${inventoryLines(c).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  let usage = '';
+  try { const e = await navigator.storage.estimate(); usage = `<p class="fine">In total the browser holds about ${fmtBytes(e.usage)} for this app, including the offline copy and the face model.</p>`; } catch { /* not reported */ }
+  $('privInventory').innerHTML = `<h3>${esc(profileName(getProfile()))}</h3>${list(inv.mine)}
+    ${inv.people > 1 ? `<h3>Everyone on this device (${inv.people} people)</h3>${list(inv.device)}` : ''}
+    ${inv.device.sample ? `<p class="fine">${inv.device.sample} of these records are invented sample data.</p>` : ''}
+    <p class="fine">Also kept: your settings (language, theme, text size, sleep times, mission days, people's names) and, if you loaded it, the last space weather answer. Names never go into a packet.</p>${usage}`;
+  $('privExports').innerHTML = EXPORTS.map((x) => `<li>${esc(x)}</li>`).join('');
+  $('privNetwork').innerHTML = `<table><thead><tr><th scope="col">From</th><th scope="col">What</th><th scope="col">When</th></tr></thead><tbody>${NETWORK.map((n) => `<tr><th scope="row">${esc(n.host)}</th><td>${esc(n.what)}</td><td>${esc(n.when)}</td></tr>`).join('')}</tbody></table>`;
+  $('privNever').innerHTML = NEVER.map((x) => `<li>${esc(x)}</li>`).join('');
+  $('privNote').textContent = '';
+}
+$('btnPrivBackup').addEventListener('click', async () => {
+  download('relaisecho-all-checkups.json', JSON.stringify(await listSessions(), null, 2), 'application/json');
+  $('privNote').textContent = 'Backup saved for the person chosen above. It holds health information: keep it somewhere private and never put it in a public repository.';
+});
+$('btnErase').addEventListener('click', async () => {
+  if (!window.confirm('Erase every person\'s checkups, photos, settings and the offline copy from this device? This cannot be undone.')) return;
+  $('privNote').textContent = 'Erasing…';
+  try {
+    stopSource(); devStop();
+    await eraseDatabase();
+    Object.keys(localStorage).filter((k) => k.startsWith('re.')).forEach((k) => localStorage.removeItem(k));
+    if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+    if (navigator.serviceWorker) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  } catch (err) { console.error(err); }
+  window.location.replace(window.location.pathname);
+});
+
+/* ---------- camera choice ---------- */
+async function refreshCameraList() {
+  const wrap = $('camPickWrap');
+  try {
+    const c = cameraOptions(await navigator.mediaDevices.enumerateDevices(), prefs.get('camId') || '');
+    $('camPick').innerHTML = c.options.map((o) => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join('');
+    $('camPick').value = c.chosen;
+    wrap.hidden = !c.show || document.querySelector('input[name=source]:checked')?.value === 'file';
+  } catch { wrap.hidden = true; }
+}
+$('camPick').addEventListener('change', (e) => prefs.set('camId', e.target.value));
+document.querySelectorAll('input[name=source]').forEach((r) => r.addEventListener('change', refreshCameraList));

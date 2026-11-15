@@ -110,6 +110,12 @@
       "iu": null
     },
     {
+      "key": "tour.h",
+      "en": "Try it in one minute, no camera needed",
+      "fr_draft": "Essayez en une minute, sans caméra",
+      "iu": null
+    },
+    {
       "key": "board.step",
       "en": "Mission board",
       "fr_draft": "Tableau de mission",
@@ -125,6 +131,12 @@
       "key": "board.lede",
       "en": "Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.",
       "fr_draft": "Des tuiles séparées, chacune indiquant d’où vient son chiffre. Il n’y a pas de score de santé combiné : un seul chiffre cacherait ce qui a changé.",
+      "iu": null
+    },
+    {
+      "key": "board.t.today",
+      "en": "Today",
+      "fr_draft": "Aujourd’hui",
       "iu": null
     },
     {
@@ -149,6 +161,12 @@
       "key": "board.t.rad",
       "en": "Radiation budget",
       "fr_draft": "Budget de radiation",
+      "iu": null
+    },
+    {
+      "key": "board.t.crew",
+      "en": "Crew blood data",
+      "fr_draft": "Analyses sanguines de l’équipage",
       "iu": null
     },
     {
@@ -179,6 +197,24 @@
       "key": "alert.start",
       "en": "Start the test",
       "fr_draft": "Commencer le test",
+      "iu": null
+    },
+    {
+      "key": "crew.h1",
+      "en": "Why your own baseline matters",
+      "fr_draft": "Pourquoi votre propre référence compte",
+      "iu": null
+    },
+    {
+      "key": "review.h1",
+      "en": "Open a review packet",
+      "fr_draft": "Ouvrir un dossier de révision",
+      "iu": null
+    },
+    {
+      "key": "history.h1",
+      "en": "History",
+      "fr_draft": "Historique",
       "iu": null
     }
   ]

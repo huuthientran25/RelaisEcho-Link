@@ -59,7 +59,34 @@ export const RADIATION = {
   issHighMsvPerDay: 0.85,    // about 310 mSv per year upper end, Chancellor et al. 2017 as cited in later reviews
   designFreeSpaceMsvPerDay: 1.3, // NASA-STD-3001 long mission design limit, free space
   designSurfaceMsvPerDay: 0.9,   // NASA-STD-3001 long mission design limit, planetary surface
+  // Deep space, measured by the RAD instrument of NASA's Mars Science Laboratory (Curiosity):
+  transitMsvPerDay: 1.84,        // dose equivalent inside the cruise vehicle, 2011 to 2012 (Zeitlin et al., Science 2013)
+  marsSurfaceLowMsvPerDay: 0.64, // Mars surface, Gale crater (Hassler et al., Science 2014)
+  marsSurfaceHighMsvPerDay: 0.67, // same instrument, Aug 2012 to Jun 2013 average (SwRI release, Dec 2013)
 };
+
+// A mission as days in low Earth orbit, days in deep space transit and days on the Mars surface.
+// Low Earth orbit uses the published ISS range; transit and surface use the Curiosity measurements.
+export function missionDose({ leoDays = 0, transitDays = 0, surfaceDays = 0 } = {}, r = RADIATION) {
+  const n = (v) => Math.max(0, Number(v) || 0);
+  const leo = n(leoDays), tr = n(transitDays), su = n(surfaceDays);
+  const parts = {
+    leo: [leo * r.issLowMsvPerDay, leo * r.issHighMsvPerDay],
+    transit: [tr * r.transitMsvPerDay, tr * r.transitMsvPerDay],
+    surface: [su * r.marsSurfaceLowMsvPerDay, su * r.marsSurfaceHighMsvPerDay],
+  };
+  const low = parts.leo[0] + parts.transit[0] + parts.surface[0];
+  const high = parts.leo[1] + parts.transit[1] + parts.surface[1];
+  return { leoDays: leo, transitDays: tr, surfaceDays: su, parts, low, high, fracLow: low / r.careerLimitMsv, fracHigh: high / r.careerLimitMsv };
+}
+
+export const MISSION_PRESETS = [
+  { id: 'iss10', label: '10 day visit', leoDays: 10, transitDays: 0, surfaceDays: 0 },
+  { id: 'iss180', label: 'ISS, 6 months', leoDays: 180, transitDays: 0, surfaceDays: 0 },
+  { id: 'iss340', label: 'ISS, about a year', leoDays: 340, transitDays: 0, surfaceDays: 0 },
+  { id: 'marsTransit', label: 'Mars, transit only', leoDays: 0, transitDays: 360, surfaceDays: 0 },
+  { id: 'mars', label: 'Mars, 180 + 500 + 180 days', leoDays: 0, transitDays: 360, surfaceDays: 500 },
+];
 
 export function issMissionDose(days, r = RADIATION) {
   const d = Math.max(0, Number(days) || 0);

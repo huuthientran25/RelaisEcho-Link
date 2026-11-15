@@ -78,3 +78,25 @@ export function sharpnessStats(img) {
   const mean = n ? m / n : 0;
   return { sharpness: n ? m2 / n - mean * mean : 0, glareFrac: glare / L.length, meanLuma: sum / L.length };
 }
+
+// Frame times for the measurements. Video files: the frame's own media time, so slow processing does
+// not distort the signal. Live cameras: media time when the browser reports one that advances
+// (precise frame spacing), on a wall clock base; if it stays stuck (some browsers report 0 for
+// camera streams) the wall clock takes over with no jump.
+export function makeFrameClock(isFile, wall = () => performance.now()) {
+  let off = null, lastM = null, stuck = 0, useWall = false;
+  return (meta) => {
+    const w = wall();
+    const m = meta && Number.isFinite(meta.mediaTime) ? meta.mediaTime * 1000 : null;
+    if (m === null) return w;
+    if (isFile) return m;
+    if (useWall) return w;
+    if (lastM !== null && m <= lastM) {
+      stuck += 1;
+      if (stuck >= 3) { useWall = true; return w; }
+    } else stuck = 0;
+    lastM = m;
+    if (off === null) off = w - m;
+    return m + off;
+  };
+}

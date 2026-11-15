@@ -1,6 +1,6 @@
 // Restore checkups from an exported backup (History > Export all). Nothing is overwritten:
 // checkups already on this device are kept, and the device's own original baseline stays the original.
-const KINDS = new Set(['baseline', 'followup', 'symptom', 'demo', 'alertness']);
+const KINDS = new Set(['baseline', 'followup', 'symptom', 'demo', 'alertness', 'vision']);
 
 export function parseBackup(text) {
   let data;

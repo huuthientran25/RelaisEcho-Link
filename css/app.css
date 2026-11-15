@@ -234,3 +234,97 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .hero-logo { width: 96px; height: 96px; margin-bottom: 8px; display: block; }
 .cmp .change-map { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
 .dental-auto { margin: 10px 0; }
+
+/* Print: only the screen in view, black on white, no controls. For a nurse who files paper. */
+@media print {
+  :root, [data-theme=dark] { --ground: #fff; --panel: #fff; --soft: #fff; --ink: #000; --muted: #333; --line: #999; --navy: #000; --on-solid: #fff; --blue: #000; --alert: #000; --alert-ink: #000; --ok-ink: #000; }
+  body { background: #fff; color: #000; font-size: 12pt; }
+  .site-head, .foot, .skip, button, .btn, input[type=file], label.file-btn, .show-map, .row, dialog, .lang-notice { display: none !important; }
+  main { max-width: none; padding: 0; }
+  .card, .tile, table, figure, .hist-item { break-inside: avoid; border-color: #000; box-shadow: none; }
+  thead th { background: #fff !important; color: #000 !important; border-bottom: 2px solid #000; }
+  .tag, .tag.live { background: #fff !important; color: #000 !important; border: 1px solid #000; }
+  .cmp { border: 1px solid #000; }
+  a { color: #000; text-decoration: none; }
+  .packet-text { border: 1px solid #000; background: #fff; }
+}
+.tour ol { margin: 6px 0 0; padding-left: 22px; }
+.tour li { margin: 4px 0; }
+
+/* Larger text for low vision (A+ in the top bar). Everything sized in px scales from the root size where possible. */
+html.big-text { font-size: 22px; }
+html.big-text body, html.big-text .btn, html.big-text th, html.big-text td, html.big-text .chip, html.big-text .fine { font-size: 1.15em; }
+html.big-text h1 { font-size: clamp(36px, 6.5vw, 62px); }
+
+/* Radiation missions, daylight, space weather */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0; }
+.grid3 label { font-size: 15px; display: flex; flex-direction: column; justify-content: flex-end; }
+.budget-range.over { background: var(--alert); }
+.link-btn[aria-pressed=true] { font-weight: 700; text-decoration-thickness: 3px; }
+.daybar { height: 18px; margin: 8px 0; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--bar); overflow: hidden; }
+.daybar > div { height: 100%; margin: 0 auto; background: var(--accent); }
+details.fine summary { cursor: pointer; min-height: 32px; }
+@media (max-width: 420px) { .grid3 { grid-template-columns: 1fr; } }
+
+/* Symptom checklist */
+.seg.ticks label { min-height: 44px; padding: 0 12px; }
+.sym-counts { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.sym-n { display: inline-block; min-width: 1.6em; text-align: center; font-weight: 700; border: 2px solid var(--navy); border-radius: var(--radius); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.tag.alert { border-color: var(--alert); color: var(--alert); }
+
+/* Device check */
+.dev-list { list-style: none; padding: 0; margin: 6px 0; }
+.dev-list li { margin: 6px 0; padding-left: 1.6em; text-indent: -1.6em; }
+.dev-list li.plain { color: var(--muted); font-weight: 400; }
+.dev-video { display: block; width: 200px; max-width: 60%; margin: 10px 0; border: 2px solid var(--navy); border-radius: var(--radius); transform: scaleX(-1); }
+.dev-report { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.45 ui-monospace, Menlo, Consolas, monospace; background: var(--soft); border: 2px solid var(--navy); border-radius: var(--radius); padding: 12px; max-height: 340px; overflow: auto; }
+
+/* Demo reel: captions sit over the app while it plays by itself */
+.reel-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(4, 18, 26, 0.94); color: #fff; padding: 0 20px 18px; text-align: center; }
+.reel-progress { height: 5px; margin: 0 -20px 12px; background: rgba(255, 255, 255, 0.18); }
+#reelProg { height: 100%; width: 0; background: var(--accent); }
+#reelCaption { margin: 0 auto; max-width: 1100px; font-size: clamp(19px, 2.5vw, 30px); font-weight: 700; line-height: 1.25; min-height: 2.5em; display: flex; align-items: center; justify-content: center; text-wrap: balance; }
+.reel-stop { position: absolute; right: 10px; bottom: 6px; font: inherit; font-size: 13px; color: #fff; background: transparent; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 4px; padding: 2px 8px; opacity: 0.55; cursor: pointer; }
+.reel-stop:hover, .reel-stop:focus-visible { opacity: 1; }
+.reel-tag { position: fixed; left: 10px; bottom: 8px; z-index: 61; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.6); }
+.reel-card { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; text-align: center; padding: 24px 24px 130px; background: #041d2b; color: #fff; }
+.reel-card img { width: 112px; height: 112px; }
+.reel-card h2 { font-size: clamp(34px, 6vw, 64px); margin: 14px 0 6px; color: #fff; }
+.reel-card p { font-size: clamp(18px, 2.4vw, 26px); margin: 6px 0; color: #d9f4f8; }
+.reel-card .reel-count { font-size: clamp(80px, 16vw, 160px); font-weight: 700; line-height: 1; color: #1fd6ec; font-variant-numeric: tabular-nums; }
+.reel-card .row { justify-content: center; margin-top: 18px; }
+body.reel-on { padding-bottom: 130px; }
+@media print { #reelLayer { display: none !important; } }
+
+/* Signal delay tile */
+.delaybar { position: relative; height: 14px; margin: 10px 0 4px; border: 2px solid var(--navy); border-radius: var(--radius); background: linear-gradient(90deg, var(--blue-tint), var(--panel)); }
+.delaybar > div { position: absolute; top: -5px; bottom: -5px; width: 6px; margin-left: -3px; background: var(--navy); border-radius: 3px; }
+.delay-ends { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 6px !important; }
+
+/* Eye grid */
+.vis-wrap { display: flex; justify-content: center; margin: 12px 0; }
+.vis-grid { background: #fff; border: 3px solid #000; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.vis-grid:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
+.vis-grid line { stroke: #000; stroke-width: 1; shape-rendering: crispEdges; }
+.vis-grid .vis-mark { fill: #d0006f; fill-opacity: 0.45; }
+.vis-grid .vis-ref { fill: none; stroke: #006a80; stroke-width: 2; stroke-dasharray: 3 2; }
+.vis-grid .vis-cursor { fill: none; stroke: #d0006f; stroke-width: 3; }
+.vis-card { height: 54px; margin: 10px 0; border: 3px solid var(--navy); border-radius: 6px; background: var(--blue-tint); max-width: 100%; }
+.vis-pair { display: flex; flex-wrap: wrap; gap: 18px; margin: 10px 0; }
+.vis-pair figure { margin: 0; }
+.vis-pair figcaption { font-weight: 700; margin-bottom: 4px; }
+
+/* Your data */
+#screen-privacy h3 { font-size: 17px; margin: 12px 0 4px; }
+#screen-privacy table th[scope=row] { white-space: nowrap; }
+.foot .link-btn { font-size: inherit; }
+
+/* Board jump bar and reviewer reading order */
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.jump a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border: 2px solid var(--navy); border-radius: 999px; color: var(--ink); text-decoration: none; font-size: 15px; background: var(--panel); }
+.jump a:hover, .jump a:focus-visible { background: var(--blue-tint); }
+.tile h2 { scroll-margin-top: 16px; }
+.standouts ul { list-style: none; padding: 0; margin: 6px 0; }
+.standouts li { margin: 6px 0; }
+.standouts .so-urgent, .standouts .so-change { color: var(--alert-ink); font-weight: 700; }
+@media print { .jump { display: none !important; } }

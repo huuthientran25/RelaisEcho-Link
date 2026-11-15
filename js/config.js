@@ -2,6 +2,9 @@
 // Tune them from the bench test, and record any change in the README.
 
 export const CONFIG = {
+  // Set to true after adding samples/sample.mp4 (a recording of a consenting adult team member).
+  // The home page then shows a "Watch sample replay" button.
+  sampleReplay: false,
   scan: {
     targetUsableSeconds: 30,   // timer counts only frames that pass every gate
     maxElapsedSeconds: 120,    // give up and report what is usable after this

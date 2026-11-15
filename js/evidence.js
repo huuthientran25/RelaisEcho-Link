@@ -33,15 +33,39 @@ export const EVIDENCE = {
   },
   radiation: {
     title: 'Radiation budget',
-    method: 'Your number of days is multiplied by a low and a high published ISS daily dose and compared with the career limit.',
-    source: 'Career limit below 600 mSv for all ages and sexes: NASA-STD-3001 Volume 1, standard 4030. Low end: 19 ISS crew averaged 72 mSv over about 6 months (Cucinotta et al., Radiation Research 2008). High end: about 310 mSv per year (Chancellor et al. 2017, as cited in later reviews). Deep space for comparison: Curiosity\'s RAD instrument measured about 0.46 mGy per day absorbed dose during the cruise to Mars (Zeitlin et al. 2013) and about 0.23 on the surface (Hassler et al. 2014).',
-    limits: 'Actual dose depends on solar cycle, shielding, spacewalks and orbit. This is context for planning, not a dosimeter reading.',
+    method: 'Days in low Earth orbit are multiplied by a low and a high published ISS daily dose. Days in deep space transit and on the Mars surface are multiplied by the dose rates the Curiosity mission measured. The total is compared with the career limit.',
+    source: 'Career limit below 600 mSv for all ages and sexes: NASA-STD-3001 Volume 1, standard 4030. ISS low end: 19 crew averaged 72 mSv over about 6 months (Cucinotta et al., Radiation Research 2008). ISS high end: about 310 mSv per year (Chancellor et al. 2017, as cited in later reviews). Deep space transit: about 1.8 mSv per day inside the Mars Science Laboratory cruise vehicle, about 0.66 Sv for a round trip of 180 days each way (Zeitlin et al., Science 2013). Mars surface: 0.64 to 0.67 mSv per day (Hassler et al., Science 2014). A mission of 180 days out, 500 on the surface and 180 back comes to about 1 Sv.',
+    limits: 'Actual dose depends on the solar cycle, shielding, spacewalks and orbit. The deep space figures come from one vehicle during low to moderate solar activity, and a large solar particle event would add to them. This is context for planning, not a dosimeter reading.',
+  },
+  spaceweather: {
+    title: 'Space weather',
+    method: 'When you press the button, the app asks NASA\'s DONKI database for solar flares in the last 7 days and solar energetic particle events in the last 30 days. It shows the strongest flare class, how many flares of each class, and the number and latest date of particle events. The answer is kept on this device for 3 hours.',
+    source: 'NASA DONKI (Space Weather Database Of Notifications, Knowledge, Information), Community Coordinated Modeling Center, NASA Goddard, through api.nasa.gov. Flare classes rise tenfold from C to M to X. NASA-STD-3001 Volume 1, standard 4031, requires that a design reference solar particle event (the sum of the October 1989 events) give a crew member less than 250 mSv, and NASA habitat studies size a shielded storm shelter for such events.',
+    limits: 'A catalogue of events, not a forecast and not a dose. For official forecasts use NOAA\'s Space Weather Prediction Center. The list can lag the Sun by hours, and the shared demonstration key can be refused when many people use it.',
+  },
+  daylight: {
+    title: 'Daylight',
+    method: 'Day length is calculated from the date and the latitude with NOAA\'s general solar position equations, taking sunrise and sunset as the moment the top of the Sun meets the horizon, with standard refraction.',
+    source: 'NOAA Global Monitoring Laboratory, solar calculation details. ISS figure: "In 24 hours, the space station makes 16 orbits of Earth, traveling through 16 sunrises and sunsets" (NASA, International Space Station Facts and Figures). ISS crews slept about 6 hours a night on average against 8.5 hours scheduled (Barger et al., Lancet Neurology 2014).',
+    limits: 'Twilight is not counted, and in the Arctic it adds hours of usable light around the polar night. Terrain, cloud and indoor lighting are ignored. The tile describes light outside; it does not measure your body clock or advise treatment.',
+  },
+  delay: {
+    title: 'Signal delay',
+    method: 'The positions of Earth and Mars around the Sun are calculated for today from Keplerian orbital elements. The straight line distance between them, divided by the speed of light, gives the one way delay. The shortest and longest delays are found by repeating this for each of the next 780 days, about one full cycle of the two planets.',
+    source: 'JPL Solar System Dynamics, Keplerian Elements for Approximate Positions of the Major Planets (Table 1, valid 1800 to 2050). Checked against published close approaches: about 55.8 million km on 27 Aug 2003 and about 62.1 million km on 6 Oct 2020. Solar conjunction: NASA pauses commanding of its Mars spacecraft for about two weeks roughly every two years, when Mars is within about 2 degrees of the Sun in the sky (for example 11 to 25 Nov 2023).',
+    limits: 'Geometry only. Real links add relay hops, antenna scheduling and data rate limits, and the approximate elements are good to a few tens of thousands of kilometres. "Earth" is the Earth and Moon barycentre.',
+  },
+  amsler: {
+    title: 'Eye grid',
+    method: 'An Amsler grid: 20 by 20 squares with a centre dot. One eye is covered, the other looks at the dot, and the person marks squares where lines look wavy, blurred, dim or missing. The standard chart is 10 cm wide and read at about 30 cm, so a square spans about one degree. Marks are compared with the person\'s first check on this device; a mark right next to an old one counts as the same spot.',
+    source: 'Scheduled vision checks on the ISS are static visual acuity, an Amsler grid and a self-reported survey ("The case for expanding visual assessments during spaceflight", Prehospital and Disaster Medicine, 2023; NASA ocular surveillance briefings list "Amsler grid (ISS: Laptop)"). Spaceflight associated neuro-ocular syndrome (SANS) is the reason for that surveillance.',
+    limits: 'This is not the flight software and it cannot detect SANS: swelling of the optic disc is found with optical coherence tomography and fundoscopy, not with a grid. Results depend on distance, lighting, glasses and attention. The screen size is exact only after the optional card calibration. Shown, not judged.',
   },
   alertness: {
     title: 'Alertness check',
     method: 'A brief psychomotor vigilance test: a counter appears after a random 1 to 4 second wait, for 3 minutes. The app reports the median reaction time, lapses (responses of 355 ms or slower, the threshold published for the 3 minute version, plus missed counters) and false starts (pressing early).',
     source: 'Brief 3 minute PVT (PVT-B): Basner, Mollicone and Dinges, Acta Astronautica 2011. In ISS astronauts, nights of 6 hours of sleep or less were linked to worse PVT-B scores (Jones et al. 2022).',
-    limits: 'Screens, keyboards and browsers add their own delay, so numbers are compared only with your own earlier tests on the same device, never with published norms. Practice makes the first tests slower. It does not diagnose fatigue or any condition.',
+    limits: 'Test length, the 1 to 4 second waits, the 355 ms lapse threshold and the 100 ms false start rule follow the published PVT-B; the published test waits 30 seconds before counting a missed counter, this app waits 10. Screens, keyboards and browsers add their own delay, so numbers are compared only with your own earlier tests on the same device, never with published norms. Practice makes the first tests slower. It does not diagnose fatigue or any condition.',
   },
   eyes: {
     title: 'Blinks and eye closure',

@@ -9,6 +9,8 @@ const WASM_BASE = new URL('../vendor/mediapipe/wasm', import.meta.url).href;
 
 let instance = null;
 let modelSource = '';
+let delegateUsed = '';
+export const MODEL_URLS = { local: MODEL_LOCAL, remote: MODEL_REMOTE };
 
 async function exists(url) {
   try {
@@ -24,6 +26,7 @@ export async function getFaceLandmarker() {
   if (new URLSearchParams(location.search).has('mock')) {
     const { mockLandmarker } = await import('./mock.js');
     modelSource = 'MOCK landmarks for testing (not a real face model)';
+    delegateUsed = 'mock';
     instance = mockLandmarker();
     return instance;
   }
@@ -43,10 +46,12 @@ export async function getFaceLandmarker() {
   });
   try {
     instance = await FaceLandmarker.createFromOptions(fileset, options('GPU'));
+    delegateUsed = 'GPU';
   } catch (e) {
     console.warn('GPU delegate failed, using CPU', e);
     try {
       instance = await FaceLandmarker.createFromOptions(fileset, options('CPU'));
+      delegateUsed = 'CPU';
     } catch (e2) {
       const err = new Error(local
         ? 'The bundled face model could not be loaded.'
@@ -60,6 +65,11 @@ export async function getFaceLandmarker() {
 
 export function getModelSource() {
   return modelSource;
+}
+
+// 'GPU', 'CPU' or 'mock': which engine the face model ended up on. Empty until the model has loaded.
+export function getDelegate() {
+  return delegateUsed;
 }
 
 let lastTs = 0;

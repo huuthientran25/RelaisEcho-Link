@@ -35,7 +35,8 @@ export function makeDemoSessions(now = new Date(), seed = 42) {
       pulse: { bpm: pulse, quality, accepted: 11, total: 11, reason: '' },
       resp: { rpm: resp, quality: 'high', seconds: 30, channel: i % 3 ? 'chest' : 'neck', reason: '' },
       usableSeconds: 30, elapsedSeconds: 38 + Math.round(r() * 20), dental: {},
-      context: { symptoms: elevated && ago === 2 ? 'Slept badly two nights, mild headache.' : '' },
+      context: { symptoms: elevated && ago === 2 ? 'Slept badly two nights, mild headache.' : '',
+        checklist: ago === 3 ? ['sleep'] : ago === 2 ? ['headache', 'sleep'] : ago === 1 ? ['headache', 'sleep', 'mouth'] : ago === 9 ? ['back'] : [] },
     };
     // Six checkups have a reference watch reading, so the bench test panel is filled in.
     if (i % 2 === 0) s.reference = { pulseBpm: pulse + Math.round((r() - 0.5) * 4), breathsPerMin: resp + Math.round((r() - 0.5) * 2), device: 'sample watch', conditions: 'sample data' };

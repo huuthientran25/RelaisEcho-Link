@@ -12,22 +12,33 @@ export function setProfile(id) { currentProfile = id || DEFAULT_PROFILE; }
 export function getProfile() { return currentProfile; }
 const inProfile = (s) => (s.profileId || DEFAULT_PROFILE) === currentProfile;
 
+// One shared connection, reopened if the browser closes it.
+let dbPromise = null;
 function open() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        db.onversionchange = () => { db.close(); dbPromise = null; };
+        db.onclose = () => { dbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = () => { dbPromise = null; reject(req.error); };
+    });
+  }
+  return dbPromise;
 }
 
 async function tx(mode, fn) {
   const db = await open();
   return new Promise((resolve, reject) => {
-    const t = db.transaction(STORE, mode);
+    let t;
+    try { t = db.transaction(STORE, mode); } catch (err) { dbPromise = null; reject(err); return; }
     const s = t.objectStore(STORE);
     const out = fn(s);
     t.oncomplete = () => resolve(out && 'result' in out ? out.result : out);
@@ -87,6 +98,22 @@ export async function setOriginal(id) {
   for (const s of all) {
     if (s.kind === 'baseline' && (s.isOriginal || s.id === id)) await saveSession({ ...s, isOriginal: s.id === id });
   }
+}
+
+// Every record on the device, across all people. For the "Your data" inventory only.
+export async function everySession() {
+  return allSessions();
+}
+
+// Removes the whole database: every person's checkups. The caller clears settings and the offline copy.
+export async function eraseDatabase() {
+  if (dbPromise) { try { (await dbPromise).close(); } catch { /* already closed */ } dbPromise = null; }
+  await new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(DB);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => resolve(); // another tab holds it open; it is deleted when that tab closes
+  });
 }
 
 export async function allIds() {

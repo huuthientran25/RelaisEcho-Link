@@ -1,6 +1,11 @@
-// Alertness check: a brief psychomotor vigilance test (PVT) in the style of the 3 minute PVT-B used with astronauts.
-// EXPERIMENTAL. Browser and screen latency add an unknown delay (often tens of ms), so results are only
-// compared with earlier tests on the same device, never with published norms.
+// Alertness check: a brief psychomotor vigilance test in the style of the 3 minute PVT-B.
+// Source: Basner, Mollicone and Dinges, "Validity and sensitivity of a brief psychomotor vigilance test
+// (PVT-B) to total and partial sleep deprivation", Acta Astronautica 69:949-959, 2011 (open copy: PMC3197786).
+// CONFIRMED against that paper on 15 Nov 2026: 3 minutes, waits of 1 to 4 s, lapse threshold 355 ms,
+// responses under 100 ms are false starts. One difference: the paper counts a lapse after 30 s with no
+// response; this app moves on after 10 s (design choice).
+// EXPERIMENTAL here: browser and screen latency add an unknown delay (often tens of ms), so results are
+// only compared with earlier tests on the same device, never with published norms.
 
 export const PVT_CONFIG = {
   durationSec: 180,      // PVT-B length (Basner, Mollicone and Dinges 2011, Acta Astronautica)
