@@ -1,0 +1,11 @@
+{
+  "name": "RelaisÉcho Link",
+  "short_name": "RelaisÉcho",
+  "description": "Guided camera checkup compared against your own baseline. Research prototype, not a diagnostic device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F2ED",
+  "theme_color": "#13202B",
+  "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RelaisÉcho Link: guided camera checkup</title>
+<meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
+<meta name="theme-color" content="#13202B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="#home" data-nav="home">
+    <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.5"/><circle cx="14" cy="14" r="2" fill="currentColor"/></svg>
+    <span>RelaisÉcho Link</span>
+  </a>
+  <div class="topbar-right">
+    <span id="netStatus" class="pill" aria-live="polite"></span>
+    <button type="button" class="link-btn" data-nav="history">History</button>
+  </div>
+</header>
+
+<main id="main">
+  <!-- HOME -->
+  <section id="screen-home" class="screen" aria-labelledby="h-home">
+    <div class="hero">
+      <p class="eyebrow">Guided camera checkup · orbit to the North</p>
+      <h1 id="h-home">Your last checkup, lined up with today.</h1>
+      <p class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
+      <div class="row">
+        <button type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
+        <button type="button" class="btn" id="btnSample">Watch sample replay</button>
+      </div>
+      <p class="fine" id="sampleNote"></p>
+      <p class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><h2>What it captures</h2><ul><li>Pulse estimate from face video, with a quality score</li><li>Breathing rate from upper torso movement</li><li>Matched dental photos: front and both sides</li></ul></div>
+      <div class="card warm"><h2>What it refuses to do</h2><ul><li>Blood pressure, oxygen or fever from a camera</li><li>Diagnose tooth decay, SANS or any disease</li><li>Give a number from a capture that failed its checks</li></ul></div>
+    </div>
+    <p class="fine"><button type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
+  </section>
+
+  <!-- SETUP -->
+  <section id="screen-setup" class="screen" hidden aria-labelledby="h-setup">
+    <p class="step">Step 1 of 5</p>
+    <h1 id="h-setup">New checkup</h1>
+    <form id="setupForm" class="stack">
+      <fieldset>
+        <legend>Type</legend>
+        <div class="seg">
+          <label><input type="radio" name="kind" value="baseline"> Baseline</label>
+          <label><input type="radio" name="kind" value="followup"> Follow up</label>
+        </div>
+        <p class="fine" id="kindNote"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Video source</legend>
+        <div class="seg">
+          <label><input type="radio" name="source" value="user" checked> Front camera</label>
+          <label><input type="radio" name="source" value="environment"> Rear camera</label>
+          <label><input type="radio" name="source" value="file"> Video file</label>
+        </div>
+        <div id="fileWrap" hidden>
+          <label for="fileInput">Choose a recording of yourself (face and shoulders, 40 seconds or more)</label>
+          <input id="fileInput" type="file" accept="video/*">
+        </div>
+        <p class="fine">Use the same camera and a similar spot each time. Light facing you works best.</p>
+      </fieldset>
+      <fieldset>
+        <legend>In the last 15 minutes</legend>
+        <div class="seg">
+          <label><input type="radio" name="activity" value="resting" checked> Resting</label>
+          <label><input type="radio" name="activity" value="light"> Light activity</label>
+          <label><input type="radio" name="activity" value="exercise"> Exercise</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Glasses or contact lenses on</legend>
+        <div class="seg">
+          <label><input type="radio" name="glasses" value="no" checked> No</label>
+          <label><input type="radio" name="glasses" value="yes"> Yes</label>
+        </div>
+      </fieldset>
+      <label for="symptoms">Anything new?</label>
+      <textarea id="symptoms" rows="3" placeholder="For example: tooth sensitivity, gum soreness, headache"></textarea>
+      <p class="fine">New or severe symptoms: contact your clinician now. Do not wait for this checkup.</p>
+      <p class="fine">Video is processed in this browser. Only a packet you choose to export leaves the device.</p>
+      <div class="row">
+        <button type="submit" class="btn primary">Start resting scan</button>
+        <button type="button" class="btn" data-nav="home">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- SCAN -->
+  <section id="screen-scan" class="screen" hidden aria-labelledby="h-scan">
+    <p class="step">Step 2 of 5 · Resting scan</p>
+    <h1 id="h-scan" class="sr-only">Resting scan</h1>
+    <div id="scanStageSlot" class="stage-slot"></div>
+    <div class="chips" id="chips" aria-live="polite"></div>
+    <p class="coach" id="coach" aria-live="assertive">Starting camera…</p>
+    <div class="meter"><div id="usableBar"></div></div>
+    <p class="row between"><span id="usableText">0 of 30 usable seconds</span><span class="fine" id="livePulse"></span></p>
+    <p class="fine">Sit still, breathe normally and do not talk. Keep your shoulders inside the blue box.</p>
+    <div class="row">
+      <button type="button" class="btn" id="btnStopScan">Stop and use what is usable</button>
+      <label class="check"><input type="checkbox" id="showBoxes" checked> Show measurement boxes</label>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen" hidden aria-labelledby="h-results">
+    <p class="step">Step 3 of 5 · Results</p>
+    <h1 id="h-results">Resting scan</h1>
+    <div class="cards">
+      <div class="card result" id="pulseCard"></div>
+      <div class="card result" id="respCard"></div>
+    </div>
+    <canvas id="waveCanvas" class="wave" width="800" height="120" role="img" aria-label="Pulse signal from the last 10 seconds"></canvas>
+    <div id="cmpTable"></div>
+    <details class="card">
+      <summary>Bench test: add reference values (optional)</summary>
+      <p class="fine">If a fingertip oximeter, watch or counted breaths were recorded at the same time, enter them. They are saved with this checkup and exported from History as a CSV.</p>
+      <div class="grid2">
+        <label>Reference pulse (bpm)<input type="number" id="refPulse" min="30" max="220" inputmode="numeric"></label>
+        <label>Reference breaths per minute<input type="number" id="refResp" min="2" max="60" inputmode="numeric"></label>
+        <label>Reference device<input type="text" id="refDevice" placeholder="e.g. fingertip oximeter"></label>
+        <label>Conditions<input type="text" id="refNotes" placeholder="e.g. window light, dim, small head movement"></label>
+      </div>
+    </details>
+    <div class="row">
+      <button type="button" class="btn primary" id="btnToDental">Continue to dental photos</button>
+      <button type="button" class="btn" id="btnSkipDental">Skip dental</button>
+      <button type="button" class="btn" id="btnRetake">Retake scan</button>
+    </div>
+  </section>
+
+  <!-- DENTAL -->
+  <section id="screen-dental" class="screen" hidden aria-labelledby="h-dental">
+    <p class="step">Step 4 of 5 · Dental photos</p>
+    <h1 id="h-dental" class="sr-only">Dental photos</h1>
+    <ol class="views" id="viewSteps"></ol>
+    <div id="dentalStageSlot" class="stage-slot"></div>
+    <p class="coach" id="dentalCoach" aria-live="assertive"></p>
+    <div class="meter"><div id="dentalBar"></div></div>
+    <p class="fine">Tip: the rear camera with a light on gives sharper photos than a laptop webcam. Use the same setup every time.</p>
+    <div class="row">
+      <button type="button" class="btn" id="btnSkipView">Skip this view</button>
+      <button type="button" class="btn" id="btnDentalFile" hidden>Use a video file for this step</button>
+    </div>
+  </section>
+
+  <!-- COMPARE -->
+  <section id="screen-compare" class="screen" hidden aria-labelledby="h-compare">
+    <p class="step">Step 4 of 5 · Compare</p>
+    <h1 id="h-compare">What changed</h1>
+    <p class="fine" id="compareNote"></p>
+    <div id="compareList" class="stack"></div>
+    <div class="row">
+      <button type="button" class="btn primary" id="btnToPacket">Prepare review packet</button>
+    </div>
+  </section>
+
+  <!-- PACKET -->
+  <section id="screen-packet" class="screen" hidden aria-labelledby="h-packet">
+    <p class="step">Step 5 of 5 · Review packet</p>
+    <h1 id="h-packet">Review packet</h1>
+    <ol class="status-row" aria-label="Packet status">
+      <li class="good">Saved on this device</li>
+      <li class="warn">Not sent</li>
+      <li>Not acknowledged</li>
+    </ol>
+    <pre id="packetText" class="packet-text"></pre>
+    <label class="check"><input type="checkbox" id="includeImages"> Include dental photos in the file</label>
+    <p class="row between"><span>Packet size</span><strong id="packetSize"></strong></p>
+    <div class="row">
+      <button type="button" class="btn primary" id="btnDownload">Download packet (.json)</button>
+      <button type="button" class="btn" id="btnCopy">Copy text summary</button>
+      <button type="button" class="btn" data-nav="home">Done</button>
+    </div>
+    <p class="fine">Sending over a satellite or mission link is a planned feature. For now, export the file and send it through an approved channel.</p>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="screen-history" class="screen" hidden aria-labelledby="h-history">
+    <h1 id="h-history">History</h1>
+    <p class="fine">Stored only in this browser. The first baseline is kept as the original reference.</p>
+    <div id="historyList"></div>
+    <div class="row">
+      <button type="button" class="btn" id="btnBenchCsv">Export bench test CSV</button>
+      <button type="button" class="btn" id="btnExportAll">Export all (.json)</button>
+      <button type="button" class="btn danger" id="btnClear">Delete all checkups</button>
+    </div>
+  </section>
+</main>
+
+<!-- Shared camera stage, moved between scan and dental screens -->
+<div id="stageHome" hidden>
+  <div id="stage" class="stage">
+    <video id="video" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
+</div>
+
+<dialog id="evidenceDialog" aria-labelledby="evTitle">
+  <h2 id="evTitle"></h2>
+  <h3>Method</h3><p id="evMethod"></p>
+  <h3>Source</h3><p id="evSource"></p>
+  <h3>What it cannot tell you</h3><p id="evLimits"></p>
+  <form method="dialog"><button class="btn">Close</button></form>
+</dialog>
+
+<footer class="foot">
+  <span>Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.</span>
+  <span id="modelNote"></span>
+</footer>
+</body>
+</html>
