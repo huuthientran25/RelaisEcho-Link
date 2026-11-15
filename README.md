@@ -24,6 +24,18 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.3 (15 Nov 2026)
+
+- **Mission board** (new screen, button on home and in the top bar). Separate labelled tiles, no combined score:
+  - *Checkup rhythm* (LIVE): checkup days this week, and whether now is within 2 hours of the baseline time of day.
+  - *Sleep pressure* (MODELED): Process S of the two process model with the published time constants (Daan, Beersma and Borbély 1984: 18.2 h rise, 4.2 h decay, threshold 0.67 ± 0.12). Context: Barger et al. 2014 (ISS sleep about 6.1 h vs 8.5 h scheduled); Jones et al. 2022 (6 h or less linked to worse PVT-B in ISS crew). The circadian phase is not measured, so it is drawn as a band only.
+  - *Radiation budget* (PUBLISHED): days on the ISS times a published daily dose range (0.4 to 0.85 mSv/day) against the **NASA-STD-3001** career limit of 600 mSv.
+  - *Brain clearance and sleep* (EDUCATIONAL): Barisano et al. 2022 PNAS; the open Miao 2024 vs Plá 2025 debate. No number shown.
+- **Smoother interface on 60 Hz and faster screens.** Face tracking shares the page's thread. When it takes more than 12 ms a frame, every second camera frame is analysed (15 per second is plenty for a pulse up to 3 Hz) so buttons, scrolling and the progress bar keep up. The scan screen shows screen fps, camera fps, analysed fps and ms per frame. Progress bar animates with a transform, chips and coach text update only when they change. Camera capture is requested at 30 fps again (v0.2 asked for 60, which costs exposure and gives no better pulse). Test: `?mock=1&slow=20` simulates a slow device; synthetic pulse and breathing still pass at half rate.
+- Home page: the "What it refuses to do" card is replaced by "What is new here". Limits stay in each Evidence drawer and the "How the quality checks work" note.
+- Evidence drawers now give published error figures: rPPG error rises on the darkest skin types (meta analysis, about 4 to 14 bpm); motion breathing about 1.3 breaths/min from chest vs 2.0 from head (IEEE EMBC 2022). Cold skin is untested.
+- 18 unit tests (`npm test`).
+
 ## Changes in v0.2 (15 Nov 2026)
 
 Made after the first real scans on a laptop webcam (four checkups, one Apple Watch reference).

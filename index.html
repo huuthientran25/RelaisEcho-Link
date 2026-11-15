@@ -21,6 +21,7 @@
   </a>
   <div class="topbar-right">
     <span id="netStatus" class="pill" aria-live="polite"></span>
+    <button type="button" class="link-btn" data-nav="board">Board</button>
     <button type="button" class="link-btn" data-nav="history">History</button>
   </div>
 </header>
@@ -34,16 +35,59 @@
       <p class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
       <div class="row">
         <button type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
+        <button type="button" class="btn" data-nav="board">Mission board</button>
         <button type="button" class="btn" id="btnSample">Watch sample replay</button>
       </div>
       <p class="fine" id="sampleNote"></p>
       <p class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
     </div>
     <div class="cards">
-      <div class="card"><h2>What it captures</h2><ul><li>Pulse estimate from face video, with a quality score</li><li>Breathing rate from upper torso movement</li><li>Matched dental photos: front and both sides</li></ul></div>
-      <div class="card warm"><h2>What it refuses to do</h2><ul><li>Blood pressure, oxygen or fever from a camera</li><li>Diagnose tooth decay, SANS or any disease</li><li>Give a number from a capture that failed its checks</li></ul></div>
+      <div class="card"><h2>What it captures</h2><ul><li>Pulse estimate from face video, with a quality score</li><li>Breathing rate from neck and upper body movement</li><li>Matched dental photos: front and both sides</li></ul></div>
+      <div class="card"><h2>What is new here</h2><ul><li>No wearable and no upload: video never leaves this device</li><li>Compared with your own baseline, not a population average</li><li>Works offline and builds a short packet a nurse can review</li></ul></div>
     </div>
     <p class="fine"><button type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
+  </section>
+
+  <!-- MISSION BOARD -->
+  <section id="screen-board" class="screen" hidden aria-labelledby="h-board">
+    <p class="step">Mission board</p>
+    <h1 id="h-board">Keep the habits that keep you flying.</h1>
+    <p class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
+    <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
+    <div class="tiles">
+      <article class="tile" id="tileCheckups" aria-labelledby="h-t-check">
+        <header><h2 id="h-t-check">Checkup rhythm</h2><span class="tag live">LIVE</span></header>
+        <div id="checkupBody"></div>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-sleep">
+        <header><h2 id="h-t-sleep">Sleep pressure</h2><span class="tag">MODELED</span></header>
+        <form id="sleepForm" class="grid2 tight">
+          <label>Went to sleep<input type="datetime-local" id="sleepStart" required></label>
+          <label>Woke up<input type="datetime-local" id="sleepEnd" required></label>
+          <label>Usual sleep (hours)<input type="number" id="usualSleep" min="3" max="12" step="0.5" placeholder="e.g. 8"></label>
+        </form>
+        <div id="sleepBody" aria-live="polite"></div>
+        <svg id="sleepChart" class="spark" viewBox="0 0 600 180" role="img" aria-label="Modeled sleep pressure over the last day"></svg>
+        <p class="fine">Process S of the two process model (Daan, Beersma and Borbély 1984). The time of day swing is shown as a band of ±0.12 around the sleep threshold because the phase of your body clock is not measured here. For orientation only. <button type="button" class="link-btn" data-evidence="sleep">Evidence</button></p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-rad">
+        <header><h2 id="h-t-rad">Radiation budget</h2><span class="tag pub">PUBLISHED</span></header>
+        <label for="radDays">Days on the ISS: <strong id="radDaysOut">180</strong></label>
+        <input type="range" id="radDays" min="0" max="1000" step="10" value="180">
+        <div id="radBody" aria-live="polite"></div>
+        <div class="budget" aria-hidden="true"><div class="budget-range" id="radBar"></div></div>
+        <p class="fine">Range from published ISS crew doses applied to your number of days; not a personal dose. Career limit from NASA-STD-3001. <button type="button" class="link-btn" data-evidence="radiation">Evidence</button></p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-gly">
+        <header><h2 id="h-t-gly">Brain clearance and sleep</h2><span class="tag">EDUCATIONAL</span></header>
+        <p>After about six months on the ISS, MRI showed larger fluid spaces around brain blood vessels (perivascular spaces) in astronauts, larger in NASA crew than in cosmonauts.</p>
+        <p>Whether sleep speeds up the brain's waste clearance (the glymphatic system) is still debated: a 2024 mouse study found clearance went down during sleep, and the original group disputed it in 2025.</p>
+        <p class="fine">No glymphatic number is shown, because none can be measured with a camera. <button type="button" class="link-btn" data-evidence="glymphatic">Evidence</button></p>
+      </article>
+    </div>
   </section>
 
   <!-- SETUP -->

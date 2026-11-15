@@ -10,6 +10,7 @@ import { DentalCapture, VIEWS } from './dental.js';
 import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal } from './store.js';
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
+import { sleepPressure, issMissionDose, consistency, RADIATION } from './board.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,6 +31,7 @@ function show(name) {
   if (name === 'home') stopSource();
   if (name === 'history') renderHistory();
   if (name === 'setup') prepareSetup();
+  if (name === 'board') renderBoard();
   const h = document.querySelector(`#screen-${name} h1`);
   if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
@@ -132,7 +134,7 @@ async function startSource(kind, file) {
     state.session && (state.session.cameraLabel = `file: ${file.name}`);
   } else {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: kind, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }, audio: false,
+      video: { facingMode: kind, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: CONFIG.perf.cameraFps } }, audio: false,
     });
     state.stream = stream;
     v.srcObject = stream;
@@ -210,7 +212,9 @@ async function startScan(src, file) {
     trackers: { neck: new TorsoTracker(), chest: new TorsoTracker() },
     prevKp: null, speed: null, rejects: {}, alignWorst: {}, wasAligned: false, wasStill: false,
     template, tplCandidate: null, fpsT: [], liveT: 0, finished: false,
-    frames: 0, skipped: 0, lastPresented: null, inferMs: null, fpsSum: 0, fpsN: 0 };
+    frames: 0, skipped: 0, lastPresented: null, inferMs: null, fpsSum: 0, fpsN: 0,
+    camT: [], stride: 1, strided: 0, chipsHtml: '' };
+  startUiMeter();
   $('video').onended = () => finishScan();
   startLoop(scanFrame);
 }
@@ -221,6 +225,20 @@ function scanFrame(t, meta) {
   const tw0 = performance.now();
   const v = $('video');
   const { AW, AH } = state;
+  // Camera rate and frames the browser presented that we never got a callback for.
+  s.camT.push(t);
+  while (s.camT.length && t - s.camT[0] > 2000) s.camT.shift();
+  if (meta && Number.isFinite(meta.presentedFrames)) {
+    if (s.lastPresented !== null) s.skipped += Math.max(0, meta.presentedFrames - s.lastPresented - 1);
+    s.lastPresented = meta.presentedFrames;
+  }
+  s.frames += 1;
+  // Frame budget: when analysis is slow, analyse every second frame so the page stays smooth.
+  if (s.inferMs != null) {
+    if (s.stride === 1 && s.inferMs > CONFIG.perf.workBudgetMs) s.stride = 2;
+    else if (s.stride === 2 && s.inferMs < CONFIG.perf.workRecoverMs) s.stride = 1;
+  }
+  if (s.stride > 1 && s.frames % s.stride) { s.strided += 1; return; }
   if (s.t0 === null) s.t0 = t;
   const dt = s.lastT === null ? 0 : Math.max(0, Math.min(0.25, (t - s.lastT) / 1000));
   s.lastT = t;
@@ -228,13 +246,7 @@ function scanFrame(t, meta) {
   s.fpsT.push(t);
   while (s.fpsT.length && t - s.fpsT[0] > 2000) s.fpsT.shift();
   const fps = s.fpsT.length / 2;
-  if (s.elapsed > 2) { s.fpsSum += fps; s.fpsN += 1; }
-  // Frames the browser presented that we did not get to: shows whether tracking keeps up with the camera.
-  if (meta && Number.isFinite(meta.presentedFrames)) {
-    if (s.lastPresented !== null) s.skipped += Math.max(0, meta.presentedFrames - s.lastPresented - 1);
-    s.lastPresented = meta.presentedFrames;
-  }
-  s.frames += 1;
+  if (s.elapsed > 2) { s.fpsSum += s.camT.length / 2; s.fpsN += 1; }
 
   actx.drawImage(v, 0, 0, AW, AH);
   const img = actx.getImageData(0, 0, AW, AH);
@@ -293,13 +305,16 @@ function scanFrame(t, meta) {
   drawScanOverlay(g, rois, torso, neck, al);
   if (t - state.uiT > 150 || t < state.uiT) {
     state.uiT = t;
-    $('chips').innerHTML = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(c.label)}</span>`).join('');
-    $('coach').textContent = coachMessage(lm, checks, al);
+    const chipsHtml = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(c.label)}</span>`).join('');
+    if (chipsHtml !== s.chipsHtml) { $('chips').innerHTML = chipsHtml; s.chipsHtml = chipsHtml; }
+    const coach = coachMessage(lm, checks, al);
+    if ($('coach').textContent !== coach) $('coach').textContent = coach;
     const target = CONFIG.scan.targetUsableSeconds;
-    $('usableBar').style.width = `${Math.min(100, (s.usable / target) * 100)}%`;
+    $('usableBar').style.transform = `scaleX(${Math.min(1, s.usable / target).toFixed(3)})`;
     $('usableText').textContent = `${Math.floor(s.usable)} of ${target} usable seconds`;
     const skipPct = s.frames + s.skipped ? Math.round((100 * s.skipped) / (s.frames + s.skipped)) : 0;
-    $('fpsText').textContent = `Camera ${fps.toFixed(0)} fps · tracking ${Math.round(s.inferMs || 0)} ms per frame${skipPct ? ` · skipped ${skipPct}%` : ''}`;
+    const camFps = s.camT.length / 2;
+    $('fpsText').textContent = `Screen ${uiMeter.fps || '…'} fps · camera ${camFps.toFixed(0)} fps · analysed ${fps.toFixed(0)} fps · ${Math.round(s.inferMs || 0)} ms per frame${skipPct ? ` · skipped ${skipPct}%` : ''}`;
   }
   if (t - s.liveT > 1000) {
     s.liveT = t;
@@ -309,6 +324,21 @@ function scanFrame(t, meta) {
   const spent = performance.now() - tw0;
   s.inferMs = s.inferMs == null ? spent : 0.9 * s.inferMs + 0.1 * spent;
   if (s.usable >= CONFIG.scan.targetUsableSeconds || s.elapsed >= CONFIG.scan.maxElapsedSeconds) finishScan();
+}
+
+// Screen refresh meter: counts painted frames per second while the scan runs, so a slow page is visible.
+const uiMeter = { fps: 0, running: false };
+function startUiMeter() {
+  if (uiMeter.running) return;
+  uiMeter.running = true;
+  let n = 0, t0 = performance.now();
+  const tick = (now) => {
+    if (!state.scan || state.scan.finished || $('screen-scan').hidden) { uiMeter.running = false; uiMeter.fps = 0; return; }
+    n += 1;
+    if (now - t0 >= 1000) { uiMeter.fps = Math.round((n * 1000) / (now - t0)); n = 0; t0 = now; }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 function coachMessage(lm, checks, al) {
@@ -368,6 +398,7 @@ async function finishScan() {
   sess.alignRejects = Object.fromEntries(Object.entries(s.alignWorst).map(([k, v]) => [k, Math.round(v)]));
   sess.cameraFps = s.fpsN ? Math.round(s.fpsSum / s.fpsN) : null;
   sess.trackerMs = Math.round(s.inferMs || 0);
+  sess.halfRateFramesPct = s.frames ? Math.round((100 * s.strided) / s.frames) : 0;
   sess.skippedFramesPct = s.frames + s.skipped ? Math.round((100 * s.skipped) / (s.frames + s.skipped)) : 0;
   if (sess.kind === 'baseline' && s.tplCandidate) sess.template = s.tplCandidate;
   // A baseline needs a recorded face position (for the ghost); measurements can be retaken later.
@@ -694,3 +725,89 @@ $('btnSample').addEventListener('click', async () => {
 });
 
 show('home');
+
+/* ---------- mission board ---------- */
+const H_MS = 3600 * 1000;
+const pad2 = (n) => String(n).padStart(2, '0');
+const toLocalInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const fmtClock = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const prefs = {
+  get(k) { try { return JSON.parse(localStorage.getItem(`re.${k}`)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(`re.${k}`, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+};
+
+async function renderBoard() {
+  const sessions = await listSessions();
+  const c = consistency(sessions);
+  const body = $('checkupBody');
+  if (!c.total) {
+    body.innerHTML = '<p class="big-num">0</p><p>No checkups yet. A first checkup becomes your baseline; every later one is compared with it.</p><p><button type="button" class="btn primary" data-nav="setup">Start a baseline</button></p>';
+  } else {
+    const dots = Array.from({ length: 7 }, (_, i) => `<span class="dot ${i < c.daysThisWeek ? 'on' : ''}" aria-hidden="true"></span>`).join('');
+    const gap = c.timeGapMin;
+    const timeMsg = gap == null ? '' : gap <= 120
+      ? `<p class="okline">✓ Now is within 2 hours of your baseline time (${fmtClock(new Date(c.original.createdAt))}), so pulse and breathing compare fairly.</p>`
+      : `<p class="warnline">! Your baseline was taken at ${fmtClock(new Date(c.original.createdAt))}. Pulse changes over the day, so a checkup near that time compares best.</p>`;
+    body.innerHTML = `<p class="big-num">${c.daysThisWeek}<span class="unit"> of 7 days</span></p>
+      <div class="dots">${dots}</div>
+      <p>${c.total} checkup${c.total === 1 ? '' : 's'} saved, ${c.thisWeek} this week. Last one ${fmtDate(c.last.createdAt)}.</p>${timeMsg}
+      <p>${c.daysThisWeek >= 3 ? 'Steady rhythm. Regular checkups make real changes easier to spot.' : 'A few checkups a week at the same time of day give the clearest comparison.'}</p>`;
+  }
+  // Sleep form defaults: last saved values, else last night 23:00 to 07:00.
+  const saved = prefs.get('sleep');
+  const now = new Date();
+  const wake = new Date(now); wake.setHours(7, 0, 0, 0); if (wake > now) wake.setDate(wake.getDate() - 1);
+  const bed = new Date(+wake - 8 * H_MS);
+  $('sleepStart').value = saved?.start || toLocalInput(bed);
+  $('sleepEnd').value = saved?.end || toLocalInput(wake);
+  $('usualSleep').value = saved?.usual ?? '';
+  const days = prefs.get('radDays');
+  if (Number.isFinite(days)) $('radDays').value = days;
+  updateSleepTile(); updateRadTile();
+}
+
+function updateSleepTile() {
+  const start = new Date($('sleepStart').value), end = new Date($('sleepEnd').value);
+  const usualRaw = $('usualSleep').value;
+  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw) });
+  const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw === '' ? undefined : Number(usualRaw) });
+  const svg = $('sleepChart');
+  if (!r) { $('sleepBody').innerHTML = '<p class="warnline">! Check the times: waking must come after sleep, within 16 hours, and not in the future.</p>'; svg.innerHTML = ''; return; }
+  const read = r.asleepNow ? 'You are inside the sleep you entered, so the model shows pressure still falling.'
+    : r.band === 'below' ? 'Below the model\'s sleep band: sleep pressure is low for now.'
+      : r.band === 'within' ? 'Inside the model\'s sleep band: whether sleep comes easily now depends on the time of day.'
+        : 'Above the model\'s sleep band: the model expects strong sleepiness. Plan rest before demanding tasks.';
+  const short = r.sleptH < 6 ? '<p class="warnline">! Under 6 hours last night. In ISS astronauts, nights this short were linked to slower reaction test scores.</p>' : '';
+  $('sleepBody').innerHTML = `<p class="big-num">${r.s.toFixed(2)}<span class="unit"> sleep pressure (0 to 1)</span></p>
+    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h · usual ${r.usualH.toFixed(1)} h · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
+  // Chart: curve, threshold band, now marker.
+  const W = 600, Hh = 180, padL = 8, padR = 8, padT = 28, padB = 30;
+  const x = (t) => padL + ((t - r.from) / (r.to - r.from)) * (W - padL - padR);
+  const y = (v) => padT + (1 - v) * (Hh - padT - padB);
+  const pts = r.curve.map((p) => `${x(p.t).toFixed(1)},${y(p.s).toFixed(1)}`).join(' ');
+  const ticks = [];
+  for (let t = Math.ceil(r.from / (6 * H_MS)) * 6 * H_MS; t <= r.to; t += 6 * H_MS) {
+    ticks.push(`<text x="${Math.min(W - 30, Math.max(30, x(t))).toFixed(1)}" y="${Hh - 6}" class="ax" text-anchor="middle">${fmtClock(new Date(t))}</text>`);
+  }
+  svg.innerHTML = `<rect x="${padL}" y="${y(r.hi).toFixed(1)}" width="${W - padL - padR}" height="${(y(r.lo) - y(r.hi)).toFixed(1)}" class="band"/>
+    <text x="${W - padR - 4}" y="${(y(r.hi) - 6).toFixed(1)}" class="ax" text-anchor="end">sleep band</text>
+    <polyline points="${pts}" class="line"/>
+    <circle cx="${x(r.to).toFixed(1)}" cy="${y(r.s).toFixed(1)}" r="6" class="now"/>${ticks.join('')}`;
+}
+
+function updateRadTile() {
+  const days = Number($('radDays').value);
+  prefs.set('radDays', days);
+  $('radDaysOut').textContent = String(days);
+  const d = issMissionDose(days);
+  const pct = (f) => Math.min(100, f * 100);
+  $('radBar').style.left = `${pct(d.fracLow)}%`;
+  $('radBar').style.width = `${Math.max(0.8, pct(d.fracHigh) - pct(d.fracLow))}%`;
+  const over = d.high >= RADIATION.careerLimitMsv;
+  $('radBody').innerHTML = `<p class="big-num">${Math.round(d.low)} to ${Math.round(d.high)}<span class="unit"> mSv</span></p>
+    <p>That is ${Math.round(d.fracLow * 100)} to ${Math.round(d.fracHigh * 100)}% of NASA's ${RADIATION.careerLimitMsv} mSv career limit.${over ? ' <strong>The high estimate reaches or passes the limit.</strong>' : ''}</p>
+    <p class="fine">Beyond low Earth orbit, daily doses are higher; a Mars round trip could approach or pass this limit (see Evidence).</p>`;
+}
+
+$('sleepForm').addEventListener('input', updateSleepTile);
+$('radDays').addEventListener('input', () => requestAnimationFrame(updateRadTile));

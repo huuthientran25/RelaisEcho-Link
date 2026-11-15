@@ -3,8 +3,11 @@
 import { FACE_OVAL, LIPS_OUTER } from './geometry.js';
 
 export function mockLandmarker() {
+  // ?mock=1&slow=20 makes each detection take about 20 ms, to test the frame budget.
+  const slowMs = Number(new URLSearchParams(location.search).get('slow')) || 0;
   return {
     detectForVideo(_video, ts) {
+      if (slowMs) { const end = performance.now() + slowMs; while (performance.now() < end) { /* simulate a slow device */ } }
       const wob = 0.002 * Math.sin(ts / 700);
       const pts = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.4, z: 0 }));
       const set = (i, x, y) => { pts[i] = { x: x + wob, y, z: 0 }; };

@@ -15,6 +15,14 @@ export const CONFIG = {
     minFps: 12,
     motionHoldSlack: 1.3,      // same idea for the stillness check
   },
+  perf: {
+    // Face tracking runs on the same thread as the page. If it takes longer than this per frame,
+    // only every second camera frame is analysed so buttons, scrolling and the progress bar stay smooth.
+    // 15 analysed frames per second is still far above what a 3 Hz pulse needs.
+    workBudgetMs: 12,
+    workRecoverMs: 7,          // go back to every frame when work drops below this
+    cameraFps: 30,             // requested capture rate; more frames give no better pulse and cost exposure
+  },
   align: {
     centerTol: 0.10,           // face widths
     scaleTol: 0.07,            // relative apparent size
