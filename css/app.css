@@ -9,14 +9,14 @@
 @font-face { font-family: "Noto Sans Canadian Aboriginal"; font-weight: 700; font-style: normal; font-display: swap; src: url("../fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-700-normal.woff2") format("woff2"); unicode-range: U+1400-167F, U+18B0-18FF, U+11AB0-11ABF; }
 
 :root {
-  /* Light: warm ivory ground, charcoal ink, amber accent (from the RelaisÉcho logo). */
-  --ground: #F0E4D2; --panel: #F8F1E6; --soft: #E9DCC6; --ink: #17191C; --muted: #4A4339; --line: #CDBBA0;
-  --navy: #17191C; --on-solid: #F0E4D2;          /* structure: borders, headings, solid fills */
-  --blue: #8A4E00; --blue-tint: #F3DDB8; --blue-ink: #5E3500;   /* links and hover */
-  --accent: #EFA951; --on-accent: #17191C;       /* primary actions */
-  --alert: #9E2F28; --alert-tint: #F6DCD4; --alert-ink: #7E2520;
-  --ok-tint: #E9D7BC; --ok-ink: #17191C;
-  --bar: #17191C; --bar-ink: #F0E4D2;
+  /* Light: white and pale blue ground, deep teal ink, cyan accent (blue RelaisÉcho logo). */
+  --ground: #F4F8FA; --panel: #FFFFFF; --soft: #E6F0F4; --ink: #0B1F2A; --muted: #3E5563; --line: #C5D6DE;
+  --navy: #0B2230; --on-solid: #FFFFFF;          /* structure: borders, headings, solid fills */
+  --blue: #006A80; --blue-tint: #D9F4F8; --blue-ink: #00495A;   /* links and hover */
+  --accent: #1FD6EC; --on-accent: #0B1F2A;       /* primary actions */
+  --alert: #B3261E; --alert-tint: #FBE5E3; --alert-ink: #8C1D18;
+  --ok-tint: #DCECF2; --ok-ink: #0B1F2A;
+  --bar: #041D2B; --bar-ink: #FFFFFF; --own-fill: rgba(31, 214, 236, 0.22);
   --dark: #0F1012; --ghost: #7CF0A8; --roi: #FFD166; --torso: #9CC3F5;
   --radius: 6px;
   font-family: "Atkinson Hyperlegible", "Noto Sans Canadian Aboriginal", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
@@ -30,7 +30,7 @@
   --accent: #EFA951; --on-accent: #17191C;
   --alert: #FF8A7A; --alert-tint: #3A1E1A; --alert-ink: #FFC1B6;
   --ok-tint: #2C2A26; --ok-ink: #F0E4D2;
-  --bar: #101113; --bar-ink: #F0E4D2;
+  --bar: #101113; --bar-ink: #F0E4D2; --own-fill: rgba(239, 169, 81, 0.22);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -193,7 +193,7 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .crew-fig svg { width: 100%; height: auto; display: block; }
 .crew-fig figcaption { font-size: 15px; font-weight: 700; color: var(--navy); padding: 2px 4px; }
 .crew-fig .lab { fill: var(--soft); }
-.crew-fig .own { fill: rgba(239, 169, 81, 0.22); stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.crew-fig .own { fill: var(--own-fill); stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .crew-fig .flight { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .crew-fig .line { fill: none; stroke: var(--navy); stroke-width: 2; }
 .crew-fig .pt { fill: var(--navy); }
@@ -231,6 +231,6 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 @media (max-width: 560px) { .profile-bar { padding: 6px 12px; } }
 
 .brand img { width: 30px; height: 30px; display: block; }
-.hero-logo { width: 88px; height: 88px; background: var(--bar); border-radius: 18px; padding: 10px; margin-bottom: 8px; }
+.hero-logo { width: 96px; height: 96px; margin-bottom: 8px; display: block; }
 .cmp .change-map { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; }
 .dental-auto { margin: 10px 0; }

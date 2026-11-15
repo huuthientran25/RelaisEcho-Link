@@ -3,7 +3,7 @@
 export const EVIDENCE = {
   pulse: {
     title: 'Pulse estimate',
-    method: 'Tiny colour changes in forehead and cheek skin follow each heartbeat. The POS method separates that signal from lighting changes, then the strongest rhythm between 42 and 180 beats per minute is taken from 10 second windows. Windows with poor capture or a weak rhythm are rejected, not averaged in.',
+    method: 'Tiny colour changes in forehead and cheek skin follow each heartbeat. The POS method separates that signal from lighting changes, then the strongest rhythm between 42 and 180 beats per minute is taken from 10 second windows. Nine skin regions are tracked (forehead centre, sides and between the brows, upper and lower cheeks, chin); after the scan each is scored on its own, and the clearest up to five are pooled if that beats the standard forehead and cheeks estimate. Windows with poor capture or a weak rhythm are rejected, not averaged in.',
     source: 'Wang, den Brinker, Stuijk and de Haan, Algorithmic Principles of Remote PPG, IEEE Transactions on Biomedical Engineering, 2017.',
     limits: 'Our implementation is not clinically validated. Accuracy drops with movement and dim or flickering light. Published work finds it clearly worse on the darkest skin: one meta analysis reported mean error rising from about 4 beats per minute (Fitzpatrick types I to V) to about 14 (type VI). Cold skin has not been tested. It cannot give blood pressure, oxygen saturation or heart rhythm.',
   },
@@ -45,7 +45,7 @@ export const EVIDENCE = {
   },
   eyes: {
     title: 'Blinks and eye closure',
-    method: 'During the reaction test the front camera finds eyelid landmarks up to about 15 times a second. Eye opening is measured as lid height over eye width (eye aspect ratio). Your own open-eye value is learned in the first seconds; the eye counts as closed below 60% of it. Closures under half a second count as blinks, longer ones are counted separately.',
+    method: 'During the reaction test (optional) and the resting scan the camera finds eyelid landmarks, up to about 15 times a second in the test. Eye opening is measured as lid height over eye width (eye aspect ratio). Your own open-eye value is learned in the first seconds; the eye counts as closed below 60% of it. Closures under half a second count as blinks, longer ones are counted separately.',
     source: 'Eye aspect ratio: Soukupová and Čech, Real-time eye blink detection using facial landmarks, 2016. Long and frequent eye closures are a recognised sign of drowsiness in fatigue research; this app uses no published cut off.',
     limits: 'Not validated. Glasses, glare, dim light, looking down and low frame rates all affect it, and a 15 per second rate can miss very quick blinks. The thresholds are design choices. It does not diagnose drowsiness or any eye condition.',
   },

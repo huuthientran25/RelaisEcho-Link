@@ -1,10 +1,10 @@
 // RelaisÉcho Link app controller: screens, camera or file source, frame loop.
 import { CONFIG } from './config.js';
 import { getFaceLandmarker, getModelSource, detect } from './vision.js';
-import { faceGeometry, keypointArray, motionSpeed, pulseRois, torsoRoi, neckRoi, LIPS_OUTER } from './geometry.js';
+import { faceGeometry, keypointArray, motionSpeed, pulseRois, pulseRegions, PULSE_REGIONS, torsoRoi, neckRoi, LIPS_OUTER } from './geometry.js';
 import { roiMeanRGB, rowProfile } from './frame.js';
 import { makeTemplate, defaultTemplate, compareToTemplate } from './align.js';
-import { estimatePulse, livePulse, estimateWindow } from './pulse.js';
+import { estimatePulse, livePulse, estimateWindow, estimatePulseRegions } from './pulse.js';
 import { TorsoTracker, estimateRespMulti } from './resp.js';
 import { DentalCapture, VIEWS } from './dental.js';
 import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, setProfile, getProfile, countByProfile, allIds, DEFAULT_PROFILE } from './store.js';
@@ -236,7 +236,8 @@ async function startScan(src, file) {
     prevKp: null, speed: null, rejects: {}, alignWorst: {}, wasAligned: false, wasStill: false,
     template, tplCandidate: null, fpsT: [], liveT: 0, finished: false,
     frames: 0, skipped: 0, lastPresented: null, inferMs: null, fpsSum: 0, fpsN: 0,
-    camT: [], stride: 1, strided: 0, chipsHtml: '' };
+    camT: [], stride: 1, strided: 0, chipsHtml: '', regs: Object.fromEntries(PULSE_REGIONS.map((r) => [r.id, { label: r.label, samples: [] }])),
+    eyes: new EyeTracker() };
   startUiMeter();
   $('video').onended = () => finishScan();
   startLoop(scanFrame);
@@ -311,6 +312,17 @@ function scanFrame(t, meta) {
   for (const c of checks) if (!c.ok) s.rejects[c.key] = (s.rejects[c.key] || 0) + dt;
   if (ok) { s.usable += dt; s.tplCandidate = makeTemplate(lm, g); }
   if (rgb && rgb.n > 40) s.pulse.push({ t, r: rgb.r, g: rgb.g, b: rgb.b, ok });
+  // Every skin region on its own, one sample per frame, so they stay aligned for pooling later.
+  let regs = null;
+  if (g) {
+    regs = pulseRegions(lm, g);
+    for (const rg of regs) {
+      const m = roiMeanRGB(img, [rg.box]);
+      s.regs[rg.id].samples.push({ t, r: m.r, g: m.g, b: m.b, n: m.n, ok: ok && m.n > 20 && m.clippedFrac < 0.05 });
+    }
+  }
+  // Blinks during the resting scan (experimental).
+  s.eyes.push(t, lm ? eyeAspect(lm) : null);
   // Breathing channels. Head channels need only a face. Neck and torso channels need their box in frame.
   let breathCh = false;
   if (g) {
@@ -328,7 +340,7 @@ function scanFrame(t, meta) {
   if (g && !breathCh) checks.push({ key: 'torso', label: 'Neck and shoulders out of view', ok: false, soft: true });
   if (s.elapsed > 2 && fps >= q.minFps && fps < q.softFps) checks.push({ key: 'fpsSoft', label: `Low frame rate (${fps.toFixed(0)} fps), results less certain`, ok: false, soft: true });
 
-  drawScanOverlay(g, rois, torso, neck, al);
+  drawScanOverlay(g, regs ? regs.map((r) => r.box) : rois, torso, neck, al);
   if (t - state.uiT > 150 || t < state.uiT) {
     state.uiT = t;
     const chipsHtml = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(c.label)}</span>`).join('');
@@ -415,7 +427,8 @@ async function finishScan() {
   s.finished = true;
   stopLoop();
   const sess = state.session;
-  sess.pulse = estimatePulse(s.pulse);
+  sess.pulse = estimatePulseRegions(s.regs, estimatePulse(s.pulse));
+  sess.eyes = s.eyes.summary();
   sess.resp = estimateRespMulti(s.resp);
   sess.usableSeconds = s.usable;
   sess.elapsedSeconds = s.elapsed;
@@ -444,6 +457,7 @@ function resultCard(title, value, unit, r, evKey) {
     <p class="q-${q}">Quality: ${q}${r?.total != null ? ` · ${r.accepted} of ${r.total} windows accepted` : ''}${r?.seconds ? ` · ${Math.round(r.seconds)} usable s` : ''}</p>
     ${r?.channel ? `<p class="fine">Measured from: ${esc(CHANNEL_LABEL[r.channel] || r.channel)}${r.agreeing ? ` · ${r.agreeing} other channel${r.agreeing > 1 ? 's' : ''} agree` : ''}</p>` : ''}
     ${r?.channels?.length ? `<p class="fine">${r.channels.map((c) => `${esc(CHANNEL_LABEL[c.name] || c.name)}: ${c.rpm ?? 'none'}`).join(' · ')}</p>` : ''}
+    ${r?.regionsUsed ? `<p class="fine">Skin regions used: ${r.regionsUsed.map(esc).join(', ')} (${r.regionScores?.filter((x) => x.quality === 'high' || x.quality === 'medium').length ?? 0} of ${r.regionScores?.length ?? 0} gave a clear signal)</p>` : ''}
     ${r?.reason ? `<p class="fine">${esc(r.reason)}</p>` : ''}
     <button type="button" class="link-btn" data-evidence="${evKey}">Why this number? Evidence</button>`;
 }
@@ -455,6 +469,12 @@ async function renderResults() {
   drawWave(s.pulse);
   const { original, recent } = await baselineAndRecent(sess.id);
   let html = '';
+  if (sess.eyes && sess.eyes.trackedPct >= 50 && sess.eyes.blinksPerMin != null) {
+    const be = original?.eyes && original.eyes.blinksPerMin != null ? original.eyes : null;
+    html += `<div class="card"><h3>Eyes during the scan <span class="tag">EXPERIMENTAL</span></h3>
+      <p>${sess.eyes.blinksPerMin} blinks per minute · eyes closed ${sess.eyes.closedPct}% of the time · ${sess.eyes.longClosures} closure${sess.eyes.longClosures === 1 ? '' : 's'} of half a second or longer.${be ? ` Original baseline: ${be.blinksPerMin} blinks per minute, closed ${be.closedPct}%.` : ''}</p>
+      <p class="fine">Blink rate swings a lot from minute to minute and person to person, so this is shown, not judged. For a fatigue check, the 3 minute alertness test is more sensitive. <button type="button" class="link-btn" data-evidence="eyes">Evidence</button></p></div>`;
+  }
   if (sess.notComparable) html += `<p class="fine">${esc(sess.notComparable)}</p>`;
   if (!original) {
     html += sess.kind === 'baseline'
@@ -1107,7 +1127,10 @@ function applyTheme(dark) {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   $('btnTheme').setAttribute('aria-pressed', dark ? 'true' : 'false');
   $('btnTheme').textContent = dark ? 'Light' : 'Dark';
-  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#101113' : '#17191C');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#101113' : '#041D2B');
+  // Blue logo in light mode, amber logo in dark mode.
+  document.querySelector('.brand img').src = dark ? 'icons/logo-64.png' : 'icons/logo-blue-bar-64.png';
+  document.querySelector('.hero-logo').src = dark ? 'icons/logo-128.png' : 'icons/logo-blue-128.png';
 }
 const savedTheme = prefs.get('theme');
 applyTheme(savedTheme ? savedTheme === 'dark' : !!(darkQuery && darkQuery.matches));

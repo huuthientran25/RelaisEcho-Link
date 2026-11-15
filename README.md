@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.20 to v0.22, released together as v0.22 (15 Nov 2026)
+
+- **v0.20, blue light mode, amber dark mode.** Light mode now uses the blue logo and its colours: pale blue-white ground `#F4F8FA`, deep teal ink `#0B1F2A`, cyan `#1FD6EC` primary buttons, dark band `#041D2B` top bar. Dark mode keeps the amber logo and charcoal, ivory and amber. The logo in the top bar and on the home page switches with the mode. Checked contrast: ink 15.8:1, links 5.8:1, button text on cyan 9.6:1.
+- **v0.21, nine skin regions for the pulse** (was three): forehead centre, left and right, between the brows, upper and lower cheeks on each side, and chin. Each is scored separately after the scan; the clearest up to five are pooled when that beats the standard forehead and cheeks estimate. The result card lists which regions were used and how many gave a clear signal.
+- **v0.22, blinks during the resting scan.** Blinks per minute, percent of time eyes closed and long closures are now recorded during the scan too, shown next to the original baseline's values, without a fatigue verdict: blink rate varies too much over 30 seconds. The 3 minute alertness test remains the fatigue check.
+- 45 unit tests.
+
 ## Changes in v0.17 to v0.19, released together as v0.19 (15 Nov 2026)
 
 - **v0.17, new logo and amber palette.** The team's amber logo replaces the old mark (top bar, home page, app icons). Light mode: warm ivory `#F0E4D2` ground, charcoal `#17191C` ink, amber `#EFA951` primary buttons. Dark mode: charcoal ground, ivory ink, amber accents. Dark follows the device setting until the person picks Light or Dark (remembered); it replaces the earlier red night mode. Text pairs checked at 5.3:1 or better (links on ivory), most above 7:1.

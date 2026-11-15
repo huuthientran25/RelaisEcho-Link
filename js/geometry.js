@@ -51,14 +51,31 @@ export function motionSpeed(prevKp, kp, faceWidthNorm, dtSec) {
 
 // Skin regions for pulse: forehead and both cheeks, sized from face width. Pixel boxes.
 export function pulseRois(lm, g) {
+  return pulseRegions(lm, g).slice(0, 3).map((r) => r.box);
+}
+
+// Nine skin regions for the pulse. The first three are the classic forehead and cheeks; the
+// others add forehead sides, the area between the brows, upper cheeks and chin. Each region is
+// tracked on its own so the cleanest ones can be chosen after the scan (see pulse.js).
+// MediaPipe Face Mesh indices.
+export const PULSE_REGIONS = [
+  { id: 'forehead', label: 'forehead centre', i: KEY.foreheadMid, dy: -0.06, w: 0.34, h: 0.12 },
+  { id: 'cheekL', label: 'left cheek', i: KEY.cheekA, dy: 0, w: 0.15, h: 0.13 },
+  { id: 'cheekR', label: 'right cheek', i: KEY.cheekB, dy: 0, w: 0.15, h: 0.13 },
+  { id: 'foreheadL', label: 'forehead left', i: 108, dy: 0, w: 0.13, h: 0.10 },
+  { id: 'foreheadR', label: 'forehead right', i: 337, dy: 0, w: 0.13, h: 0.10 },
+  { id: 'glabella', label: 'between the brows', i: 9, dy: 0, w: 0.10, h: 0.08 },
+  { id: 'malarL', label: 'upper left cheek', i: 117, dy: 0.02, w: 0.12, h: 0.09 },
+  { id: 'malarR', label: 'upper right cheek', i: 346, dy: 0.02, w: 0.12, h: 0.09 },
+  { id: 'chin', label: 'chin', i: 199, dy: 0, w: 0.16, h: 0.08 },
+];
+
+export function pulseRegions(lm, g) {
   const fw = g.faceWidth;
-  const at = (i, dy = 0) => ({ x: lm[i].x * g.W, y: lm[i].y * g.H + dy * fw });
-  const box = (c, w, h) => ({ x: c.x - (w * fw) / 2, y: c.y - (h * fw) / 2, w: w * fw, h: h * fw });
-  return [
-    box(at(KEY.foreheadMid, -0.06), 0.34, 0.12),
-    box(at(KEY.cheekA), 0.15, 0.13),
-    box(at(KEY.cheekB), 0.15, 0.13),
-  ];
+  return PULSE_REGIONS.map((r) => {
+    const c = { x: lm[r.i].x * g.W, y: lm[r.i].y * g.H + r.dy * fw };
+    return { id: r.id, label: r.label, box: { x: c.x - (r.w * fw) / 2, y: c.y - (r.h * fw) / 2, w: r.w * fw, h: r.h * fw } };
+  });
 }
 
 // Upper torso box under the chin for breathing.

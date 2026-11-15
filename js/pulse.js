@@ -106,3 +106,35 @@ export function livePulse(samples, cfg = CONFIG.pulse) {
 }
 
 export { mean };
+
+// Region selection: estimate each skin region on its own, keep the regions whose signal is
+// clearly usable, pool them, and use the pooled result if it is better than the plain
+// three-region estimate. regions: { id: { label, samples: [{t, r, g, b, n, ok}] } }
+const QRANK = { high: 3, medium: 2, low: 1, none: 0 };
+export function estimatePulseRegions(regions, base, cfg = CONFIG.pulse) {
+  const scored = Object.entries(regions).map(([id, reg]) => {
+    const est = estimatePulse(reg.samples, cfg);
+    return { id, label: reg.label, quality: est.quality, snr: est.snrMedian, bpm: est.bpm };
+  });
+  const usable = scored.filter((r) => QRANK[r.quality] >= 2 && r.snr != null).sort((a, b) => b.snr - a.snr);
+  const chosen = usable.slice(0, 5);
+  let pooled = null;
+  if (chosen.length >= 2) {
+    const len = Math.min(...chosen.map((r) => regions[r.id].samples.length));
+    const samples = [];
+    for (let k = 0; k < len; k++) {
+      let r = 0, g = 0, b = 0, n = 0, ok = true;
+      for (const c of chosen) {
+        const s = regions[c.id].samples[k];
+        r += s.r * s.n; g += s.g * s.n; b += s.b * s.n; n += s.n; ok = ok && s.ok;
+      }
+      if (n) samples.push({ t: regions[chosen[0].id].samples[k].t, r: r / n, g: g / n, b: b / n, ok });
+    }
+    pooled = estimatePulse(samples, cfg);
+  }
+  const better = pooled && (QRANK[pooled.quality] > QRANK[base.quality]
+    || (QRANK[pooled.quality] === QRANK[base.quality] && (pooled.snrMedian ?? -99) > (base.snrMedian ?? -99)));
+  const result = better ? pooled : base;
+  return { ...result, regionsUsed: better ? chosen.map((c) => c.label) : ['forehead centre', 'left cheek', 'right cheek'],
+    regionScores: scored.map((r) => ({ label: r.label, quality: r.quality, snrDb: r.snr == null ? null : Math.round(r.snr * 10) / 10, bpm: r.bpm })) };
+}

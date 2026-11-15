@@ -1,7 +1,7 @@
 // Offline cache for the app shell, the MediaPipe runtime and (if bundled) the face model.
-const CACHE = 'relaisecho-v19';
+const CACHE = 'relaisecho-v22';
 const SHELL = [
-  './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/logo-64.png', 'icons/logo-128.png', 'icons/icon-192.png', 'icons/icon-512.png',
+  './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/logo-64.png', 'icons/logo-128.png', 'icons/logo-blue-128.png', 'icons/logo-blue-bar-64.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/main.js', 'js/config.js', 'js/vision.js', 'js/geometry.js', 'js/frame.js', 'js/align.js',
   'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
   'fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-400-normal.woff2', 'fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-700-normal.woff2',
