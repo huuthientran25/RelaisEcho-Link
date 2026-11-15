@@ -241,8 +241,8 @@ import { readFileSync } from 'node:fs';
     const old = buildPacket({ ...base, context: { symptoms: '' } }, { original: null, recent: [] }).packet; // records made before the checklist existed
     assert.deepEqual(old.self_report_checklist, []);
     const csv = resultsCsv([{ ...base, context: { checklist: ['sleep', 'mouth'] } }]);
-    assert.match(csv.split('\n')[0], /symptoms_ticked,eye_grid_right_marked,eye_grid_left_marked$/);
-    assert.match(csv.split('\n')[1], /"sleep mouth","",""$/);
+    assert.match(csv.split('\n')[0], /symptoms_ticked,eye_grid_right_marked,eye_grid_left_marked,acuity_right_logmar,acuity_left_logmar,acuity_distance_m$/);
+    assert.match(csv.split("\n")[1], /"sleep mouth","","","","",""$/);
     assert.ok(makeDemoSessions(new Date('2026-11-15T12:00:00Z')).some((x) => x.context?.checklist?.includes('mouth')));
   });
 }

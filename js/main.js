@@ -20,7 +20,7 @@ import { applyLang, phrase } from './i18n.js';
 import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS } from './change.js';
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
 import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from './crew.js';
-import { eyeAspect, EyeTracker } from './eyes.js';
+import { eyeAspect, EyeTracker, lidOpeningMm, summarizeLids, compareLids, LID } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
 import { makeDemoSessions, makeDemoExp, SCENARIOS, DEMO_PROFILE, DEMO_NAME } from './demo.js';
@@ -32,6 +32,7 @@ import { featureList, fpsFromTimes, median, verdicts, overall, reportText } from
 import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType } from './reel.js';
 import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
 import { initExp } from './expui.js';
+import { ACUITY, optoMm, snellen, floorLogmar, AcuityRun, compareAcuity, acuityForPacket } from './acuity.js';
 import { expForPacket, checkTitle, CHECKS as EXP_CHECKS } from './exp.js';
 import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay } from './overview.js';
 import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
@@ -73,7 +74,7 @@ const pvt = { running: false }; // alertness test state; declared early because 
 const dev = { r: { env: {} }, meta: {}, running: false, stream: null, token: null }; // device check state; show() reads it too
 let expApi = null; // experimental checks controller, set up at the end of this file
 const TAB_OF = { overview: 'overview', setup: 'setup', scan: 'setup', results: 'setup', dental: 'setup', compare: 'setup', packet: 'setup',
-  board: 'board', alertness: 'board', crew: 'board', vision: 'board', exp: 'exp', history: 'history' };
+  board: 'board', alertness: 'board', crew: 'board', vision: 'board', acuity: 'board', exp: 'exp', history: 'history' };
 function show(name) {
   state.screen = name;
   document.querySelectorAll('.tabs [data-tab]').forEach((b) => { if (b.dataset.tab === TAB_OF[name]) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
@@ -89,6 +90,7 @@ function show(name) {
   if (name === 'crew') renderCrew();
   if (name !== 'device') devStop();
   if (name === 'vision') visReset();
+  if (name === 'acuity') acReset();
   if (name !== 'exp') expApi?.stop();
   if (name === 'exp') expApi?.reset();
   if (name === 'privacy') renderPrivacy();
@@ -310,7 +312,7 @@ async function startScan(src, file) {
     template, tplCandidate: null, fpsT: [], liveT: 0, finished: false,
     frames: 0, skipped: 0, lastPresented: null, inferMs: null, fpsSum: 0, fpsN: 0,
     camT: [], stride: 1, strided: 0, chipsHtml: '', regs: Object.fromEntries(PULSE_REGIONS.map((r) => [r.id, { label: r.label, samples: [] }])),
-    eyes: new EyeTracker() };
+    eyes: new EyeTracker(), lids: [] };
   startUiMeter();
   $('video').onended = () => finishScan();
   startLoop(scanFrame);
@@ -396,6 +398,7 @@ function scanFrame(t, meta) {
   }
   // Blinks during the resting scan (experimental).
   s.eyes.push(t, lm ? eyeAspect(lm) : null);
+  if (lm && ok) s.lids.push(lidOpeningMm(lm, AW, AH));
   // Breathing channels. Head channels need only a face. Neck and torso channels need their box in frame.
   let breathCh = false;
   if (g) {
@@ -536,6 +539,7 @@ async function finishScan() {
   const sess = state.session;
   sess.pulse = estimatePulseRegions(s.regs, estimatePulse(s.pulse));
   sess.eyes = s.eyes.summary();
+  sess.eyelid = summarizeLids(s.lids);
   sess.resp = estimateRespMulti(s.resp);
   sess.usableSeconds = s.usable;
   sess.elapsedSeconds = s.elapsed;
@@ -581,6 +585,14 @@ async function renderResults() {
     html += `<div class="card"><h3>Eyes during the scan <span class="tag">EXPERIMENTAL</span></h3>
       <p>${sess.eyes.blinksPerMin} blinks per minute · eyes closed ${sess.eyes.closedPct}% of the time · ${sess.eyes.longClosures} closure${sess.eyes.longClosures === 1 ? '' : 's'} of half a second or longer.${be ? ` Original baseline: ${be.blinksPerMin} blinks per minute, closed ${be.closedPct}%.` : ''}</p>
       <p class="fine">Blink rate swings a lot from minute to minute and person to person, so this is shown, not judged. For a fatigue check, the 3 minute alertness test is more sensitive. <button type="button" class="link-btn" data-evidence="eyes">Evidence</button></p></div>`;
+  }
+  if (sess.eyelid) {
+    const bl = original && original.id !== sess.id ? original.eyelid : null;
+    const lc = compareLids(sess.eyelid, bl);
+    html += `<div class="card"><h3>Eye opening <span class="tag">EXPERIMENTAL</span></h3>
+      <p>${lc.rows.map((r) => `${r.side === 'right' ? 'Right' : 'Left'} eye ${r.today ?? '-'} mm${r.base != null ? ` (baseline ${r.base} mm${r.outside ? ', <strong>different</strong>' : ''})` : ''}`).join(' · ')}</p>
+      <p class="${lc.verdict === 'different' ? 'warnline' : 'fine'}">${lc.verdict === 'reference' ? 'Saved with your baseline; later checkups are compared with it.' : lc.verdict === 'different' ? `! An eyelid sits more than ${LID.bandMm} mm higher or lower than at your baseline. Squinting, light and tiredness change this; if it stays, or one lid droops, tell a clinician.` : `Within ${LID.bandMm} mm of your baseline.`}</p>
+      <p class="fine">Gap between the lids with eyes open, scaled by an assumed 11.7 mm iris. <button type="button" class="link-btn" data-evidence="lids">Evidence</button></p></div>`;
   }
   if (sess.notComparable) html += `<p class="fine">${esc(sess.notComparable)}</p>`;
   if (!original) {
@@ -847,8 +859,11 @@ async function renderPacket() {
   }
   const visAll = (await listSessions()).filter((x) => x.kind === 'vision' && x.vision);
   const visRec = visAll.filter((x) => Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 7 * 24 * 3600 * 1000).pop() || null;
+  const acAll = (await listSessions()).filter((x) => x.kind === 'acuity' && x.acuity);
+  const acRec = acAll.filter((x) => Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 14 * 24 * 3600 * 1000).pop() || null;
+  const acuity = acRec ? acuityForPacket(acRec, acAll.find((x) => x.acuity.distanceMm === acRec.acuity.distanceMm)) : null;
   const experimental = expForPacket(await listSessions(), { now: new Date(sess.createdAt), includeImages: $('includeImages').checked });
-  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]), experimental });
+  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]), experimental, acuity });
   $('packetText').textContent = packetText(lastPacket.packet);
   renderPacketStatus(sess);
   gzipText(lastPacket.json).then((gz) => {
@@ -900,10 +915,13 @@ async function renderHistory() {
   const visLine = (s) => `<div class="hist-item"><span><strong>eye grid</strong> · ${fmtDate(s.createdAt)}</span>
       <span>Right eye: ${esc(amsSummary(s.vision?.right).text)} · Left eye: ${esc(amsSummary(s.vision?.left).text)}</span>
       <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
+  const acLine = (s) => `<div class="hist-item"><span><strong>eye chart</strong> · ${fmtDate(s.createdAt)} · ${s.acuity.distanceMm / 1000} m</span>
+      <span>Right ${esc(s.acuity.right?.snellen ?? '-')} · Left ${esc(s.acuity.left?.snellen ?? '-')}</span>
+      <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
   const expLine = (s) => `<div class="hist-item"><span><strong>experimental</strong> · ${esc(checkTitle(s.exp.check))} · ${fmtDate(s.createdAt)}</span>
       <span>${s.exp.ok ? 'measured' : `no result: ${esc(s.exp.reason || '')}`}</span>
       <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
-  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : s.kind === 'exp' && s.exp ? expLine(s) : `<div class="hist-item">
+  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : s.kind === 'exp' && s.exp ? expLine(s) : s.kind === 'acuity' && s.acuity ? acLine(s) : `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
       ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
@@ -1000,6 +1018,7 @@ async function renderBoard() {
   updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile(); expApi?.renderTile();
   renderAlertTile();
   renderCrewTile();
+  renderBedTile();
 }
 
 function updateSleepTile() {
@@ -1666,6 +1685,7 @@ function reviewHtml(p) {
       ${c.recent?.length ? `<p class="fine">Recent: ${c.recent.map((x) => `${when(x.date)} pulse ${x.pulse_bpm ?? '-'}, breathing ${x.breathing_per_min ?? '-'}`).join(' · ')}</p>` : ''}
       ${p.alertness ? `<p><strong>Alertness test</strong> ${when(p.alertness.date)}: median ${esc(p.alertness.median_ms)} ms, ${esc(p.alertness.lapses)} lapses, ${esc(p.alertness.false_starts)} false starts <span class="fine">(${esc(p.alertness.label)})</span></p>` : ''}
       ${p.vision_self_check ? `<p><strong>Eye grid self check</strong> ${when(p.vision_self_check.date)}: right eye ${esc(p.vision_self_check.right_eye)}; left eye ${esc(p.vision_self_check.left_eye)}.${p.vision_self_check.new_vs_reference ? ` <span class="${p.vision_self_check.new_vs_reference.right + p.vision_self_check.new_vs_reference.left ? 'warnline' : ''}">New against the reference of ${when(p.vision_self_check.new_vs_reference.reference_date)}: right ${esc(p.vision_self_check.new_vs_reference.right)}, left ${esc(p.vision_self_check.new_vs_reference.left)} squares.</span>` : ' First check, so nothing to compare with.'} <span class="fine">(${esc(p.vision_self_check.label)})</span></p>` : ''}
+      ${p.acuity_self_check ? `<p><strong>Eye chart self check</strong> ${when(p.acuity_self_check.date)} at ${esc(p.acuity_self_check.distance_m)} m: ${['right_eye', 'left_eye'].map((k) => { const e = p.acuity_self_check[k]; return e ? `${k === 'right_eye' ? 'right' : 'left'} ${esc(e.snellen)} (logMAR ${esc(e.logmar)}${e.at_screen_limit ? ', screen limit' : ''}; <span class="${e.vs_first === 'worse' ? 'warnline' : ''}">${esc(e.vs_first)}</span>)` : ''; }).filter(Boolean).join('; ')} <span class="fine">(${esc(p.acuity_self_check.label)}${p.acuity_self_check.screen_calibrated ? '' : '; screen not calibrated'})</span></p>` : ''}
       ${(p.experimental_checks || []).length ? `<h3>Experimental checks</h3><p class="fine">Each compared only with the person's own first check. Not validated, not a diagnosis. The pulse timing and colour indexes are not blood pressure or oxygen saturation.</p><ul>${p.experimental_checks.map((x) => `<li><strong>${esc(x.title)}</strong> ${when(x.date)}: ${Object.entries(x.values || {}).filter(([, v]) => v != null).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(', ')}${x.differs?.length ? ` <span class="warnline">· differs from first check: ${x.differs.map(esc).join(', ')}</span>` : x.verdict === 'reference' ? ' · first check' : ' · no change beyond bands'}${x.images ? `<div class="exp-photos">${Object.entries(x.images).map(([k, src]) => safeImage(src) ? `<figure><img src="${safeImage(src)}" alt="${esc(x.title)} photo (${esc(k)})"><figcaption class="fine">${esc(k)}</figcaption></figure>` : '').join('')}</div>` : ''}</li>`).join('')}</ul>` : ''}
       ${p.self_report_urgent ? `<p class="warnline">! The person ticked chest pain or shortness of breath. ${esc(URGENT_TEXT)}</p>` : ''}
       ${p.self_report_checklist?.length ? `<p><strong>Symptoms ticked:</strong> ${p.self_report_checklist.map(esc).join(', ')}</p>` : ''}
@@ -2203,6 +2223,8 @@ function renderDelay() {
 
 /* ---------- eye grid (Amsler) ---------- */
 const vis = { step: 'intro', eye: 'right', cells: { right: new Set(), left: new Set() }, cursor: Math.floor(AMS_N / 2) * AMS_N + Math.floor(AMS_N / 2), size: null, paint: null };
+// Page zoom from the text size buttons: true sizes (mm) must be divided by it, because the page is scaled.
+const pageZoom = () => Number(getComputedStyle(document.documentElement).getPropertyValue('--page-zoom')) || 1;
 const visPxPerMm = () => { const v = Number(prefs.get('pxPerMm')); return v >= 2 && v <= 12 ? v : DEFAULT_PX_PER_MM; };
 const visRecords = async () => (await listSessions()).filter((x) => x.kind === 'vision' && x.vision);
 function visGridSvg(size, cells, { ref = [], cursor = null, fresh = [] } = {}) {
@@ -2228,7 +2250,7 @@ function visReset() {
   $('visIntro').hidden = false; $('visRun').hidden = true; $('visResult').hidden = true;
   const ppm = visPxPerMm();
   $('visScale').value = ppm;
-  $('visCard').style.width = `${(CARD_MM * ppm).toFixed(1)}px`;
+  $('visCard').style.width = `${((CARD_MM * ppm) / pageZoom()).toFixed(1)}px`;
   $('visCalNote').textContent = prefs.get('pxPerMm') ? 'A saved size is in use on this device.' : 'Using the default size. On phones and some laptops the grid then comes out smaller or larger than 10 cm.';
 }
 function visEye(eye) {
@@ -2236,7 +2258,7 @@ function visEye(eye) {
   vis.cursor = Math.floor(AMS_N / 2) * AMS_N + Math.floor(AMS_N / 2); // the keyboard cursor starts beside the centre dot for each eye
   $('visIntro').hidden = true; $('visResult').hidden = true; $('visRun').hidden = false;
   const wrap = $('visGridWrap');
-  vis.size = gridSize(visPxPerMm(), Math.min(wrap.clientWidth || 320, window.innerHeight - 40) - 8);
+  vis.size = gridSize(visPxPerMm() / pageZoom(), Math.min(wrap.clientWidth || 320, window.innerHeight / pageZoom() - 40) - 8);
   const other = eye === 'right' ? 'left' : 'right';
   $('visEyeTitle').textContent = `${eye === 'right' ? 'Right' : 'Left'} eye: cover your ${other} eye`;
   $('visEyeHelp').textContent = `Hold the screen about ${vis.size.readCm} cm from your eye. Look only at the dot in the middle. Without moving your eye, mark any squares where the lines look wavy, blurred, dim or missing.`;
@@ -2289,7 +2311,7 @@ $('visGrid').addEventListener('blur', visDraw);
 $('btnVisClear').addEventListener('click', () => { vis.cells[vis.eye].clear(); visDraw(); });
 $('btnVisStart').addEventListener('click', () => visEye('right'));
 $('btnVisNext').addEventListener('click', () => { if (vis.eye === 'right') visEye('left'); else visFinish(); });
-$('visScale').addEventListener('input', (e) => { $('visCard').style.width = `${(CARD_MM * Number(e.target.value)).toFixed(1)}px`; });
+$('visScale').addEventListener('input', (e) => { $('visCard').style.width = `${((CARD_MM * Number(e.target.value)) / pageZoom()).toFixed(1)}px`; });
 $('btnVisCal').addEventListener('click', () => { prefs.set('pxPerMm', Number($('visScale').value)); $('visCalNote').textContent = 'Saved. The grid is now drawn at true size where the screen is large enough.'; });
 $('btnVisCalReset').addEventListener('click', () => { prefs.set('pxPerMm', null); visReset(); });
 async function visFinish() {
@@ -2322,9 +2344,10 @@ async function visFinish() {
 async function renderEyeTile() {
   const recs = await visRecords();
   const body = $('eyeBody');
+  const acLine = await acTileLine();
   if (!recs.length) {
-    body.innerHTML = `<p>A one minute per eye grid check. On the ISS, crew vision checks include an Amsler grid like this one, because spaceflight can change the back of the eye.</p>
-      <p><button type="button" class="btn primary" data-nav="vision">Do the eye grid</button></p>`;
+    body.innerHTML = `<p>A one minute per eye grid check and a letter chart. On the ISS, crew vision checks include an Amsler grid and a visual acuity chart, because spaceflight can change the back of the eye.</p>
+      <p><button type="button" class="btn primary" data-nav="vision">Do the eye grid</button> <button type="button" class="btn" data-nav="acuity">Eye chart</button></p>${acLine}`;
     return;
   }
   const last = recs[recs.length - 1], ref = recs.length > 1 ? recs[0] : null;
@@ -2333,7 +2356,7 @@ async function renderEyeTile() {
   body.innerHTML = `<p class="big-num">${r.count + l.count}<span class="unit"> square${r.count + l.count === 1 ? '' : 's'} marked, both eyes</span></p>
     <p>Right eye ${r.count} · left eye ${l.count} · ${fmtDate(last.createdAt)}</p>
     <p class="${fresh ? 'warnline' : 'okline'}">${!ref ? 'This is your reference check.' : fresh ? `! ${fresh} square${fresh === 1 ? '' : 's'} marked that ${fresh === 1 ? 'was' : 'were'} clear in your reference. Repeat the check; if it stays, tell your clinician.` : '✓ No new marks against your reference.'}</p>
-    <p><button type="button" class="btn" data-nav="vision">Check again</button></p>`;
+    <p><button type="button" class="btn" data-nav="vision">Check again</button> <button type="button" class="btn" data-nav="acuity">Eye chart</button></p>${acLine}`;
 }
 
 /* ---------- your data ---------- */
@@ -2535,3 +2558,113 @@ $('btnOvClock').addEventListener('click', () => {
 });
 $('btnOvClockClear').addEventListener('click', () => { prefs.set('missionClock', null); $('ovStart').value = ''; $('ovLen').value = ''; renderOverview(); });
 $('btnOvPrint').addEventListener('click', () => window.print());
+
+/* ---------- eye chart (tumbling E, js/acuity.js) ---------- */
+const ac = { eye: 'right', run: null, res: {}, dist: 1000, ppm: DEFAULT_PX_PER_MM, floor: 0, startT: 0 };
+const acRecords = async () => (await listSessions()).filter((x) => x.kind === 'acuity' && x.acuity);
+const acRefFor = (list, rec) => list.find((x) => x.id !== rec.id && x.acuity.distanceMm === rec.acuity.distanceMm) || null;
+function acLimitText() {
+  ac.dist = Number(document.querySelector('input[name=acDist]:checked')?.value) || 1000;
+  ac.ppm = visPxPerMm();
+  ac.floor = floorLogmar(ac.ppm, ac.dist);
+  const cal = !!prefs.get('pxPerMm');
+  $('acLimit').textContent = ac.floor == null ? 'This screen is too small for the chart at this distance; choose a longer distance.'
+    : `At ${ac.dist / 1000} m this screen can draw letters down to logMAR ${ac.floor.toFixed(1)} (${snellen(ac.floor)}).${ac.floor > 0 ? ' Normal adult vision is often better than that, so a perfect score here means "at least this good", not 20/20.' : ''}${cal ? '' : ' Screen not calibrated: sizes assume a standard desktop pixel.'}`;
+  $('btnAcStart').disabled = ac.floor == null;
+}
+function acReset() {
+  const saved = Number(prefs.get('acDist')) || 1000;
+  $('acDistSet').innerHTML = '<legend>Your eyes\' distance from the screen</legend>' + ACUITY.distancesMm.map((d) => `<label><input type="radio" name="acDist" value="${d}" ${d === saved ? 'checked' : ''}> ${d / 1000} m${d === 400 ? ' (phone in hand)' : d === 1000 ? ' (laptop, arm out plus a bit)' : ' (across a small room; a helper presses the answers)'}</label>`).join('');
+  $('acIntro').hidden = false; $('acRun').hidden = true; $('acResult').hidden = true;
+  ac.res = {}; ac.run = null;
+  acLimitText();
+}
+$('acDistSet').addEventListener('change', () => { prefs.set('acDist', Number(document.querySelector('input[name=acDist]:checked').value)); acLimitText(); });
+function acEye(eye) {
+  ac.eye = eye;
+  ac.run = new AcuityRun(ac.floor);
+  $('acIntro').hidden = true; $('acResult').hidden = true; $('acRun').hidden = false;
+  $('acEyeTitle').textContent = `${eye === 'right' ? 'Right' : 'Left'} eye: cover your ${eye === 'right' ? 'left' : 'right'} eye with your palm`;
+  acDraw();
+  $('acEyeTitle').focus({ preventScroll: true });
+  $('acStage').scrollIntoView({ block: 'center' });
+}
+const AC_ROT = { right: 0, down: 90, left: 180, up: 270 };
+function acDraw() {
+  const r = ac.run;
+  const px = Math.max(ACUITY.minPx, Math.round((optoMm(r.logmar, ac.dist) * ac.ppm) / pageZoom()));
+  const e = $('acE');
+  e.setAttribute('width', px); e.setAttribute('height', px);
+  $('acEg').setAttribute('transform', `rotate(${AC_ROT[r.target]} 2.5 2.5)`);
+  $('acProgress').textContent = `Line ${r.lines.indexOf(r.logmar) + 1} of ${r.lines.length} · letter ${r.pos + 1} of ${ACUITY.perLine}`;
+}
+function acAnswer(dir) {
+  if (!ac.run || ac.run.done || $('acRun').hidden) return;
+  ac.run.answer(dir);
+  if (!ac.run.done) { acDraw(); return; }
+  ac.res[ac.eye] = ac.run.score();
+  if (ac.eye === 'right') acEye('left'); else acFinish();
+}
+$('acRun').addEventListener('click', (e) => { const b = e.target.closest('[data-ac]'); if (b) acAnswer(b.dataset.ac); });
+document.addEventListener('keydown', (e) => {
+  if (state.screen !== 'acuity' || $('acRun').hidden) return;
+  const k = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', ' ': 'nope' }[e.key];
+  if (k) { e.preventDefault(); acAnswer(k); }
+});
+async function acFinish() {
+  const rec = { id: newId(), createdAt: new Date().toISOString(), kind: 'acuity', source: 'device', complete: false,
+    acuity: { right: ac.res.right, left: ac.res.left, distanceMm: ac.dist, pxPerMm: Math.round(ac.ppm * 100) / 100, calibrated: !!prefs.get('pxPerMm'), floor: ac.floor } };
+  await saveSession(rec);
+  const list = await acRecords();
+  const ref = acRefFor(list, rec);
+  $('acRun').hidden = true; $('acResult').hidden = false;
+  const eyeRow = (e) => {
+    const t = rec.acuity[e], c = compareAcuity(t, ref?.acuity?.[e]);
+    const vs = c.verdict === 'reference' ? 'first check at this distance' : c.verdict === 'worse' ? `${Math.abs(c.lines)} lines worse than your first check` : c.verdict === 'better' ? `${Math.abs(c.lines)} lines better than your first check` : 'within 2 lines of your first check';
+    return `<tr><th scope="row">${e === 'right' ? 'Right' : 'Left'} eye</th><td>${t.logmar.toFixed(2)}</td><td>${esc(t.snellen)}${t.atScreenLimit ? ' or better (screen limit)' : ''}</td><td class="${c.verdict === 'worse' ? 'warnline' : ''}">${vs}</td></tr>`;
+  };
+  const worse = ['right', 'left'].some((e) => compareAcuity(rec.acuity[e], ref?.acuity?.[e]).verdict === 'worse');
+  $('acResult').innerHTML = `<div class="card result"><p><span class="tag">EXPERIMENTAL</span> <span class="tag">SHOWN, NOT JUDGED</span></p>
+    <h2>Eye chart result</h2>
+    <table><thead><tr><th scope="col">Eye</th><th scope="col">logMAR</th><th scope="col">Snellen</th><th scope="col">Against your first check</th></tr></thead><tbody>${eyeRow('right')}${eyeRow('left')}</tbody></table>
+    <p class="fine">logMAR: 0 is 20/20; each 0.1 higher is one line larger. Distance ${ac.dist / 1000} m${rec.acuity.calibrated ? ', calibrated screen' : ', screen not calibrated'}.</p>
+    ${worse ? '<p class="warnline">! Two or more lines worse can come from a different distance, light, tiredness or glasses. Repeat the check the same way. If it stays, tell your clinician; if it came on suddenly, treat it as urgent.</p>' : ''}
+    <p class="fine">Saved on this device. The latest result from the last 14 days goes into your next review packet. <button type="button" class="link-btn" data-evidence="acuity">Evidence</button></p>
+    <div class="row"><button type="button" class="btn primary" data-nav="board">Back to the board</button><button type="button" class="btn" data-nav="acuity">Check again</button></div></div>`;
+  $('acResult').scrollIntoView({ block: 'start' });
+}
+$('btnAcStart').addEventListener('click', () => { acLimitText(); if (ac.floor != null) acEye('right'); });
+async function acTileLine() {
+  const list = await acRecords();
+  if (!list.length) return '';
+  const last = list[list.length - 1], ref = acRefFor(list, last);
+  const f = (e) => (last.acuity[e] ? `${e === 'right' ? 'right' : 'left'} ${last.acuity[e].snellen}` : '');
+  const worse = ['right', 'left'].some((e) => compareAcuity(last.acuity[e], ref?.acuity?.[e]).verdict === 'worse');
+  return `<p class="${worse ? 'warnline' : ''}">Eye chart ${fmtDate(last.createdAt)}: ${f('right')}, ${f('left')}${worse ? ' · ! 2 or more lines worse than your first check' : ''}</p>`;
+}
+
+/* ---------- NASA bed rest plasma volume (data/bedrest-pv.json, built by scripts/build_bedrest.py) ---------- */
+let bedData = null;
+async function renderBedTile() {
+  try { if (!bedData) bedData = await (await fetch('data/bedrest-pv.json')).json(); }
+  catch { $('bedBody').innerHTML = '<p class="fine">Bed rest data not available offline yet.</p>'; return; }
+  const bins = bedData.bins;
+  const W = 520, H = 210, L = 46, R = 10, T = 14, B = 46;
+  const lo = Math.min(-30, ...bins.map((b) => b.q1_pct)), hi = 5;
+  const y = (v) => T + ((hi - v) / (hi - lo)) * (H - T - B);
+  const bw = (W - L - R) / bins.length;
+  let g = `<line x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" class="baseline"/>`;
+  for (const v of [0, -10, -20, -30]) if (v >= lo) g += `<text x="${L - 6}" y="${(y(v) + 5).toFixed(1)}" class="ax" text-anchor="end">${v}%</text>`;
+  bins.forEach((b, i) => {
+    const cx = L + bw * i + bw / 2, w = bw * 0.46;
+    g += `<rect x="${(cx - w / 2).toFixed(1)}" y="${y(0).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1, y(b.median_pct) - y(0)).toFixed(1)}" class="${i === bins.length - 1 ? 'bar-post' : 'bar'}"/>`;
+    g += `<line x1="${cx}" x2="${cx}" y1="${y(b.q3_pct).toFixed(1)}" y2="${y(b.q1_pct).toFixed(1)}" class="whisk"/>`;
+    g += `<text x="${cx}" y="${H - 26}" class="ax" text-anchor="middle">${esc(b.label.replace('After bed rest (days 0 to 3)', 'After').replace('Days ', ''))}</text><text x="${cx}" y="${H - 8}" class="ax" text-anchor="middle">n ${b.n}</text>`;
+  });
+  const first = bins[0], all = bins.slice(0, -1);
+  const below = all.reduce((a, b) => a + b.below_own_pre_min, 0), n = all.reduce((a, b) => a + b.n, 0);
+  $('bedBody').innerHTML = `<p class="big-num">${first.median_pct}%<span class="unit"> median plasma volume in the first week</span></p>
+    <svg class="spark bed-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Median change in plasma volume against each person's own pre bed rest value: ${bins.map((b) => `${b.label} ${b.median_pct} percent, n ${b.n}`).join('; ')}">${g}</svg>
+    <p>${below} of ${n} person-windows during bed rest sat below that person's own lowest value before bed rest. The fluid shift starts in the first week and is partly reversed within days of getting up (median ${bins.at(-1).median_pct}%).</p>
+    <p class="fine">${bedData.people} people from ${bedData.campaigns.length} NASA campaigns, pooled across exercise and control groups. Bars: median; lines: middle half. This is why the app compares you with your own baseline.</p>`;
+}

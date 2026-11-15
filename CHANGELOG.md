@@ -2,6 +2,15 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## Changes in v0.60 (15 Nov 2026)
+
+- **Eye chart (visual acuity), one eye at a time.** Tumbling E letters, five a line, 0.1 logMAR between lines, scored per letter the way research letter charts are (0.02 logMAR per letter). Letter sizes come from the chosen distance (0.4, 1 or 2 m) and the bank card screen calibration; the app works out the smallest line the screen can draw and says when a result sits at that limit. Each eye is compared with the first check at the same distance; 2 lines or more reads "different". Arrow buttons, arrow keys or a helper. Results go to the Board eye tile, Overview (eyes), History, CSV, the packet, the nurse view and "Read first". ISS vision checks include acuity; this completes that pair with the eye grid.
+- **Eye opening in mm** during the resting scan: the lid gap on each eye (open-eye value, blinks excluded), iris scaled, compared with the original baseline (1 mm band). Shown on the results screen, in the packet and on the Overview.
+- **Fix:** true-size drawings (eye grid, card calibration, eye chart) now account for the Aa−/Aa+ page zoom, so 10 cm stays 10 cm.
+- **Second NASA dataset: bed rest fluid shift tile** on the Board. NASA Life Sciences Portal "Bed Rest Standard Measures: Plasma Volume" (doi 10.83263/4dzb-2267; Campaign 1, Campaign 3, CFT70; 48 people): each person against their own pre bed rest mean. Median 10.4% lower in the first week (24 of 31 people below their own lowest pre value), partly back within days of getting up. Only medians and counts ship (`data/bedrest-pv.json`, built by `scripts/build_bedrest.py`); the raw files are not re-hosted because redistribution terms are not confirmed.
+- Sample data includes two eye chart checks.
+- 113 unit tests.
+
 ## Changes in v0.59 (15 Nov 2026)
 
 - **Original logo kept.** The flat redraw from v0.58 is removed; the app uses the team's ChatGPT logo again.

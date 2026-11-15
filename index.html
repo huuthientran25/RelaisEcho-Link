@@ -143,7 +143,7 @@
     <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
     <nav class="jump" aria-label="Jump to a tile">
-      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-exp">Experimental</a><a href="#h-t-crew">Crew data</a>
+      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-exp">Experimental</a><a href="#h-t-crew">Crew data</a><a href="#h-t-bed">Bed rest</a>
     </nav>
     <div class="tiles">
       <article class="tile wide" aria-labelledby="h-t-today">
@@ -216,13 +216,19 @@
       <article class="tile" aria-labelledby="h-t-eye">
         <header><h2 data-i18n="board.t.eye" id="h-t-eye">Eye grid</h2><span class="tag">EXPERIMENTAL</span></header>
         <div id="eyeBody"></div>
-        <p class="fine">What you mark, compared with your own first check. Not a test for any disease. <button type="button" class="link-btn" data-evidence="amsler">Evidence</button></p>
+        <p class="fine">What you mark, compared with your own first check. Not a test for any disease. <button type="button" class="link-btn" data-evidence="amsler">Evidence</button> · <button type="button" class="link-btn" data-evidence="acuity">Eye chart evidence</button></p>
       </article>
 
       <article class="tile" aria-labelledby="h-t-exp">
         <header><h2 data-i18n="board.t.exp" id="h-t-exp">Experimental checks</h2><span class="tag">EXPERIMENTAL</span></header>
         <div id="expTileBody"></div>
         <p class="fine">Jaw, eyes, pupils, eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result only.</p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-bed">
+        <header><h2 id="h-t-bed">Bed rest fluid shift</h2><span class="tag pub">NASA DATA</span></header>
+        <div id="bedBody"><p>Loading…</p></div>
+        <p class="fine">NASA head down bed rest, an analog for spaceflight. Each person against their own values before bed rest. <button type="button" class="link-btn" data-evidence="bedrest">Evidence</button></p>
       </article>
 
       <article class="tile" aria-labelledby="h-t-crew">
@@ -533,6 +539,42 @@
     <div id="expResult" hidden></div>
   </section>
 
+  <!-- EYE CHART -->
+  <section id="screen-acuity" class="screen" hidden aria-labelledby="h-acuity">
+    <p class="step">Eye self check · experimental</p>
+    <h1 id="h-acuity">Eye chart</h1>
+    <div id="acIntro">
+      <p class="lede">Letters shaped like an E point right, down, left or up. One eye at a time, press the arrow that matches where the three bars point. The letters shrink line by line until you miss.</p>
+      <ul>
+        <li>Wear the glasses or lenses you use at this distance.</li>
+        <li>Same screen, same distance and same light every time: the first check at each distance becomes the reference.</li>
+        <li>Calibrate the screen once with a bank card on the <button type="button" class="link-btn" data-nav="vision">Eye grid</button> screen. Without it, letter sizes are a guess.</li>
+      </ul>
+      <fieldset class="seg" id="acDistSet"><legend>Your eyes' distance from the screen</legend></fieldset>
+      <p id="acLimit" class="fine" role="status"></p>
+      <p class="warnline">! A sudden loss or blurring of vision needs urgent care. Do not wait for this check.</p>
+      <div class="row">
+        <button type="button" class="btn primary" id="btnAcStart">Start with the right eye</button>
+        <button type="button" class="btn" data-nav="board">Cancel</button>
+      </div>
+    </div>
+    <div id="acRun" hidden>
+      <h2 id="acEyeTitle" tabindex="-1"></h2>
+      <div class="ac-stage" id="acStage"><svg id="acE" viewBox="0 0 5 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><g id="acEg"><rect x="0" y="0" width="1" height="5"/><rect x="0" y="0" width="5" height="1"/><rect x="0" y="2" width="5" height="1"/><rect x="0" y="4" width="5" height="1"/></g></svg></div>
+      <p id="acProgress" class="fine" role="status"></p>
+      <div class="ac-pad" role="group" aria-label="Where do the bars of the E point?">
+        <button type="button" class="btn" data-ac="up" aria-label="Up">↑</button>
+        <button type="button" class="btn" data-ac="left" aria-label="Left">←</button>
+        <button type="button" class="btn" data-ac="nope">Can't tell</button>
+        <button type="button" class="btn" data-ac="right" aria-label="Right">→</button>
+        <button type="button" class="btn" data-ac="down" aria-label="Down">↓</button>
+      </div>
+      <p class="fine">Keyboard: arrow keys, space for "can't tell". Guess if you are unsure; a guess is scored like any answer.</p>
+      <div class="row"><button type="button" class="btn" data-nav="board">Stop</button></div>
+    </div>
+    <div id="acResult" hidden></div>
+  </section>
+
   <!-- YOUR DATA -->
   <section id="screen-privacy" class="screen" hidden aria-labelledby="h-privacy">
     <h1 id="h-privacy">Your data</h1>
@@ -656,7 +698,7 @@
   <span>Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.</span>
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
-  <span>RelaisÉcho Link <span id="appVersion">v0.59</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v0.60</span></span>
 </footer>
 </body>
 </html>

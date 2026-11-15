@@ -27,7 +27,7 @@ export const hasUrgent = (ids) => known(ids).some((s) => s.urgent);
 // How many checkups in the last `days` days had each symptom ticked. Reaction tests are not checkups.
 export function symptomCounts(sessions, now = new Date(), days = 14) {
   const since = +now - days * 24 * 3600 * 1000;
-  const checkups = (sessions || []).filter((s) => s.kind !== 'alertness' && s.kind !== 'vision' && s.kind !== 'exp' && +new Date(s.createdAt) >= since && +new Date(s.createdAt) <= +now);
+  const checkups = (sessions || []).filter((s) => s.kind !== 'alertness' && s.kind !== 'vision' && s.kind !== 'exp' && s.kind !== 'acuity' && +new Date(s.createdAt) >= since && +new Date(s.createdAt) <= +now);
   const rows = SYMPTOMS.map((sym) => ({ ...sym, count: checkups.filter((s) => s.context?.checklist?.includes(sym.id)).length })).filter((r) => r.count > 0);
   return { checkups: checkups.length, rows };
 }

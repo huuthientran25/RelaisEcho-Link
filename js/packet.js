@@ -9,7 +9,7 @@ export const LIMITS = [
   'No diagnosis is made. New or severe symptoms need direct clinical contact.',
 ];
 
-export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null, experimental = [] } = {}) {
+export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null, experimental = [], acuity = null } = {}) {
   const src = session.source === 'file' ? 'recorded video' : 'live camera';
   const packet = {
     schema: 'relaisecho-packet/0.1',
@@ -20,6 +20,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
       breathing_per_min: { value: session.resp?.rpm ?? null, quality: session.resp?.quality ?? 'none', usable_seconds: Math.round(session.resp?.seconds ?? 0), note: session.resp?.reason || '', label: 'EXPERIMENTAL estimate' },
       eyes_during_scan: session.eyes && session.eyes.trackedPct >= 50 ? { blinks_per_min: session.eyes.blinksPerMin, closed_pct: session.eyes.closedPct, long_closures: session.eyes.longClosures, label: 'EXPERIMENTAL, shown not judged' } : null,
       pulse_regions_used: session.pulse?.regionsUsed || null,
+      eyelid_opening_mm: session.eyelid ? { right: session.eyelid.right, left: session.eyelid.left, baseline_right: cmp.original?.eyelid?.right ?? null, baseline_left: cmp.original?.eyelid?.left ?? null, label: 'EXPERIMENTAL, iris scaled; compared only with the original baseline' } : null,
       capture: { usable_seconds: Math.round(session.usableSeconds || 0), elapsed_seconds: Math.round(session.elapsedSeconds || 0), rejected_reasons: session.rejectCounts || {} },
     },
     comparison: {
@@ -36,6 +37,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     alertness: alertness?.alertness ? { date: alertness.createdAt, median_ms: alertness.alertness.medianMs, lapses: alertness.alertness.lapses,
       false_starts: alertness.alertness.falseStarts, label: 'EXPERIMENTAL 3 minute reaction test; device delay included' } : null,
     vision_self_check: vision,
+    acuity_self_check: acuity,
     experimental_checks: experimental || [],
     self_report_checklist: symptomLabels(session.context?.checklist),
     self_report_urgent: hasUrgent(session.context?.checklist),
@@ -60,6 +62,7 @@ export function packetText(p) {
   if (p.alertness) lines.push(`Alertness test ${p.alertness.date.slice(0, 16).replace('T', ' ')} UTC: median ${p.alertness.median_ms ?? '-'} ms, ${p.alertness.lapses} lapses, ${p.alertness.false_starts} false starts (experimental)`);
   if (r.eyes_during_scan) lines.push(`Eyes during scan: ${r.eyes_during_scan.blinks_per_min} blinks/min, closed ${r.eyes_during_scan.closed_pct}% (experimental)`);
   if (p.vision_self_check) lines.push(`Eye grid ${p.vision_self_check.date.slice(0, 10)}: right ${p.vision_self_check.right_eye}; left ${p.vision_self_check.left_eye}${p.vision_self_check.new_vs_reference ? `; new vs reference: right ${p.vision_self_check.new_vs_reference.right}, left ${p.vision_self_check.new_vs_reference.left}` : ''} (experimental self check)`);
+  if (p.acuity_self_check) { const a = p.acuity_self_check; lines.push(`Eye chart ${a.date.slice(0, 10)} at ${a.distance_m} m: right ${a.right_eye?.snellen ?? '-'} (${a.right_eye?.vs_first ?? '-'}), left ${a.left_eye?.snellen ?? '-'} (${a.left_eye?.vs_first ?? '-'}) (experimental self check)`); }
   for (const x of p.experimental_checks || []) lines.push(`${x.title} ${x.date.slice(0, 10)}: ${Object.entries(x.values).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}`).join(', ')}${x.differs?.length ? `; differs from own first check: ${x.differs.join(', ')}` : x.verdict === 'reference' ? '; first check' : ''} (experimental${x.check === 'circ' ? ', indexes, not blood pressure or oxygen saturation' : ''})`);
   if (p.self_report_urgent) lines.push('URGENT ITEM TICKED: chest pain or shortness of breath. Contact the person directly.');
   if (p.self_report_checklist?.length) lines.push(`Symptoms ticked: ${p.self_report_checklist.join(', ')}`);

@@ -31,6 +31,8 @@ export function standouts(p) {
     if (d.auto_compare?.flags?.length) add('change', `Dental ${d.view}: ${d.auto_compare.flags.join(' ')}`);
     if (d.reviewer_marks?.length) add('note', `Dental ${d.view}: ${d.reviewer_marks.length} mark${d.reviewer_marks.length === 1 ? '' : 's'} placed by the sender.`);
   }
+  const ac = p.acuity_self_check;
+  for (const k of ['right_eye', 'left_eye']) if (ac?.[k]?.vs_first === 'worse') add('change', `Eye chart: ${k === 'right_eye' ? 'right' : 'left'} eye ${ac[k].snellen}, 2 or more lines worse than the person's first check at ${ac.distance_m} m.`);
   for (const x of p.experimental_checks || []) if (x.differs?.length) add('note', `Experimental ${x.title.toLowerCase()}: differs from the person's own first check (${x.differs.join(', ')}). Experimental, often explained by light or distance.`);
   if (p.self_report_checklist?.length) add('note', `Symptoms ticked: ${p.self_report_checklist.join(', ')}.`);
   if (p.self_report) add('note', 'The person wrote a note (see Self report).');

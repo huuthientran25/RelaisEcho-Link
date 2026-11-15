@@ -7,6 +7,10 @@ export const METRIC_DEFS = {
   resp: { label: 'Breathing', unit: 'per minute', src: 'checkup', get: (s) => s.resp?.rpm, q: (s) => s.resp?.quality },
   alert: { label: 'Reaction time, median', unit: 'ms', src: 'alertness', get: (s) => s.alertness?.medianMs, bandPct: 10 },
   eyegrid: { label: 'Eye grid squares marked', unit: 'squares', src: 'vision', get: (s) => (s.vision ? (s.vision.right || []).length + (s.vision.left || []).length : null), band: 0 },
+  acuityR: { label: 'Eye chart, right eye (lower is better)', unit: 'logMAR', src: 'acuity', get: (s) => s.acuity?.right?.logmar, band: 0.2 },
+  acuityL: { label: 'Eye chart, left eye (lower is better)', unit: 'logMAR', src: 'acuity', get: (s) => s.acuity?.left?.logmar, band: 0.2 },
+  lidR: { label: 'Eye opening, right eye', unit: 'mm', src: 'checkup', get: (s) => s.eyelid?.right, band: 1.0 },
+  lidL: { label: 'Eye opening, left eye', unit: 'mm', src: 'checkup', get: (s) => s.eyelid?.left, band: 1.0 },
   gaze: { label: 'Eye following, match', unit: '0 to 1', src: 'exp:gaze', get: (s) => s.exp?.followCorr, band: 0.15 },
   pupil: { label: 'Right pupil narrowing', unit: '%', src: 'exp:pupil', get: (s) => s.exp?.right?.constrictionPct, band: 10 },
   pallor: { label: 'Inner eyelid redness index', unit: 'index', src: 'exp:pallor', get: (s) => s.exp?.relEi, band: 3 },
@@ -19,7 +23,7 @@ export const METRIC_DEFS = {
 
 export const REGIONS = [
   { id: 'head', label: 'Sleep and alertness', short: 'Sleep', metrics: ['alert'], dot: [150, 28], side: 'left', y: 2 },
-  { id: 'eyes', label: 'Eyes', short: 'Eyes', metrics: ['eyegrid', 'gaze', 'pupil', 'pallor'], dot: [161, 48], side: 'right', y: 6 },
+  { id: 'eyes', label: 'Eyes', short: 'Eyes', metrics: ['eyegrid', 'acuityR', 'acuityL', 'lidR', 'lidL', 'gaze', 'pupil', 'pallor'], dot: [161, 48], side: 'right', y: 6 },
   { id: 'mouth', label: 'Mouth and jaw', short: 'Mouth and jaw', metrics: ['jaw', 'gum'], dot: [150, 74], side: 'left', y: 15 },
   { id: 'neck', label: 'Neck', short: 'Neck', metrics: [], dot: [150, 97], side: 'right', y: 19 },
   { id: 'heart', label: 'Heart and circulation', short: 'Heart', metrics: ['pulse', 'ptt', 'ror'], dot: [164, 150], side: 'left', y: 31 },
@@ -38,6 +42,7 @@ export function seriesFor(metricId, sessions) {
   if (m.src === 'checkup') list = list.filter(isCheckup);
   else if (m.src === 'alertness') list = list.filter((s) => s.kind === 'alertness');
   else if (m.src === 'vision') list = list.filter((s) => s.kind === 'vision');
+  else if (m.src === 'acuity') list = list.filter((s) => s.kind === 'acuity');
   else if (m.src.startsWith('exp:')) { const id = m.src.slice(4); list = list.filter((s) => s.kind === 'exp' && s.exp?.check === id && s.exp.ok); }
   return list.map((s) => ({ t: +new Date(s.createdAt), v: m.get(s), q: m.q ? m.q(s) : null })).filter((p) => Number.isFinite(p.v));
 }

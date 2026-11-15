@@ -92,5 +92,7 @@ export function makeDemoExp(now = new Date(), scenario = 'shortsleep') {
     rec(7, 9, { check: 'tremor', mode: 'motion', unit: 'm/s²', right: { peakHz: null, share: 0.12, rms: 0.021 }, left: { peakHz: null, share: 0.1, rms: 0.019 } }),
     rec(8, 12, { check: 'circ', pttMs: 64, pttSpreadMs: 18, bpm: 62, rorFace: 0.912, rorPalm: 0.88, windows: '9 of 11', cameraFps: 30 }),
     rec(9, 1, { check: 'circ', pttMs: calm ? 58 : 31, pttSpreadMs: 22, bpm: scenario === 'breath' ? 75 : calm ? 63 : 72, rorFace: 0.934, rorPalm: 0.9, windows: '7 of 11', cameraFps: 30 }),
+    { id: 'demo-acu-01', createdAt: at(12, 10), kind: 'acuity', source: 'device', demo: true, complete: false, acuity: { distanceMm: 1000, pxPerMm: 3.78, calibrated: true, floor: 0, right: { logmar: 0, letters: 55, snellen: '20/20', atScreenLimit: true, floor: 0 }, left: { logmar: 0.1, letters: 50, snellen: '20/25', atScreenLimit: false, floor: 0 } } },
+    { id: 'demo-acu-02', createdAt: at(2, 10), kind: 'acuity', source: 'device', demo: true, complete: false, acuity: { distanceMm: 1000, pxPerMm: 3.78, calibrated: true, floor: 0, right: { logmar: 0.02, letters: 54, snellen: '20/21', atScreenLimit: false, floor: 0 }, left: { logmar: 0.1, letters: 50, snellen: '20/25', atScreenLimit: false, floor: 0 } } },
   ];
 }

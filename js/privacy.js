@@ -32,6 +32,7 @@ export function inventory(sessions, profileId) {
       reactionTests: list.filter((s) => s.kind === 'alertness').length,
       eyeChecks: list.filter((s) => s.kind === 'vision').length,
       expChecks: list.filter((s) => s.kind === 'exp').length,
+      acuityChecks: list.filter((s) => s.kind === 'acuity').length,
       expPhotos: list.filter((s) => s.kind === 'exp' && s.exp?.images).reduce((n, s) => n + Object.values(s.exp.images).filter(Boolean).length, 0),
       photos, photoBytes,
       faceTemplates: checkups.filter((s) => s.template).length,
@@ -51,6 +52,7 @@ export function inventoryLines(c) {
     n(c.notes, 'checkup with symptom ticks or notes', 'checkups with symptom ticks or notes'),
     n(c.reactionTests, 'reaction test', 'reaction tests'),
     n(c.eyeChecks, 'eye grid check', 'eye grid checks'),
+    n(c.acuityChecks || 0, 'eye chart check', 'eye chart checks'),
     n(c.expChecks || 0, 'experimental check', 'experimental checks') + (c.expPhotos ? ` with ${c.expPhotos} small neck or eyelid photo${c.expPhotos === 1 ? '' : 's'}` : ''),
   ];
 }

@@ -35,3 +35,32 @@ test('rough distance in cm falls as the iris grows', () => {
   assert.equal(Math.round(a / b), 2);
   assert.equal(approxDistanceCm(0), null);
 });
+
+test('eye opening: mm from the lid gap, open-eye percentile ignores blinks, 1 mm band', async () => {
+  const { lidOpeningMm, summarizeLids, compareLids } = await import('../js/eyes.js');
+  const lm = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
+  const set = (i, x, y) => { lm[i] = { x, y, z: 0 }; };
+  set(33, 0.40, 0.4); set(133, 0.46, 0.4); set(362, 0.54, 0.4); set(263, 0.60, 0.4);
+  const r = 0.0117 * 2; // iris 11.7 mm wide at 4 px per mm on a 1000 px frame
+  const iris = (c, cx) => { set(c, cx, 0.4); set(c + 1, cx + r, 0.4); set(c + 2, cx, 0.4 - r); set(c + 3, cx - r, 0.4); set(c + 4, cx, 0.4 + r); };
+  iris(468, 0.43); iris(473, 0.57);
+  const lids = (gapMm) => { const g = (gapMm * 4) / 1000 / 2; for (const [u, l, x] of [[160, 144, 0.42], [158, 153, 0.44], [385, 380, 0.56], [387, 373, 0.58]]) { set(u, x, 0.4 - g); set(l, x, 0.4 + g); } };
+  lids(10);
+  const one = lidOpeningMm(lm, 1000, 1000);
+  assert.ok(Math.abs(one.right - 10) < 1e-6 && Math.abs(one.left - 10) < 1e-6);
+  const frames = Array.from({ length: 60 }, (_, i) => (i % 10 === 0 ? { right: 1, left: 1 } : { right: 10, left: 9 }));
+  const s = summarizeLids(frames);
+  assert.deepEqual([s.right, s.left, s.diffMm], [10, 9, 1]);
+  assert.equal(summarizeLids(frames.slice(0, 5)), null);
+  assert.equal(compareLids({ right: 8.5, left: 9 }, { right: 10, left: 9 }).verdict, 'different');
+  assert.equal(compareLids({ right: 9.5, left: 9 }, { right: 10, left: 9 }).verdict, 'same');
+});
+
+test('bed rest summary ships aggregates only, with a falling first week', async () => {
+  const { readFileSync } = await import('node:fs');
+  const d = JSON.parse(readFileSync(new URL('../data/bedrest-pv.json', import.meta.url), 'utf8'));
+  assert.match(d.source, /10\.83263\/4dzb-2267/);
+  assert.ok(d.people >= 40 && d.bins.length === 5);
+  assert.ok(d.bins[0].median_pct < -5 && d.bins.at(-1).median_pct > d.bins[1].median_pct, 'drop in bed rest, partial recovery after');
+  for (const b of d.bins) assert.deepEqual(Object.keys(b).sort(), ['below_own_pre_min', 'label', 'median_pct', 'n', 'q1_pct', 'q3_pct']);
+});

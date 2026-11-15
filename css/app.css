@@ -434,3 +434,11 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .ov-clock input { font: inherit; font-size: 16px; min-height: 40px; padding: 2px 6px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); color: var(--ink); width: auto; }
 .ov-clock .row { align-items: center; gap: 6px 8px; flex-wrap: wrap; }
 @media print { .ov-bar .ov-scen, .ov-clock, #btnOvPrint, .ov-select { display: none !important; } .ov-grid { grid-template-columns: 300px 1fr; } .ov-rightgrid { grid-template-columns: 1fr; } .ov-body { height: 420px; } }
+
+/* Eye chart */
+.ac-stage { display: grid; place-items: center; height: min(46vh, 420px); background: #FFFFFF; border: 2px solid var(--navy); border-radius: var(--radius); margin: 8px 0; overflow: hidden; }
+#acE { display: block; fill: #000000; }
+.ac-pad { display: grid; grid-template-columns: repeat(3, minmax(64px, 110px)); grid-template-areas: ". up ." "left nope right" ". down ."; gap: 8px; justify-content: center; margin: 10px 0; }
+.ac-pad [data-ac=up] { grid-area: up; } .ac-pad [data-ac=left] { grid-area: left; } .ac-pad [data-ac=right] { grid-area: right; } .ac-pad [data-ac=down] { grid-area: down; } .ac-pad [data-ac=nope] { grid-area: nope; font-size: 15px; }
+.ac-pad .btn { font-size: 26px; min-height: 56px; }
+.spark .bar { fill: var(--navy); } .spark .bar-post { fill: var(--muted); } .spark .whisk { stroke: var(--alert); stroke-width: 2.5; }

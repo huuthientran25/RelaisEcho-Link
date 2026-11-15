@@ -139,4 +139,22 @@ export const EVIDENCE = {
     source: 'Face and palm camera pulses gave a pulse transit time that tracked blood pressure in small studies, one with a 420 frames per second camera (cited in Sensors 2017, PMC5539707); a 2021 review found little evidence that cameras can measure blood pressure directly (McDuff, arXiv 2111.11547). RGB camera oxygen saturation needed calibration in a hypoxia laboratory (van Gastel and Verkruijsse, Biomedical Optics Express 2022), and an unmodified phone camera with the finger on the lens detected 79 percent of low oxygen cases (Hoffman et al., npj Digital Medicine 2022).',
     limits: 'Not blood pressure and not oxygen saturation; the app never shows mmHg or a percentage. An ordinary camera takes a frame about every 33 ms and has no infrared channel. Light, skin tone, hand position and camera settings move both indexes. Never use it to change a medicine.',
   },
+  acuity: {
+    title: 'Eye chart (experimental)',
+    method: 'Letters shaped like an E point one of four ways, five to a line, each line 0.1 logMAR smaller (about 26 percent). Sizes come from your distance and the screen calibration: at logMAR 0 (20/20) the letter spans 5 minutes of arc. The run starts at 20/80, steps up if that line is missed, then down until a line has 2 or fewer right. Scoring follows letter charts used in research: 0.02 logMAR per letter. Each eye is compared with your first check at the same distance; 2 lines or more counts as different (a design choice).',
+    source: 'Logarithmic letter charts and their scoring: Ferris FL et al., New visual acuity charts for clinical research, American Journal of Ophthalmology, 1982. Scheduled ISS vision checks include visual acuity (Prehospital and Disaster Medicine 2023, PMC10445111). Smartphone tumbling E acuity has been compared with charts in field studies, for example Peek Acuity (Bastawrous et al., JAMA Ophthalmology, 2015); those results do not validate this code.',
+    limits: 'Not a clinical acuity test. Screen size, pixel size and distance limit the smallest letter; a perfect score at the screen limit means "at least this good". Without card calibration the sizes are guesses. Light, glare and glasses change it. It cannot detect SANS or any eye disease.',
+  },
+  lids: {
+    title: 'Eye opening (experimental)',
+    method: 'During the resting scan the gap between the upper and lower eyelid is measured at two points on each eye, on every usable frame, and turned into millimetres by assuming an 11.7 mm iris. The open-eye value is the 75th percentile, so blinks do not pull it down. It is compared only with your original baseline; more than 1 mm up or down is called different (a design choice).',
+    source: 'Lower eyelid position has been studied in astronauts (Ax et al., 2026, listed in DATA_SOURCES.md). Landmarks: MediaPipe Face Mesh. The iris scale is the same as in the experimental checks (Buckenham Boyle et al., PLoS ONE 2021).',
+    limits: 'Squinting, smiling, light, tiredness and head tilt change it. The iris scale can be off by about 5 percent. It is not a measure of ptosis or of any eye disease.',
+  },
+  bedrest: {
+    title: 'Bed rest fluid shift (NASA data)',
+    method: "For each person, plasma volume (a blood volume method) during and after head down bed rest is compared with their own mean before bed rest, in percent. Each person's values in a window are reduced to their median, then the tile shows the median and middle half across people, and how many sat below their own lowest pre bed rest value. Built by scripts/build_bedrest.py; only these summaries ship with the app.",
+    source: 'NASA Life Sciences Portal, Bed Rest Standard Measures: Plasma Volume (PI Steven Platts), doi 10.83263/4dzb-2267: Campaign 1, Campaign 3 and the 70 day CFT70 study.',
+    limits: 'Bed rest is an analog, not spaceflight. Groups with and without exercise countermeasures are pooled. Mostly male volunteers. Bed rest days and windows differ between campaigns. Redistribution terms of the raw files are not confirmed, so the raw data are not in this repository.',
+  },
 };

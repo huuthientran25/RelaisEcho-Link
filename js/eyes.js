@@ -84,3 +84,38 @@ export class EyeTracker {
     };
   }
 }
+
+// Eye opening in mm (EXPERIMENTAL): the gap between upper and lower lid at two points per eye (the same
+// landmarks as the blink measure), scaled by assuming an 11.7 mm iris. Compared only with the person's own
+// original baseline; a lid that sits lower or higher than before is something to show a clinician.
+import { irisInfo } from './exp.js';
+export const LID = { bandMm: 1.0, minFrames: 30, openQuantile: 0.75 };
+export function lidOpeningMm(lm, W, H) {
+  const iris = irisInfo(lm, W, H);
+  if (!iris || !iris.pxPerMm) return null;
+  const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * W, (lm[a].y - lm[b].y) * H);
+  return { right: ((d(RIGHT_LID.p2, RIGHT_LID.p6) + d(RIGHT_LID.p3, RIGHT_LID.p5)) / 2) / iris.pxPerMm,
+    left: ((d(LEFT_LID.p2, LEFT_LID.p6) + d(LEFT_LID.p3, LEFT_LID.p5)) / 2) / iris.pxPerMm };
+}
+const RIGHT_LID = { p2: 160, p6: 144, p3: 158, p5: 153 };
+const LEFT_LID = { p2: 385, p6: 380, p3: 387, p5: 373 };
+// Open-eye value per eye: the 75th percentile of frames, so blinks and half closed frames do not pull it down.
+export function summarizeLids(frames, cfg = LID) {
+  const out = { frames: 0 };
+  for (const side of ['right', 'left']) {
+    const v = frames.filter((f) => f && Number.isFinite(f[side]) && f[side] > 0).map((f) => f[side]).sort((a, b) => a - b);
+    out.frames = Math.max(out.frames, v.length);
+    out[side] = v.length >= cfg.minFrames ? Math.round(v[Math.min(v.length - 1, Math.floor(v.length * cfg.openQuantile))] * 10) / 10 : null;
+  }
+  out.diffMm = out.right != null && out.left != null ? Math.round((out.right - out.left) * 10) / 10 : null;
+  return out.right == null && out.left == null ? null : out;
+}
+export function compareLids(today, base, band = LID.bandMm) {
+  if (!today) return { verdict: 'none', rows: [] };
+  const rows = ['right', 'left'].map((side) => {
+    const t = today[side], b = base ? base[side] : null;
+    const d = t != null && b != null ? Math.round((t - b) * 10) / 10 : null;
+    return { side, today: t, base: b, delta: d, outside: d != null && Math.abs(d) > band + 1e-9 };
+  });
+  return { verdict: !base ? 'reference' : rows.some((r) => r.outside) ? 'different' : 'same', rows };
+}
