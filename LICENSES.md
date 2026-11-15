@@ -16,7 +16,7 @@ Original code and content: Apache License 2.0 (see `LICENSE`).
 
 No other third party code is included. Bundled data: NASA OSDR OSD-575 values, see `DATA_SOURCES.md`. POS pulse extraction, filters, FFT, breathing tracking and dental sharpness checks are written for this project.
 
-Fonts: Atkinson Hyperlegible and Noto Sans Canadian Aboriginal are bundled (see table). Colour palette idea follows the familiar white, dark grey and navy look of Canadian government sites; no government logo, flag or wordmark is used and no affiliation is claimed.
+Logo: supplied by the team (icons/logo-*.png, icons/icon-*.png were cut from the team's logo file). If it was made with an AI image tool, say so in the submission's AI disclosure. Fonts: Atkinson Hyperlegible and Noto Sans Canadian Aboriginal are bundled (see table). Colours (ivory, charcoal, amber) come from the team logo.
 
 ## Deliberately not used
 

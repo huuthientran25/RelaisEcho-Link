@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.17 to v0.19, released together as v0.19 (15 Nov 2026)
+
+- **v0.17, new logo and amber palette.** The team's amber logo replaces the old mark (top bar, home page, app icons). Light mode: warm ivory `#F0E4D2` ground, charcoal `#17191C` ink, amber `#EFA951` primary buttons. Dark mode: charcoal ground, ivory ink, amber accents. Dark follows the device setting until the person picks Light or Dark (remembered); it replaces the earlier red night mode. Text pairs checked at 5.3:1 or better (links on ivory), most above 7:1.
+- **v0.18, frame rate limits relaxed.** Frames are rejected only below 8 analysed frames per second (was 12; a pulse up to 3 Hz needs more than 6). Between 8 and 12 the scan continues with a "low frame rate, results less certain" note. The smoothness rule that analyses every second frame now only kicks in when the camera is fast enough (24 fps or more), so slow webcams are never halved.
+- **v0.19, automatic dental comparison with the baseline** (compare screen, EXPERIMENTAL). Inside the mouth outline, tooth-like and gum-like pixels are compared in CIELAB: tooth yellowness (b*), tooth lightness (L*), gum redness (a*), visible tooth area, and a change map overlay. A lighting check runs first; if brightness differs by more than 8 L* units, colours are not compared. Results go into the review packet and the nurse view. Limits are MODELED design choices, not validated thresholds, and no condition is detected.
+- 42 unit tests.
+
 ## Changes in v0.13 to v0.16, released together as v0.16 (15 Nov 2026)
 
 - **v0.13, several people on one device.** A "Checkups for" bar picks the person; every checkup, baseline, reaction test, trend, bench test, export, restore and delete is scoped to that person. Fits a shared station laptop or a family or clinic tablet. Names stay on the device and are never put in packets. Checkups from before profiles exist belong to "Me".

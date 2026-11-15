@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RelaisÉcho Link: guided camera checkup</title>
 <meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
-<meta name="theme-color" content="#26374A">
+<meta name="theme-color" content="#17191C">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preload" href="fonts/atkinson-hyperlegible-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/app.css">
 <script type="module" src="js/main.js"></script>
@@ -16,7 +17,7 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
   <a class="brand" href="#home" data-nav="home">
-    <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.5"/><circle cx="14" cy="14" r="2" fill="currentColor"/></svg>
+    <img src="icons/logo-64.png" alt="" width="30" height="30">
     <span>RelaisÉcho Link</span>
   </a>
   <div class="topbar-right">
@@ -26,7 +27,7 @@
       <option value="fr">Français</option>
       <option value="iu">ᐃᓄᒃᑎᑐᑦ</option>
     </select>
-    <button type="button" class="link-btn" id="btnNight" aria-pressed="false" title="Dim, red-shifted screen for use at night">Night</button>
+    <button type="button" class="link-btn" id="btnTheme" aria-pressed="false" title="Switch between light and dark">Dark</button>
     <span id="netStatus" class="pill" aria-live="polite"></span>
     <button data-i18n="nav.board" type="button" class="link-btn" data-nav="board">Board</button>
     <button data-i18n="nav.history" type="button" class="link-btn" data-nav="history">History</button>
@@ -45,6 +46,7 @@
   <!-- HOME -->
   <section id="screen-home" class="screen" aria-labelledby="h-home">
     <div class="hero">
+      <img class="hero-logo" src="icons/logo-128.png" alt="RelaisÉcho Link logo" width="88" height="88">
       <p data-i18n="home.eyebrow" class="eyebrow">Guided camera checkup · orbit to the North</p>
       <h1 data-i18n="home.h1" id="h-home">Your last checkup, lined up with today.</h1>
       <p data-i18n="home.lede" class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>

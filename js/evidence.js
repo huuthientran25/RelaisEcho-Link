@@ -49,6 +49,12 @@ export const EVIDENCE = {
     source: 'Eye aspect ratio: Soukupová and Čech, Real-time eye blink detection using facial landmarks, 2016. Long and frequent eye closures are a recognised sign of drowsiness in fatigue research; this app uses no published cut off.',
     limits: 'Not validated. Glasses, glare, dim light, looking down and low frame rates all affect it, and a 15 per second rate can miss very quick blinks. The thresholds are design choices. It does not diagnose drowsiness or any eye condition.',
   },
+  dentalAuto: {
+    title: 'Automatic dental comparison',
+    method: 'Both photos are already levelled and scaled by the mouth corners. Inside the mouth outline, light low-colour pixels are treated as tooth-like and reddish pixels as gum-like, and their average colour is compared in CIELAB: L* is lightness, a* is red-green, b* is yellow-blue. A lighting check runs first; if overall brightness differs by more than 8 L* units, colours are not compared. The change map marks pixels whose colour moved by more than 15 units.',
+    source: 'CIELAB colour difference is the standard way to describe tooth colour change in dental research; this app\'s pixel rules and limits are design choices, not validated thresholds.',
+    limits: 'Not validated. Lighting, white balance, camera, lip position and saliva all change the result. Gum-like pixels can include the inner lips. Front surfaces only. It cannot detect decay, gum disease or any condition.',
+  },
   change: {
     title: 'Change against your baseline',
     method: 'A difference only counts as a change if it is bigger than the method\'s typical error: 8 beats per minute for pulse and 3 breaths per minute for breathing.',

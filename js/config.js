@@ -12,7 +12,8 @@ export const CONFIG = {
     maxLuma: 235,
     maxClippedFrac: 0.05,      // share of face pixels with a channel at 250 or more
     maxMotionPerSec: 0.12,     // landmark speed, in face widths per second
-    minFps: 12,
+    minFps: 8,                 // analysed frames per second; below this frames are rejected (a 3 Hz pulse needs more than 6)
+    softFps: 12,               // between minFps and this, frames count but a 'low frame rate' warning shows
     motionHoldSlack: 1.3,      // same idea for the stillness check
   },
   perf: {

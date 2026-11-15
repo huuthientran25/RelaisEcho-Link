@@ -21,6 +21,7 @@ import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
 import { makeDemoSessions, DEMO_PROFILE, DEMO_NAME } from './demo.js';
 import { validatePacket, safeImage } from './review.js';
+import { analyzeMouth, compareMouth, changeMap, mouthMask } from './dentalcmp.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -256,8 +257,10 @@ function scanFrame(t, meta) {
   }
   s.frames += 1;
   // Frame budget: when analysis is slow, analyse every second frame so the page stays smooth.
+  const q0 = CONFIG.quality;
   if (s.inferMs != null) {
-    if (s.stride === 1 && s.inferMs > CONFIG.perf.workBudgetMs) s.stride = 2;
+    // Only skip frames when the camera is fast enough that half its frames still clear the soft limit.
+    if (s.stride === 1 && s.inferMs > CONFIG.perf.workBudgetMs && s.camT.length / 2 >= 2 * q0.softFps) s.stride = 2;
     else if (s.stride === 2 && s.inferMs < CONFIG.perf.workRecoverMs) s.stride = 1;
   }
   if (s.stride > 1 && s.frames % s.stride) { s.strided += 1; return; }
@@ -323,6 +326,7 @@ function scanFrame(t, meta) {
     if (prof) { s.resp.chest.push({ t, y: s.trackers.chest.push(prof), ok }); breathCh = true; }
   }
   if (g && !breathCh) checks.push({ key: 'torso', label: 'Neck and shoulders out of view', ok: false, soft: true });
+  if (s.elapsed > 2 && fps >= q.minFps && fps < q.softFps) checks.push({ key: 'fpsSoft', label: `Low frame rate (${fps.toFixed(0)} fps), results less certain`, ok: false, soft: true });
 
   drawScanOverlay(g, rois, torso, neck, al);
   if (t - state.uiT > 150 || t < state.uiT) {
@@ -640,6 +644,13 @@ async function renderCompare() {
     const setPos = (p) => { if (hasBase) { top.style.clipPath = `inset(0 0 0 ${p}%)`; divider.style.left = `${p}%`; } };
     setPos(50);
     box.querySelector('.slider')?.addEventListener('input', (e) => setPos(+e.target.value));
+    if (hasBase) {
+      const auto = document.createElement('div');
+      auto.className = 'dental-auto';
+      auto.innerHTML = '<p class="fine">Comparing colours with the baseline…</p>';
+      box.insertBefore(auto, box.querySelector('.marks'));
+      dentalAuto(cmp, auto, today, base).catch((err) => { console.warn(err); auto.innerHTML = '<p class="fine">Automatic comparison could not run on this browser.</p>'; });
+    }
     const renderMarks = () => {
       cmp.querySelectorAll('.mark').forEach((m) => m.remove());
       today.marks = today.marks || [];
@@ -1089,16 +1100,23 @@ for (const id of ['coach', 'dentalCoach']) {
     .observe($(id), { childList: true, characterData: true, subtree: true });
 }
 
-/* ---------- night mode ---------- */
-function setNight(on) {
-  document.documentElement.dataset.theme = on ? 'night' : '';
-  $('btnNight').setAttribute('aria-pressed', on ? 'true' : 'false');
-  $('btnNight').textContent = on ? 'Day' : 'Night';
-  document.querySelector('meta[name=theme-color]').setAttribute('content', on ? '#1A0D08' : '#26374A');
-  prefs.set('night', on);
+/* ---------- light and dark ---------- */
+// Follows the device setting until the person picks one; the choice is remembered.
+const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('btnTheme').setAttribute('aria-pressed', dark ? 'true' : 'false');
+  $('btnTheme').textContent = dark ? 'Light' : 'Dark';
+  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#101113' : '#17191C');
 }
-$('btnNight').addEventListener('click', () => setNight($('btnNight').getAttribute('aria-pressed') !== 'true'));
-setNight(!!prefs.get('night'));
+const savedTheme = prefs.get('theme');
+applyTheme(savedTheme ? savedTheme === 'dark' : !!(darkQuery && darkQuery.matches));
+darkQuery?.addEventListener?.('change', (e) => { if (!prefs.get('theme')) applyTheme(e.matches); });
+$('btnTheme').addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  prefs.set('theme', dark ? 'dark' : 'light');
+  applyTheme(dark);
+});
 
 /* ---------- restore backup ---------- */
 $('restoreFile').addEventListener('change', async (e) => {
@@ -1353,8 +1371,10 @@ function reviewHtml(p) {
   const dental = (p.dental || []).map((d) => {
     const img = safeImage(d.image_jpeg_dataurl);
     const marks = (d.reviewer_marks || []).map((m, i) => `<span class="mark" style="left:${(+m.x * 100).toFixed(1)}%;top:${(+m.y * 100).toFixed(1)}%"><span>${i + 1}</span></span>`).join('');
+    const au = d.auto_compare;
+    const auHtml = au ? `<p class="fine"><strong>Automatic comparison (experimental):</strong> ${au.flags?.length ? au.flags.map(esc).join(' ') : au.comparable ? 'no colour change beyond the set limits.' : 'not compared.'} ${(au.notes || []).map(esc).join(' ')}</p>` : '';
     return `<figure class="review-photo"><figcaption><strong>${esc(d.view)}</strong>: ${d.captured ? 'captured' : 'not captured'}${d.reviewer_marks?.length ? ` · ${d.reviewer_marks.length} mark(s): ${d.reviewer_marks.map((m, i) => `${i + 1}. ${esc(m.note || 'no note')}`).join('; ')}` : ''}</figcaption>
-      ${img ? `<div class="cmp review-img"><img src="${img}" alt="${esc(d.view)} dental photo">${marks}</div>` : d.captured ? '<p class="fine">Photo not included in this packet (the sender left images out to keep it small).</p>' : ''}</figure>`;
+      ${auHtml}${img ? `<div class="cmp review-img"><img src="${img}" alt="${esc(d.view)} dental photo">${marks}</div>` : d.captured ? '<p class="fine">Photo not included in this packet (the sender left images out to keep it small).</p>' : ''}</figure>`;
   }).join('');
   return `<div class="card result">
       <p><span class="tag">${esc(p.checkup.kind)}</span> captured ${when(p.checkup.capturedAt)} · ${esc(p.checkup.source)} · packet ${esc(p.schema)}</p>
@@ -1386,3 +1406,40 @@ $('btnSamplePacket').addEventListener('click', () => {
     { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change });
   $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${reviewHtml(packet)}`;
 });
+
+/* ---------- automatic dental comparison ---------- */
+const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+// Shrink the lip outline toward its centre so the mask covers teeth and gums more than the lips themselves.
+const innerLips = (lips) => {
+  if (!lips || lips.length < 6) return null;
+  const cx = lips.reduce((s2, p) => s2 + p[0], 0) / lips.length, cy = lips.reduce((s2, p) => s2 + p[1], 0) / lips.length;
+  return lips.map(([x, y]) => [cx + (x - cx) * 0.88, cy + (y - cy) * 0.68]);
+};
+
+async function dentalAuto(cmp, out, today, base) {
+  const W = 240, H = 135;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const read = async (src) => { ctx.clearRect(0, 0, W, H); ctx.drawImage(await loadImg(src), 0, 0, W, H); return ctx.getImageData(0, 0, W, H).data; };
+  const mask = mouthMask(W, H, innerLips(today.lips));
+  const A = analyzeMouth(await read(today.image), W, H, mask);
+  const B = analyzeMouth(await read(base.image), W, H, mask);
+  const r = compareMouth(A, B);
+  const cm = changeMap(A.lab, B.lab, mask);
+  today.auto = { ...r, changedPct: cm.changedPct, method: 'CIELAB colour of tooth-like and gum-like pixels inside the mouth outline; experimental' };
+  saveSession(state.session);
+  const row = (label, v, unit = '') => (v == null ? '' : `<li>${label}: ${v > 0 ? '+' : ''}${v}${unit}</li>`);
+  out.innerHTML = `<h3>Automatic comparison <span class="tag">EXPERIMENTAL</span></h3>
+    ${r.flags.length ? `<ul class="change-list">${r.flags.map((f) => `<li class="warnline">${esc(f)}</li>`).join('')}</ul>` : r.comparable ? '<p class="okline">No colour change beyond the set limits.</p>' : ''}
+    ${r.notes.map((n) => `<p class="fine">${esc(n)}</p>`).join('')}
+    <ul class="fine">${row('Brightness vs baseline, L*', r.lightingDelta)}${row('Tooth yellowness, b*', r.toothYellowDelta)}${row('Tooth lightness, L*', r.toothLightDelta)}${row('Gum redness, a*', r.gumRedDelta)}${row('Visible tooth area', r.toothAreaChangePct, '%')}<li>Pixels that changed colour clearly: ${cm.changedPct}%</li></ul>
+    <label class="check"><input type="checkbox" class="show-map"> Show change map on the photo</label>
+    <p class="fine">Colour only, front surfaces only, and light changes colour; this is a prompt to look, not a finding. <button type="button" class="link-btn" data-evidence="dentalAuto">Evidence</button></p>`;
+  // Change map overlay, drawn at analysis size and stretched over the photo.
+  const ov = document.createElement('canvas'); ov.width = W; ov.height = H; ov.className = 'change-map'; ov.hidden = true;
+  const octx = ov.getContext('2d'); const img = octx.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) if (cm.map[i]) { img.data[i * 4] = 255; img.data[i * 4 + 1] = 64; img.data[i * 4 + 2] = 160; img.data[i * 4 + 3] = 150; }
+  octx.putImageData(img, 0, 0);
+  cmp.appendChild(ov);
+  out.querySelector('.show-map').addEventListener('change', (e) => { ov.hidden = !e.target.checked; });
+}

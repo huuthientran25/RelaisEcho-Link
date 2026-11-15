@@ -1,11 +1,11 @@
 // Offline cache for the app shell, the MediaPipe runtime and (if bundled) the face model.
-const CACHE = 'relaisecho-v16';
+const CACHE = 'relaisecho-v19';
 const SHELL = [
-  './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
+  './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/logo-64.png', 'icons/logo-128.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'js/main.js', 'js/config.js', 'js/vision.js', 'js/geometry.js', 'js/frame.js', 'js/align.js',
   'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
   'fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-400-normal.woff2', 'fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-700-normal.woff2',
-  'js/dsp.js', 'js/mock.js', 'js/pulse.js', 'js/resp.js', 'js/dental.js', 'js/store.js', 'js/packet.js', 'js/evidence.js', 'js/board.js', 'js/pvt.js', 'js/i18n.js', 'js/qr.js', 'js/crew.js', 'js/change.js', 'js/eyes.js', 'js/speech.js', 'js/backup.js', 'js/demo.js', 'js/review.js', 'vendor/qrcode/qrcode.mjs', 'data/osd575-cmp.json',
+  'js/dsp.js', 'js/mock.js', 'js/pulse.js', 'js/resp.js', 'js/dental.js', 'js/store.js', 'js/packet.js', 'js/evidence.js', 'js/board.js', 'js/pvt.js', 'js/i18n.js', 'js/qr.js', 'js/crew.js', 'js/change.js', 'js/eyes.js', 'js/speech.js', 'js/backup.js', 'js/demo.js', 'js/review.js', 'js/dentalcmp.js', 'vendor/qrcode/qrcode.mjs', 'data/osd575-cmp.json',
   'vendor/mediapipe/vision_bundle.mjs', 'vendor/mediapipe/wasm/vision_wasm_internal.js', 'vendor/mediapipe/wasm/vision_wasm_internal.wasm',
 ];
 const OPTIONAL = ['models/face_landmarker.task'];

@@ -26,6 +26,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     dental: Object.values(session.dental || {}).map((d) => ({
       view: d.view, captured: !!d.captured, sharpness: d.sharpness ? Math.round(d.sharpness) : null,
       reviewer_marks: (d.marks || []).map((m) => ({ x: +m.x.toFixed(3), y: +m.y.toFixed(3), note: m.note })),
+      auto_compare: d.auto ? { comparable: d.auto.comparable, flags: d.auto.flags, notes: d.auto.notes, lighting_delta_L: d.auto.lightingDelta, tooth_yellow_delta_b: d.auto.toothYellowDelta ?? null, tooth_light_delta_L: d.auto.toothLightDelta ?? null, gum_red_delta_a: d.auto.gumRedDelta ?? null, tooth_area_change_pct: d.auto.toothAreaChangePct, changed_pct: d.auto.changedPct, label: 'EXPERIMENTAL colour comparison with baseline' } : null,
       ...(includeImages && d.image ? { image_jpeg_dataurl: d.image } : {}),
     })),
     alertness: alertness?.alertness ? { date: alertness.createdAt, median_ms: alertness.alertness.medianMs, lapses: alertness.alertness.lapses,
