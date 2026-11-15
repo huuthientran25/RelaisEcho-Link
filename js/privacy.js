@@ -31,6 +31,8 @@ export function inventory(sessions, profileId) {
       checkups: checkups.length,
       reactionTests: list.filter((s) => s.kind === 'alertness').length,
       eyeChecks: list.filter((s) => s.kind === 'vision').length,
+      expChecks: list.filter((s) => s.kind === 'exp').length,
+      expPhotos: list.filter((s) => s.kind === 'exp' && s.exp?.images).reduce((n, s) => n + Object.values(s.exp.images).filter(Boolean).length, 0),
       photos, photoBytes,
       faceTemplates: checkups.filter((s) => s.template).length,
       notes: checkups.filter((s) => (s.context?.symptoms || '').trim() || s.context?.checklist?.length).length,
@@ -45,9 +47,10 @@ export function inventoryLines(c) {
   return [
     n(c.checkups, 'checkup', 'checkups') + ' (pulse and breathing estimates, capture quality, your answers)',
     n(c.faceTemplates, 'face position template', 'face position templates') + ' (numbers for where your face sat in the frame, used to line up later checkups; not a picture)',
-    n(c.photos, 'dental photo', 'dental photos') + (c.photos ? `, about ${fmtBytes(c.photoBytes)}` : '') + ' (the only pictures kept, and only if you took them)',
+    n(c.photos, 'dental photo', 'dental photos') + (c.photos ? `, about ${fmtBytes(c.photoBytes)}` : '') + ' (kept only if you took them)',
     n(c.notes, 'checkup with symptom ticks or notes', 'checkups with symptom ticks or notes'),
     n(c.reactionTests, 'reaction test', 'reaction tests'),
     n(c.eyeChecks, 'eye grid check', 'eye grid checks'),
+    n(c.expChecks || 0, 'experimental check', 'experimental checks') + (c.expPhotos ? ` with ${c.expPhotos} small neck or eyelid photo${c.expPhotos === 1 ? '' : 's'}` : ''),
   ];
 }

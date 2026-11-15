@@ -55,3 +55,22 @@ export function makeDemoSessions(now = new Date(), seed = 42) {
   });
   return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+
+// Invented experimental check results for the demo profile (no photos). The later jaw and timing
+// results sit outside their bands on purpose, so the "differs from your first check" view can be seen.
+export function makeDemoExp(now = new Date()) {
+  const day = 24 * 3600 * 1000;
+  const at = (daysAgo, h) => { const d = new Date(+now - daysAgo * day); d.setHours(h, 15, 0, 0); return d.toISOString(); };
+  const rec = (i, daysAgo, exp) => ({ id: `demo-exp-${String(i).padStart(2, '0')}`, createdAt: at(daysAgo, 9), kind: 'exp', source: 'device', demo: true, complete: false, exp: { ok: true, method: 'Invented sample result.', ...exp } });
+  return [
+    rec(1, 13, { check: 'jaw', maxOpenMm: 44.5, deviationMm: 0.8, openings: 3 }),
+    rec(2, 1, { check: 'jaw', maxOpenMm: 37.0, deviationMm: 1.4, openings: 3 }),
+    rec(3, 12, { check: 'gaze', followCorr: 0.91, lagMs: 160, eyeTravel: 0.11, smoothnessPct: 78, jumpsPer10s: 1.5, holdJitterPct: 6.2 }),
+    rec(4, 2, { check: 'gaze', followCorr: 0.88, lagMs: 190, eyeTravel: 0.1, smoothnessPct: 74, jumpsPer10s: 2.5, holdJitterPct: 7.9 }),
+    rec(5, 11, { check: 'pupil', right: { constrictionPct: 31.5, latencyMs: 330, restRatio: 0.41 }, left: { constrictionPct: 29.8, latencyMs: 360, restRatio: 0.4 }, asymmetryPct: 2.5, irisPx: 38 }),
+    rec(6, 10, { check: 'pallor', eye: 'right', eyelidEi: 21.4, whiteEi: 6.1, relEi: 15.3 }),
+    rec(7, 9, { check: 'tremor', mode: 'motion', unit: 'm/s²', right: { peakHz: null, share: 0.12, rms: 0.021 }, left: { peakHz: null, share: 0.1, rms: 0.019 } }),
+    rec(8, 12, { check: 'circ', pttMs: 64, pttSpreadMs: 18, bpm: 62, rorFace: 0.912, rorPalm: 0.88, windows: '9 of 11', cameraFps: 30 }),
+    rec(9, 1, { check: 'circ', pttMs: 31, pttSpreadMs: 22, bpm: 72, rorFace: 0.934, rorPalm: 0.9, windows: '7 of 11', cameraFps: 30 }),
+  ];
+}

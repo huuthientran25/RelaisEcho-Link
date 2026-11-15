@@ -12,12 +12,16 @@ export const LANGS = {
 export const STRINGS = {
   fr: {
     'nav.board': 'Tableau',
+    'nav.overview': 'Aperçu',
+    'nav.checkup': 'Bilan',
+    'nav.exp': 'Expérimental',
     'nav.history': 'Historique',
     'home.eyebrow': 'Bilan guidé par caméra · de l’orbite au Nord',
     'home.h1': 'Votre dernier bilan, aligné sur celui d’aujourd’hui.',
     'home.lede': 'La caméra d’un téléphone ou d’un portable vous guide jusqu’à la même position que votre bilan de référence, ne mesure que lorsque le signal est bon, et prépare un court dossier qu’un professionnel à distance peut consulter.',
     'home.start': 'Commencer le bilan guidé',
     'home.board': 'Tableau de mission',
+    'home.overview': 'Aperçu',
     'home.sample': 'Voir l’exemple',
     'home.disclaimer': 'Prototype de recherche créé au NASA Space Apps 2026, Montréal. Ce n’est pas un dispositif diagnostique. Si quelque chose ne va pas, contactez directement un professionnel de la santé.',
     'home.captures.h': 'Ce qu’il mesure',
@@ -40,6 +44,7 @@ export const STRINGS = {
     'board.t.sw': 'Météo spatiale',
     'board.t.delay': 'Délai du signal',
     'board.t.eye': 'Grille visuelle',
+    'board.t.exp': 'Contrôles expérimentaux',
     'board.t.day': 'Lumière du jour',
     'alert.step': 'Test de vigilance · expérimental',
     'alert.h1': 'Test de réaction de 3 minutes',
@@ -117,6 +122,8 @@ export const PHRASES_FR = {
   'Smile with lips apart so your teeth show': 'Souriez, lèvres entrouvertes, pour montrer vos dents',
   'Too dark. Add light facing you (a phone flashlight helps).': 'Trop sombre. Ajoutez une lumière face à vous (la lampe d’un téléphone aide).',
   'Glare on the teeth. Tilt the light or the camera slightly.': 'Reflet sur les dents. Inclinez légèrement la lumière ou la caméra.',
+  'Move closer to the camera, as at your baseline': 'Rapprochez-vous de la caméra, comme lors de votre référence',
+  'Move back a little, as at your baseline': 'Reculez un peu, comme lors de votre référence',
   Front: 'Face', 'Your right side': 'Votre côté droit', 'Your left side': 'Votre côté gauche',
 };
 

@@ -31,6 +31,7 @@ export function standouts(p) {
     if (d.auto_compare?.flags?.length) add('change', `Dental ${d.view}: ${d.auto_compare.flags.join(' ')}`);
     if (d.reviewer_marks?.length) add('note', `Dental ${d.view}: ${d.reviewer_marks.length} mark${d.reviewer_marks.length === 1 ? '' : 's'} placed by the sender.`);
   }
+  for (const x of p.experimental_checks || []) if (x.differs?.length) add('note', `Experimental ${x.title.toLowerCase()}: differs from the person's own first check (${x.differs.join(', ')}). Experimental, often explained by light or distance.`);
   if (p.self_report_checklist?.length) add('note', `Symptoms ticked: ${p.self_report_checklist.join(', ')}.`);
   if (p.self_report) add('note', 'The person wrote a note (see Self report).');
   const order = { urgent: 0, change: 1, caution: 2, note: 3 };

@@ -5,6 +5,7 @@ import { FACE_OVAL, LIPS_OUTER } from './geometry.js';
 export function mockLandmarker() {
   // ?mock=1&slow=20 makes each detection take about 20 ms, to test the frame budget.
   const slowMs = Number(new URLSearchParams(location.search).get('slow')) || 0;
+  const hist = [];
   return {
     detectForVideo(_video, ts) {
       if (slowMs) { const end = performance.now() + slowMs; while (performance.now() < end) { /* simulate a slow device */ } }
@@ -27,6 +28,15 @@ export function mockLandmarker() {
       };
       lid(33, 133, 160, 158, 144, 153, 0.44, 0.475);
       lid(362, 263, 385, 387, 380, 373, 0.525, 0.56);
+      // Irises (468 to 477). For the experimental checks the app sets window.__relaisExp while a check runs:
+      // 'gaze' makes the irises follow the moving dot 150 ms late, 'jaw' opens and closes the mouth.
+      const mode = typeof window !== 'undefined' ? window.__relaisExp : null;
+      hist.push([ts, typeof window !== 'undefined' ? Number(window.__relaisTarget) || 0 : 0]);
+      while (hist.length > 2 && hist[1][0] <= ts - 150) hist.shift();
+      const shift = mode === 'gaze' ? -0.004 * hist[0][1] : 0;
+      const iris = (c, cx) => { const r = 0.0068; set(c, cx + shift, 0.33); set(c + 1, cx + shift + r, 0.33); set(c + 2, cx + shift, 0.33 - r); set(c + 3, cx + shift - r, 0.33); set(c + 4, cx + shift, 0.33 + r); };
+      iris(468, 0.4575); iris(473, 0.5425);
+      if (mode === 'jaw') { const o = 0.03 * Math.max(0, Math.sin((2 * Math.PI * ts) / 5600)); set(14, 0.5, 0.506 + o); set(152, 0.5 + 0.1 * o, 0.58 + o); }
       return { faceLandmarks: [pts] };
     },
   };

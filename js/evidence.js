@@ -97,4 +97,46 @@ export const EVIDENCE = {
     source: 'Barisano et al., PNAS 2022: perivascular spaces enlarged after long ISS flights. Miao et al., Nature Neuroscience 2024: in mice, clearance fell during sleep and anaesthesia. Plá, Kroesbergen, Nedergaard et al., Nature Neuroscience 2025: disputed that conclusion; the authors replied.',
     limits: 'Human glymphatic function in spaceflight is a hypothesis. Most mechanism work is in animals.',
   },
+  exp_jaw: {
+    title: 'Jaw opening (experimental)',
+    method: 'The gap between the inner edges of the lips and the chin\'s sideways position are read from face landmarks on every frame, then turned into millimetres by assuming each iris is 11.7 mm wide. The widest opening (97th percentile of frames) and the chin\'s sideways swing between closed and open are kept.',
+    source: 'Iris width in the same adult eyes measured about 11.8 mm on one device and 12.2 to 12.4 mm on three others (Buckenham Boyle et al., PLoS ONE 2021), so the scale can be off by about 5 percent. Maximum opening between the teeth averaged about 51 mm in men and 44 mm in women in one sample of 894 Indian adults (PMC3428458); normal values differ between populations.',
+    limits: 'Lips, not teeth: the gap reads smaller than a dentist\'s ruler. Head tilt and distance change it. It cannot diagnose a jaw joint problem. Compare only with your own first check.',
+  },
+  exp_gaze: {
+    title: 'Eye following (experimental)',
+    method: 'A dot moves left and right at 0.25 cycles per second for 20 seconds, then stops. The position of each iris between its eye corners is tracked; the app finds the delay that best lines the eye up with the dot, how closely they match (correlation, 0 to 1), sudden catch up jumps, and how steady the eyes stay on the still dot.',
+    source: 'A commercial webcam eye tracker reached about 1.4 degrees of accuracy, and its raw gaze matched a laboratory tracker at about 80 percent correlation during smooth pursuit (Behavior Research Methods 2024, PMC11289017). Clinical work usually reports pursuit gain, eye speed over target speed (McIlreavy et al., TVST 2019). This app does not estimate gaze angle at all.',
+    limits: 'Not calibrated gaze. The delay includes the camera\'s own delay, so compare on the same device only. Glasses, lighting and head movement change it. It cannot detect concussion, nystagmus or any neurological disease.',
+  },
+  exp_pupil: {
+    title: 'Pupil light response (experimental)',
+    method: 'The screen stays dark for 3 seconds, turns white for 2, then dark again. In each frame the dark area connected to the centre of each iris is measured against the iris width. The app reports how much each pupil narrowed, how fast it reached half of that, and the size difference between the eyes before the flash.',
+    source: 'Separating the pupil from the iris in visible light is hard, most of all for dark irises (Scientific Reports 2023, s41598-023-40796-0). A smartphone pupillometer found the pupil and iris in 77 percent of scans in one study (Neice et al., Journal of Clinical Monitoring and Computing 2021).',
+    limits: 'Not a pupillometer. The camera may change its exposure during the flash, which hides some narrowing. A screen is a weak light. Many dark eyes will be refused. Skip it if flashing light can trigger seizures for you. A sudden unequal pupil with headache or weakness is an emergency, not a check.',
+  },
+  exp_pallor: {
+    title: 'Inner eyelid colour (experimental)',
+    method: 'While you pull down a lower eyelid, the app measures a redness index, 100 x log10(red / green), on the inner eyelid and on the white of the same eye, and keeps the difference. The eye showing the most pink is used. You confirm the picture before it is saved.',
+    source: 'A conjunctiva redness index from photos taken with a colour card correlated with haemoglobin and compared favourably with clinicians\' judgement (Collings et al., PLoS ONE 2016). A smartphone app estimating haemoglobin from inner eyelid photos was 75 percent accurate across anaemia categories, with limits of agreement of about plus or minus 4.8 g/dL (Zhao et al., PLoS ONE 2024).',
+    limits: 'No colour card here, so room light changes the number. It does not estimate haemoglobin and is not an anaemia test. Eye irritation makes the eyelid redder.',
+  },
+  exp_neck: {
+    title: 'Neck check, thyroid area (experimental)',
+    method: 'With the head tipped back a little, the app saves a photo of the lower front neck while you hold a sip of water and another at the largest movement while you swallow. It counts swallow movements from frame to frame change in the box.',
+    source: 'Clinical neck exams inspect the lower neck and feel the thyroid as the person swallows a sip of water (University of Washington clinical skills text, Head and Neck Exam).',
+    limits: 'The app looks for nothing in the photos. A normal looking neck does not rule thyroid disease out, and thyroid function needs a blood test. A lump that grows fast, or trouble swallowing or breathing, needs prompt care.',
+  },
+  exp_tremor: {
+    title: 'Hand steadiness (experimental)',
+    method: 'Each hand is held out for 15 seconds. Phone mode reads the motion sensor; camera mode tracks how the picture inside a box shifts. The app finds the strongest rhythm between 3 and 12 Hz and how much of all movement falls in that band.',
+    source: 'Phone and watch accelerometers measured tremor peak frequency comparably to a laboratory accelerometer in 20 people with essential tremor or Parkinson\'s disease (Journal of Clinical Movement Disorders, 2020).',
+    limits: 'Everyone has a small, fast physiological tremor; caffeine, cold, tiredness and stress raise it. Camera mode depends on frame rate and distance. No tremor type or disease is named.',
+  },
+  exp_circ: {
+    title: 'Pulse timing and colour ratio (experimental)',
+    method: 'The pulse is taken from the face and from an open palm held beside the cheek in the same picture, with the POS method. Timing index: how many milliseconds later the palm pulse arrives, from cross correlation in 10 second windows. Colour index: the pulse size relative to the mean in red, divided by the same in blue, on the face. Both are compared only with your own first check.',
+    source: 'Face and palm camera pulses gave a pulse transit time that tracked blood pressure in small studies, one with a 420 frames per second camera (cited in Sensors 2017, PMC5539707); a 2021 review found little evidence that cameras can measure blood pressure directly (McDuff, arXiv 2111.11547). RGB camera oxygen saturation needed calibration in a hypoxia laboratory (van Gastel and Verkruijsse, Biomedical Optics Express 2022), and an unmodified phone camera with the finger on the lens detected 79 percent of low oxygen cases (Hoffman et al., npj Digital Medicine 2022).',
+    limits: 'Not blood pressure and not oxygen saturation; the app never shows mmHg or a percentage. An ordinary camera takes a frame about every 33 ms and has no infrared channel. Light, skin tone, hand position and camera settings move both indexes. Never use it to change a medicine.',
+  },
 };

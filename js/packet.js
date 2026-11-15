@@ -9,7 +9,7 @@ export const LIMITS = [
   'No diagnosis is made. New or severe symptoms need direct clinical contact.',
 ];
 
-export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null } = {}) {
+export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null, experimental = [] } = {}) {
   const src = session.source === 'file' ? 'recorded video' : 'live camera';
   const packet = {
     schema: 'relaisecho-packet/0.1',
@@ -36,6 +36,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     alertness: alertness?.alertness ? { date: alertness.createdAt, median_ms: alertness.alertness.medianMs, lapses: alertness.alertness.lapses,
       false_starts: alertness.alertness.falseStarts, label: 'EXPERIMENTAL 3 minute reaction test; device delay included' } : null,
     vision_self_check: vision,
+    experimental_checks: experimental || [],
     self_report_checklist: symptomLabels(session.context?.checklist),
     self_report_urgent: hasUrgent(session.context?.checklist),
     self_report: session.context?.symptoms || '',
@@ -59,6 +60,7 @@ export function packetText(p) {
   if (p.alertness) lines.push(`Alertness test ${p.alertness.date.slice(0, 16).replace('T', ' ')} UTC: median ${p.alertness.median_ms ?? '-'} ms, ${p.alertness.lapses} lapses, ${p.alertness.false_starts} false starts (experimental)`);
   if (r.eyes_during_scan) lines.push(`Eyes during scan: ${r.eyes_during_scan.blinks_per_min} blinks/min, closed ${r.eyes_during_scan.closed_pct}% (experimental)`);
   if (p.vision_self_check) lines.push(`Eye grid ${p.vision_self_check.date.slice(0, 10)}: right ${p.vision_self_check.right_eye}; left ${p.vision_self_check.left_eye}${p.vision_self_check.new_vs_reference ? `; new vs reference: right ${p.vision_self_check.new_vs_reference.right}, left ${p.vision_self_check.new_vs_reference.left}` : ''} (experimental self check)`);
+  for (const x of p.experimental_checks || []) lines.push(`${x.title} ${x.date.slice(0, 10)}: ${Object.entries(x.values).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}`).join(', ')}${x.differs?.length ? `; differs from own first check: ${x.differs.join(', ')}` : x.verdict === 'reference' ? '; first check' : ''} (experimental${x.check === 'circ' ? ', indexes, not blood pressure or oxygen saturation' : ''})`);
   if (p.self_report_urgent) lines.push('URGENT ITEM TICKED: chest pain or shortness of breath. Contact the person directly.');
   if (p.self_report_checklist?.length) lines.push(`Symptoms ticked: ${p.self_report_checklist.join(', ')}`);
   if (p.self_report) lines.push(`Self report: ${p.self_report}`);

@@ -70,5 +70,7 @@ export const CONFIG = {
     cropWidth: 960,
     cropHeight: 540,
     mouthWidthInCrop: 0.62,
+    distTol: 0.12,             // face distance must match the baseline's within 12% (iris size in the picture), MODELED
+    hfovDeg: 65,               // assumed camera field of view, only for the rough distance in cm shown on screen
   },
 };

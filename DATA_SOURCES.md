@@ -46,4 +46,18 @@
 - Motion-based respiratory rate estimation with motion artifact removal using video of face and upper body. IEEE EMBC, 2022.
 - Nowara EM et al., meta analysis of skin type and remote PPG error (cited in npj Digital Medicine, 2025).
 - Overbey EG et al. The Space Omics and Medical Atlas (SOMA) and international astronaut biobank. Nature, 2024.
+- Buckenham Boyle A et al. Repeatability and agreement of white-to-white measurements between slit-scanning tomography, infrared biometry, dual rotating Scheimpflug camera/Placido disc tomography, and swept source anterior segment OCT. PLoS ONE, 2021 (iris width about 11.8 to 12.4 mm by device): https://pmc.ncbi.nlm.nih.gov/articles/PMC8284630
+- Study of normal maximal mouth opening in 894 Indian adults (51.3 mm men, 44.3 mm women): https://pmc.ncbi.nlm.nih.gov/articles/PMC3428458
+- Webcam eye tracking close to laboratory standards: comparing a new webcam-based system and the EyeLink 1000. Behavior Research Methods, 2024: https://pmc.ncbi.nlm.nih.gov/articles/PMC11289017
+- McIlreavy L, Freeman TCA, Erichsen JT. Two-dimensional analysis of smooth pursuit eye movements. TVST 8(5):7, 2019, doi 10.1167/tvst.8.5.7.
+- Smartphone RGB pupillometry with far red light (difficulty with dark irises in visible light). Scientific Reports, 2023: https://www.nature.com/articles/s41598-023-40796-0
+- Neice AE et al. Feasibility study of a smartphone pupillometer and evaluation of its accuracy. Journal of Clinical Monitoring and Computing 35:1269, 2021.
+- Collings S et al. Non-invasive detection of anaemia using digital photographs of the conjunctiva. PLoS ONE, 2016: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4829242/
+- Zhao L et al. Prediction of anemia in real-time using a smartphone camera processing conjunctival images. PLoS ONE, 2024 (PubMed 38739605).
+- University of Washington, Foundations of Clinical Medicine, Head and Neck Exam (thyroid inspection and palpation while swallowing water): https://uw.pressbooks.pub/fcmtextbook/?p=110
+- Quantification of tremor using consumer product accelerometry is feasible in patients with essential tremor and Parkinson's disease. Journal of Clinical Movement Disorders 7:4, 2020: https://pmc.ncbi.nlm.nih.gov/articles/PMC7137336
+- McDuff D. Camera measurement of physiological vital signs (review), 2021: https://arxiv.org/abs/2111.11547
+- Sensors 17(7):1541, 2017, a study combining contact and imaging photoplethysmography for blood pressure; its introduction cites a face to palm pulse transit time study filmed at 420 frames per second: https://pmc.ncbi.nlm.nih.gov/articles/PMC5539707
+- van Gastel M, Verkruijsse W. Contactless SpO2 with an RGB camera: experimental proof of calibrated SpO2. Biomedical Optics Express, 2022.
+- Hoffman JS et al. Smartphone camera oximetry in an induced hypoxemia study. npj Digital Medicine 5, 2022, doi 10.1038/s41746-022-00665-y.
 - Soukupová T, Čech J. Real-time eye blink detection using facial landmarks. Computer Vision Winter Workshop, 2016.

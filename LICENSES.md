@@ -16,7 +16,7 @@ Original code and content: Apache License 2.0 (see `LICENSE`).
 
 No other third party code is included. Bundled data: NASA OSDR OSD-575 values, see `DATA_SOURCES.md`. POS pulse extraction, filters, FFT, breathing tracking and dental sharpness checks are written for this project.
 
-Logo: supplied by the team (icons/logo-*.png, icons/icon-*.png were cut from the team's logo file). If it was made with an AI image tool, say so in the submission's AI disclosure. Fonts: Atkinson Hyperlegible and Noto Sans Canadian Aboriginal are bundled (see table). Colours (ivory, charcoal, amber) come from the team logo.
+Logo: the team's concept (an image made with ChatGPT) was redrawn by Claude as a flat two colour vector, `icons/logo-mark.svg`, also inlined in `index.html`; `icons/icon-*.png` and `icons/logo-blue-128.png` are rendered from it. Both steps used AI tools; see AI_DISCLOSURE.md. Fonts: Atkinson Hyperlegible and Noto Sans Canadian Aboriginal are bundled (see table). Colours (ivory, charcoal, amber) come from the team logo.
 
 ## Deliberately not used
 

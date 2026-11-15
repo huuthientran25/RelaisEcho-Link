@@ -5,6 +5,31 @@
 import { CONFIG } from './config.js';
 import { LIPS_OUTER } from './geometry.js';
 import { sharpnessStats } from './frame.js';
+import { irisInfo, EXP } from './exp.js';
+
+// Face distance from the camera, as the iris height in the picture over the picture width. The vertical
+// iris diameter is used because turning the head (side views) narrows the iris sideways but not up and down.
+// Same camera and resolution: a bigger value means closer. Not comparable across cameras.
+export function irisScale(lm, videoW, videoH) {
+  const iris = irisInfo(lm, videoW, videoH);
+  if (!iris) return null;
+  const v = Math.max(iris.right.vPx || 0, iris.left.vPx || 0);
+  return v > 2 && videoW > 0 ? v / videoW : null;
+}
+// Rough distance in cm for display only (assumes a typical camera field of view).
+export function approxDistanceCm(scale, hfovDeg = CONFIG.dental.hfovDeg) {
+  if (!(scale > 0)) return null;
+  const focalOverWidth = 0.5 / Math.tan((hfovDeg * Math.PI) / 360);
+  return Math.round((EXP.irisMm * focalOverWidth) / scale / 10);
+}
+// Compare with the baseline photo's distance. ratio > 1 means closer than at baseline.
+export function distanceGate(scale, target, tol = CONFIG.dental.distTol) {
+  if (!(scale > 0) || !(target > 0)) return { ok: true, ratio: null };
+  const ratio = scale / target;
+  if (ratio < 1 - tol) return { ok: false, ratio, msg: 'Move closer to the camera, as at your baseline' };
+  if (ratio > 1 + tol) return { ok: false, ratio, msg: 'Move back a little, as at your baseline' };
+  return { ok: true, ratio };
+}
 
 export const VIEWS = [
   { id: 'front', label: 'Front', hint: 'Face the camera, smile so your teeth show, lips apart' },
@@ -64,7 +89,7 @@ export class DentalCapture {
     this.small.width = 480; this.small.height = 270;
     this.reset();
   }
-  reset() { this.view = 0; this.results = {}; this.good = 0; this.best = null; this.frame = 0; }
+  reset() { this.view = 0; this.results = {}; this.good = 0; this.best = null; this.frame = 0; this.distTargets = null; this.lastScale = null; }
   get currentView() { return VIEWS[this.view]; }
   get done() { return this.view >= VIEWS.length; }
   skipView() { this.results[this.currentView.id] = { view: this.currentView.id, captured: false, reason: 'skipped by user' }; this.nextView(); }
@@ -79,6 +104,12 @@ export class DentalCapture {
     if (g.mouthGapRatio < c.minMouthGapRatio) return { ok: false, msg: 'Smile with lips apart so your teeth show' };
     const yg = yawGate(view.id, g.yaw);
     if (!yg.ok) return { ok: false, msg: yg.msg };
+    const scale = irisScale(lm, video.videoWidth, video.videoHeight);
+    this.lastScale = scale;
+    const target = this.distTargets ? (this.distTargets[view.id] || this.distTargets.front) : null;
+    const dg = distanceGate(scale, target);
+    this.lastRatio = dg.ratio;
+    if (!dg.ok) return { ok: false, msg: dg.msg };
     this.frame++;
     if (this.frame % 2) return { ok: true, msg: 'Hold still', progress: this.good / c.goodFramesNeeded };
     const meta = cropMouth(video, lm, this.crop);
@@ -90,7 +121,8 @@ export class DentalCapture {
     this.good++;
     if (!this.best || st.sharpness > this.best.sharpness) {
       this.best = { view: view.id, captured: true, sharpness: st.sharpness, meanLuma: st.meanLuma, glareFrac: st.glareFrac,
-        yaw: g.yaw, lips: meta.lips, image: this.crop.toDataURL('image/jpeg', 0.88), marks: [] };
+        yaw: g.yaw, lips: meta.lips, image: this.crop.toDataURL('image/jpeg', 0.88), marks: [],
+        distScale: scale, videoW: video.videoWidth, distRatio: dg.ratio };
     }
     if (this.good >= c.goodFramesNeeded) {
       this.results[view.id] = { ...this.best, framesConsidered: this.good };

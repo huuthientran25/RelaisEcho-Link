@@ -29,15 +29,17 @@ Or let it play by itself: Home page > **30 second captioned demo** (also `/?reel
 | Dental photos | Front and both sides, levelled and scaled by the mouth corners, baseline against today slider, reviewer marks, colour comparison with a lighting check | EXPERIMENTAL |
 | Change against baseline | A difference counts only when it beats the method's noise band (published figures, or your own bench error after 5 reference pairs) | MODELED |
 | Alertness | 3 minute reaction test with the published PVT-B settings, compared with your own first test | EXPERIMENTAL |
+| Overview | One screen: a body chart whose regions open trend graphs against your own first value, four headline numbers, a short "look here first" list and the next step. A reading order, not a score | LIVE |
 | Mission board | Today checklist, checkup rhythm, sleep pressure (two process model), daylight by latitude next to the station's 16 sunrises a day, radiation budget for ISS and Mars missions (NASA-STD-3001, Curiosity RAD), live space weather (NASA DONKI), signal delay to Mars today (JPL orbital elements), Inspiration4 crew blood data (NASA OSDR OSD-575), brain clearance explainer | LIVE, MODELED, PUBLISHED or NASA DATA per tile |
 | Eye grid | Amsler grid self check, one eye at a time, compared with your own first check; counts travel in the packet | EXPERIMENTAL |
+| Experimental checks | Seven short camera checks, each compared only with your own first result: jaw opening (mm, iris scaled), eye following a moving dot (match and delay), pupil light response (screen flash), inner eyelid colour (redness against the white of the eye, confirmed before saving), neck photos before and during a swallow, hand steadiness (phone motion sensor or camera, 3 to 12 Hz), and a pulse timing index plus a colour ratio index (face against an open palm). The last two are indexes, never mmHg or a saturation percentage | EXPERIMENTAL |
 | Symptoms | Ten fixed items ticked before a checkup (plus free text), carried in the packet and counted over 14 days in History; chest pain or shortness of breath shows an urgent care message | |
 | Review loop | Nurse view opens with a "Read first" list built from the packet (urgent ticks, changes outside the noise band, low quality captures); a reading order, not a score. Packet as text, JSON, compressed file, QR code or print; nurse view opens it with no upload; reply file marks it acknowledged | |
 | Shared devices | Several people on one device, each with their own baseline and history | |
 | Device check | One screen that tests the browser, the real camera frame rate, brightness, face model load and tracking speed, and gives a report to copy (no personal data in it) | |
 | Demo reel | A 30 second captioned walk through on the sample data, with built in tab recording | |
 | Your data | One screen listing what is stored, what can leave, the three places the app fetches from, and an erase everything button | |
-| Access | Works offline after the first visit, installable, English and French (draft), Inuktitut slots awaiting a certified translator, larger text, light and dark, spoken coaching, screen reader checks | |
+| Access | Works offline after the first visit, installable, English and French (draft), Inuktitut slots awaiting a certified translator, five text sizes (Aa−, Aa, Aa+), light and dark, spoken coaching, screen reader checks | |
 
 There is no combined health score on purpose: one number would hide which part changed.
 
@@ -54,7 +56,7 @@ Full list with links: `DATA_SOURCES.md`. Software and font licences: `LICENSES.m
 
 ## What is tested, and what is not
 
-- `npm test`: 83 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
+- `npm test`: 102 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
 - A synthetic video with a known 72 bpm colour pulse and 15 breaths per minute runs through the whole browser pipeline (`tests/e2e_synthetic.mjs`) and returns 72 and 15. This shows the code path works.
 - An automated accessibility audit (axe-core) of eight screens (home, board, history, crew data, reaction test, nurse view, checkup setup, device check) in light and dark mode found no violations at v0.50.
 - **Not shown: accuracy on real people.** Camera pulse error is known to rise on darker skin (a published meta analysis reports about 4 beats per minute for Fitzpatrick types I to V and about 14 for type VI), cold skin is untested, and every threshold in `js/config.js` is a design choice. That is why every estimate is labelled EXPERIMENTAL and the app refuses to give a number when a capture fails its checks.
@@ -105,6 +107,8 @@ Say what the sample cannot show: skin tone coverage, demographic fairness, other
 | `js/vision.js`, `js/geometry.js`, `js/align.js` | MediaPipe Face Landmarker (Apache 2.0), face size and angles, skin and breathing regions, positioning against the baseline template |
 | `js/pulse.js`, `js/resp.js`, `js/dsp.js`, `js/frame.js` | POS pulse (Wang et al. 2017), breathing channels, filters and spectra written for this project, pixel sampling and frame timing |
 | `js/eyes.js`, `js/pvt.js` | Eye aspect ratio blinks; reaction test scoring |
+| `js/overview.js` | Overview body chart: region status, series and the SVG line chart |
+| `js/exp.js`, `js/expui.js` | Experimental checks: measurements (unit tested on synthetic input) and the guided screens |
 | `js/dental.js`, `js/dentalcmp.js` | Guided mouth crops; CIELAB colour comparison with a lighting check |
 | `js/change.js`, `js/board.js`, `js/crew.js` | Noise bands and bench error; sleep, radiation and today models; OSD-575 summaries |
 | `js/packet.js`, `js/review.js`, `js/reply.js`, `js/qr.js` | Review packet, nurse view checks, reply and compression, QR code |

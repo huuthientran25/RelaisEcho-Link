@@ -2,6 +2,31 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## Changes in v0.58 (15 Nov 2026)
+
+- **Overview tab: everything on one screen.** A body chart with seven regions (sleep and alertness, eyes, mouth and jaw, neck, heart and circulation, breathing, hands). Each region's dot shows urgent tick, look again, logged or not measured, with a dashed line to its label. Selecting a region plots its measures over time with the person's own first value (or the original baseline) and its band; "Show values" gives the same numbers as a table. Four headline numbers (pulse, breathing, reaction time, last night's sleep), a short "Look here first" list and the next step sit beside it. The Board stays the detailed view. A reading order, not a score.
+- **Tabs** under the top bar: Overview, Checkup, Board, Experimental, History; the current one is highlighted.
+- **Text size: Aa−, Aa, Aa+.** Five steps from 85% to 150%, applied like browser zoom so layouts reflow instead of overlapping; the camera layers stay full size. Replaces the single A+ toggle (an old "larger text" setting maps to 130%).
+- **Dental photos at the baseline's distance.** Each dental photo records how large the iris appears (vertical size, so turning the head does not change it). Later dental photos on the same camera must be within 12% of the original baseline's distance before they count, with "Move closer" or "Move back a little" coaching (English and French). A different camera is named as not comparable. The first dental set shows a rough distance in cm.
+- **Sharper camera overlays.** The guide outline and measurement boxes are now drawn at the screen's real pixel density, with rounded corners, a light fill and small labels (forehead, cheek, neck, chest; eyelid, neck, palm, hand in the experimental checks) that read correctly in selfie view.
+- **Logo redrawn as a flat vector** (`icons/logo-mark.svg`): corner brackets, an eye and two echo arcs in two colours, no gradients or fake shading. It is inlined in the page so it follows the light and dark themes; app icons are rendered from it. AI disclosure updated.
+- 102 unit tests; browser regression extended; no accessibility violations on 11 screens in light and dark.
+
+## Changes in v0.57 (15 Nov 2026)
+
+- **Experimental checks**, a new screen (home page, footer, board tile). Seven guided camera checks, each saved and compared only with the person's own first result of the same check; bands are design choices and a result outside one reads "differs from your first check", never "abnormal". Failed tries are saved as failed, with the reason.
+  - Jaw opening: inner lip gap and chin swing in mm, scaled by an assumed 11.7 mm iris width.
+  - Eye following: a dot moves at 0.25 cycles per second for 20 s, then holds; how closely and how late the irises follow, catch up jumps, steadiness on the still dot.
+  - Pupil light response: 3 s dark, 2 s white screen, 3 s dark; narrowing per eye, time to half narrowing, left against right. Refuses when pupil and iris cannot be told apart, which is common with dark eyes in visible light.
+  - Inner eyelid colour: redness index of the pulled down lower eyelid against the white of the same eye; the person confirms the close up before it is saved.
+  - Neck check (thyroid area): photos of the lower front neck before and during a swallow, matched to the first check for a reviewer; swallow movements counted. The app looks for nothing in the photos.
+  - Hand steadiness: phone motion sensor or camera, each hand 15 s; strongest rhythm in 3 to 12 Hz and its share of all movement.
+  - Pulse timing and colour ratio: face and open palm side by side; how much later the palm pulse arrives (a blood pressure related index) and a red over blue pulse ratio (an oxygen related index). Shown as indexes against the first check only, never mmHg or %.
+- Packets carry the latest result of each check from the last 14 days (neck and eyelid photos only when "Include photos" is ticked); the nurse view lists them and adds a note to "Read first" when one differs from the first check. History, "Your data", backup restore and a new CSV export include them. Sample data has invented results.
+- Evidence drawers for each check cite the studies and say plainly what the check cannot tell.
+- 94 unit tests (11 new, synthetic inputs with known answers); browser regression at 93 checks (mock face that opens its mouth and follows the dot); no accessibility violations on 10 screens in light and dark.
+- Untested on real faces: iris scale, pupil separation, eyelid boxes and palm timing all need a real person and camera.
+
 ## Changes in v0.56 (15 Nov 2026)
 
 - **Camera choice.** When a device has more than one camera (a laptop with a virtual camera from a video call app, an external webcam), the checkup setup shows a "Which camera" list and remembers the pick. If the saved camera is later unplugged, the scan falls back to the automatic choice instead of failing. Untested on real multi camera hardware; the selection logic is unit tested.

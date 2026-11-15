@@ -6,7 +6,7 @@ import { roiMeanRGB, rowProfile, makeFrameClock } from './frame.js';
 import { makeTemplate, defaultTemplate, compareToTemplate } from './align.js';
 import { estimatePulse, livePulse, estimateWindow, estimatePulseRegions } from './pulse.js';
 import { TorsoTracker, estimateRespMulti } from './resp.js';
-import { DentalCapture, VIEWS } from './dental.js';
+import { DentalCapture, VIEWS, approxDistanceCm } from './dental.js';
 import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, deleteSession, setProfile, getProfile, countByProfile, allIds, everySession, eraseDatabase, DEFAULT_PROFILE } from './store.js';
 import { NETWORK, EXPORTS, NEVER, inventory, inventoryLines, fmtBytes } from './privacy.js';
 import { buildPacket, packetText } from './packet.js';
@@ -23,7 +23,7 @@ import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from 
 import { eyeAspect, EyeTracker } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
-import { makeDemoSessions, DEMO_PROFILE, DEMO_NAME } from './demo.js';
+import { makeDemoSessions, makeDemoExp, DEMO_PROFILE, DEMO_NAME } from './demo.js';
 import { validatePacket, safeImage, standouts } from './review.js';
 import { analyzeMouth, compareMouth, changeMap, mouthMask } from './dentalcmp.js';
 import { REPLY_STATUSES, makeReply, validateReply, gzipText, readMaybeGzip } from './reply.js';
@@ -31,6 +31,9 @@ import { reminderIcs, stripOldPhotos, resultsCsv, cameraOptions, cameraConstrain
 import { featureList, fpsFromTimes, median, verdicts, overall, reportText } from './devicecheck.js';
 import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType } from './reel.js';
 import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
+import { initExp } from './expui.js';
+import { expForPacket, checkTitle, CHECKS as EXP_CHECKS } from './exp.js';
+import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG } from './overview.js';
 import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
 
 const $ = (id) => document.getElementById(id);
@@ -68,8 +71,13 @@ function abandonCapture() {
 let curLang = 'en'; // set by setLang
 const pvt = { running: false }; // alertness test state; declared early because show() reads it
 const dev = { r: { env: {} }, meta: {}, running: false, stream: null, token: null }; // device check state; show() reads it too
+let expApi = null; // experimental checks controller, set up at the end of this file
+const TAB_OF = { overview: 'overview', setup: 'setup', scan: 'setup', results: 'setup', dental: 'setup', compare: 'setup', packet: 'setup',
+  board: 'board', alertness: 'board', crew: 'board', vision: 'board', exp: 'exp', history: 'history' };
 function show(name) {
   state.screen = name;
+  document.querySelectorAll('.tabs [data-tab]').forEach((b) => { if (b.dataset.tab === TAB_OF[name]) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  if (name === 'overview') renderOverview();
   if (name !== 'alertness' && pvt.running) pvtAbort();
   document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.id !== `screen-${name}`; });
   window.scrollTo(0, 0);
@@ -81,6 +89,8 @@ function show(name) {
   if (name === 'crew') renderCrew();
   if (name !== 'device') devStop();
   if (name === 'vision') visReset();
+  if (name !== 'exp') expApi?.stop();
+  if (name === 'exp') expApi?.reset();
   if (name === 'privacy') renderPrivacy();
   if (name === 'device') renderDevice();
   const h = document.querySelector(`#screen-${name} h1`);
@@ -453,14 +463,50 @@ function coachMessage(lm, checks, al) {
   return 'Hold still and breathe normally';
 }
 
-function drawScanOverlay(g, rois, torso, neck, al) {
+// The overlay canvas is kept at the screen's real pixel density (not the 480 px analysis size), so the
+// guide lines and boxes stay sharp. Drawing still uses analysis coordinates; px is one screen pixel in them.
+function overlayCtx() {
   const c = $('overlay');
+  const { AW, AH } = state;
+  const r = c.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const k = r.width > 0 ? Math.max(1, Math.min(4, (r.width * dpr) / AW)) : 1;
+  const w = Math.round(AW * k), h = Math.round(AH * k);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
   const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  ctx.clearRect(0, 0, W, H);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  const px = r.width > 0 ? AW / r.width : 1;
+  const mirrored = $('stage').classList.contains('mirror');
+  // A box with rounded corners, a light fill and an optional small label that reads correctly in selfie view.
+  const box = (b, color, label) => {
+    ctx.save();
+    ctx.lineWidth = 2 * px; ctx.strokeStyle = color; ctx.fillStyle = `${color}22`;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 4 * px); else ctx.rect(b.x, b.y, b.w, b.h);
+    ctx.fill(); ctx.stroke();
+    if (label) {
+      ctx.font = `700 ${12 * px}px system-ui, sans-serif`;
+      const tw = ctx.measureText(label).width + 8 * px, th = 16 * px;
+      const lx = b.x, ly = Math.max(0, b.y - th - 2 * px);
+      ctx.translate(lx + tw / 2, 0);
+      if (mirrored) ctx.scale(-1, 1);
+      ctx.fillStyle = 'rgba(4, 18, 26, 0.78)';
+      ctx.fillRect(-tw / 2, ly, tw, th);
+      ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+      ctx.fillText(label, 0, ly + th / 2 + 0.5 * px);
+    }
+    ctx.restore();
+  };
+  return { ctx, W: AW, H: AH, px, box };
+}
+
+function drawScanOverlay(g, rois, torso, neck, al) {
+  const { ctx, W, H, px, box } = overlayCtx();
   const tpl = state.scan.template;
-  ctx.lineWidth = Math.max(2, W / 200);
-  ctx.setLineDash([W / 50, W / 70]);
+  ctx.lineWidth = 3 * px;
+  ctx.setLineDash([10 * px, 7 * px]);
   ctx.strokeStyle = al && al.ok ? '#7CF0A8' : '#FFD166';
   ctx.beginPath();
   if (tpl.oval) {
@@ -473,12 +519,10 @@ function drawScanOverlay(g, rois, torso, neck, al) {
   ctx.stroke();
   ctx.setLineDash([]);
   if ($('showBoxes').checked && g) {
-    ctx.lineWidth = Math.max(1.5, W / 300);
-    ctx.strokeStyle = '#F2B36B';
-    rois.forEach((b) => ctx.strokeRect(b.x, b.y, b.w, b.h));
-    ctx.strokeStyle = '#9CC3F5';
-    if (neck && neck.h > 0 && neck.visibleFrac >= 0.8) ctx.strokeRect(neck.x, neck.y, neck.w, neck.h);
-    if (torso && torso.h > 0 && torso.visibleFrac >= 0.75) ctx.strokeRect(torso.x, torso.y, torso.w, torso.h);
+    const names = ['forehead', 'cheek', 'cheek'];
+    rois.forEach((b, i) => box(b, '#F2B36B', b.w > 40 * px ? names[i] : ''));
+    if (neck && neck.h > 0 && neck.visibleFrac >= 0.8) box(neck, '#9CC3F5', 'neck');
+    if (torso && torso.h > 0 && torso.visibleFrac >= 0.75) box(torso, '#9CC3F5', 'chest');
   }
 }
 
@@ -621,6 +665,13 @@ async function startDental(file) {
     if (file) await startSource('file', file);
     else if (needSource) await startSource(state.session.facing || 'user');
   } catch (err) { sourceError(err, $('dentalCoach')); return; }
+  // Face distance: later dental photos are taken at the original baseline's distance, on the same camera.
+  const { original } = await baselineAndRecent(state.session.id);
+  const od = original?.dental || {};
+  const targets = Object.fromEntries(Object.entries(od).filter(([, r]) => r?.captured && r.distScale > 0).map(([k, r]) => [k, r.distScale]));
+  const sameCam = !!original && (original.cameraLabel || '') === (state.session.cameraLabel || '') && state.session.source !== 'file';
+  state.dental.distTargets = sameCam && Object.keys(targets).length ? targets : null;
+  state.dental.distNote = !original || !Object.keys(targets).length ? 'baseline' : sameCam ? 'match' : 'othercam';
   $('video').onended = () => finishDental();
   startLoop(dentalFrame);
 }
@@ -648,22 +699,33 @@ function dentalFrame() {
   $('dentalCoach').textContent = st.msg ? phrase(curLang, `${d.done ? '' : `${d.currentView.label}: `}${st.msg}`) : '';
   if (!d.done) $('dentalCoach').title = d.currentView.hint;
   $('dentalBar').style.width = `${Math.round((st.progress || 0) * 100)}%`;
+  dentalDistLine(d);
   drawMouthGuide(lm, st.ok);
   if (st.captured) renderViewSteps();
   if (st.done || d.done) finishDental();
 }
 
+let lastDistText = '';
+function dentalDistLine(d) {
+  let t = '';
+  if (d.distNote === 'match' && d.lastRatio != null) {
+    const pct = Math.round(Math.abs(d.lastRatio - 1) * 100);
+    t = pct <= Math.round(CONFIG.dental.distTol * 100) ? `Distance: matches your baseline photos (within ${Math.round(CONFIG.dental.distTol * 100)}%) ✓` : `Distance: about ${pct}% ${d.lastRatio < 1 ? 'farther from' : 'closer to'} the camera than your baseline photos.`;
+  } else if (d.distNote === 'baseline' && d.lastScale) {
+    t = `Distance about ${approxDistanceCm(d.lastScale)} cm (rough). These photos set the distance for later dental checks on this camera.`;
+  } else if (d.distNote === 'othercam') t = 'A different camera from your baseline, so the face distance cannot be matched. Photos still line up by the mouth corners.';
+  if (t !== lastDistText) { lastDistText = t; $('dentalDist').textContent = t; }
+}
+
 function drawMouthGuide(lm, ok) {
-  const c = $('overlay');
-  const ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, c.width, c.height);
+  const { ctx, W, H, px } = overlayCtx();
   if (!lm) return;
-  ctx.setLineDash([c.width / 60, c.width / 90]);
-  ctx.lineWidth = Math.max(2, c.width / 200);
+  ctx.setLineDash([8 * px, 6 * px]);
+  ctx.lineWidth = 3 * px;
   ctx.strokeStyle = ok ? '#7FE3D4' : '#F2B36B';
   ctx.beginPath();
   LIPS_OUTER.forEach((i, k) => {
-    const x = lm[i].x * c.width, y = lm[i].y * c.height;
+    const x = lm[i].x * W, y = lm[i].y * H;
     k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   });
   ctx.closePath();
@@ -785,7 +847,8 @@ async function renderPacket() {
   }
   const visAll = (await listSessions()).filter((x) => x.kind === 'vision' && x.vision);
   const visRec = visAll.filter((x) => Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 7 * 24 * 3600 * 1000).pop() || null;
-  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]) });
+  const experimental = expForPacket(await listSessions(), { now: new Date(sess.createdAt), includeImages: $('includeImages').checked });
+  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]), experimental });
   $('packetText').textContent = packetText(lastPacket.packet);
   renderPacketStatus(sess);
   gzipText(lastPacket.json).then((gz) => {
@@ -837,7 +900,10 @@ async function renderHistory() {
   const visLine = (s) => `<div class="hist-item"><span><strong>eye grid</strong> · ${fmtDate(s.createdAt)}</span>
       <span>Right eye: ${esc(amsSummary(s.vision?.right).text)} · Left eye: ${esc(amsSummary(s.vision?.left).text)}</span>
       <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
-  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : `<div class="hist-item">
+  const expLine = (s) => `<div class="hist-item"><span><strong>experimental</strong> · ${esc(checkTitle(s.exp.check))} · ${fmtDate(s.createdAt)}</span>
+      <span>${s.exp.ok ? 'measured' : `no result: ${esc(s.exp.reason || '')}`}</span>
+      <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button></div>`;
+  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : s.kind === 'exp' && s.exp ? expLine(s) : `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
       ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
@@ -931,7 +997,7 @@ async function renderBoard() {
   $('usualSleep').value = saved?.usual ?? '';
   const mission = prefs.get('radMission');
   if (mission) { $('radLeo').value = mission.leoDays ?? 180; $('radTransit').value = mission.transitDays ?? 0; $('radSurface').value = mission.surfaceDays ?? 0; }
-  updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile();
+  updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile(); expApi?.renderTile();
   renderAlertTile();
   renderCrewTile();
 }
@@ -1310,9 +1376,7 @@ function applyTheme(dark) {
   $('btnTheme').setAttribute('aria-pressed', dark ? 'true' : 'false');
   $('btnTheme').textContent = dark ? 'Light' : 'Dark';
   document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#101113' : '#041D2B');
-  // Blue logo in light mode, amber logo in dark mode.
-  document.querySelector('.brand img').src = dark ? 'icons/logo-64.png' : 'icons/logo-blue-bar-64.png';
-  document.querySelector('.hero-logo').src = dark ? 'icons/logo-128.png' : 'icons/logo-blue-128.png';
+  // The logo is inline SVG coloured from the theme (css/app.css, .logo-mark), so nothing to swap here.
 }
 const savedTheme = prefs.get('theme');
 applyTheme(savedTheme ? savedTheme === 'dark' : !!(darkQuery && darkQuery.matches));
@@ -1522,7 +1586,7 @@ $('btnDemo').addEventListener('click', async () => {
   setProfile(DEMO_PROFILE);
   // Rebuild so the dates stay recent.
   await clearAll();
-  for (const x of makeDemoSessions(new Date())) await saveSession(x);
+  for (const x of [...makeDemoSessions(new Date()), ...makeDemoExp(new Date())]) await saveSession(x);
   prefs.set('profile', DEMO_PROFILE);
   renderProfileBar();
   show('board');
@@ -1598,6 +1662,7 @@ function reviewHtml(p) {
       ${c.recent?.length ? `<p class="fine">Recent: ${c.recent.map((x) => `${when(x.date)} pulse ${x.pulse_bpm ?? '-'}, breathing ${x.breathing_per_min ?? '-'}`).join(' · ')}</p>` : ''}
       ${p.alertness ? `<p><strong>Alertness test</strong> ${when(p.alertness.date)}: median ${esc(p.alertness.median_ms)} ms, ${esc(p.alertness.lapses)} lapses, ${esc(p.alertness.false_starts)} false starts <span class="fine">(${esc(p.alertness.label)})</span></p>` : ''}
       ${p.vision_self_check ? `<p><strong>Eye grid self check</strong> ${when(p.vision_self_check.date)}: right eye ${esc(p.vision_self_check.right_eye)}; left eye ${esc(p.vision_self_check.left_eye)}.${p.vision_self_check.new_vs_reference ? ` <span class="${p.vision_self_check.new_vs_reference.right + p.vision_self_check.new_vs_reference.left ? 'warnline' : ''}">New against the reference of ${when(p.vision_self_check.new_vs_reference.reference_date)}: right ${esc(p.vision_self_check.new_vs_reference.right)}, left ${esc(p.vision_self_check.new_vs_reference.left)} squares.</span>` : ' First check, so nothing to compare with.'} <span class="fine">(${esc(p.vision_self_check.label)})</span></p>` : ''}
+      ${(p.experimental_checks || []).length ? `<h3>Experimental checks</h3><p class="fine">Each compared only with the person's own first check. Not validated, not a diagnosis. The pulse timing and colour indexes are not blood pressure or oxygen saturation.</p><ul>${p.experimental_checks.map((x) => `<li><strong>${esc(x.title)}</strong> ${when(x.date)}: ${Object.entries(x.values || {}).filter(([, v]) => v != null).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(', ')}${x.differs?.length ? ` <span class="warnline">· differs from first check: ${x.differs.map(esc).join(', ')}</span>` : x.verdict === 'reference' ? ' · first check' : ' · no change beyond bands'}${x.images ? `<div class="exp-photos">${Object.entries(x.images).map(([k, src]) => safeImage(src) ? `<figure><img src="${safeImage(src)}" alt="${esc(x.title)} photo (${esc(k)})"><figcaption class="fine">${esc(k)}</figcaption></figure>` : '').join('')}</div>` : ''}</li>`).join('')}</ul>` : ''}
       ${p.self_report_urgent ? `<p class="warnline">! The person ticked chest pain or shortness of breath. ${esc(URGENT_TEXT)}</p>` : ''}
       ${p.self_report_checklist?.length ? `<p><strong>Symptoms ticked:</strong> ${p.self_report_checklist.map(esc).join(', ')}</p>` : ''}
       ${p.self_report ? `<p><strong>Self report:</strong> ${esc(p.self_report)}</p>` : ''}
@@ -1626,7 +1691,7 @@ $('btnSamplePacket').addEventListener('click', async () => {
   const auto = await sampleDentalAuto(todayImg, baseImg, lips);
   const sessD = { ...sess, dental: { front: { view: 'front', captured: true, image: todayImg, lips, marks: [{ x: 0.42, y: 0.43, note: 'Gum looks redder here (sample)' }], auto } },
     context: { symptoms: 'Slept badly two nights, mild headache. Gums sore when brushing. (Invented sample.)', checklist: ['headache', 'sleep', 'mouth'] } };
-  const { packet } = buildPacket(sessD, { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change, includeImages: true });
+  const { packet } = buildPacket(sessD, { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change, includeImages: true, experimental: expForPacket(makeDemoExp(new Date())) });
   $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${reviewHtml(packet)}${replyFormHtml()}`;
   wireReplyForm(packet);
 });
@@ -1741,14 +1806,23 @@ $('btnStripPhotos').addEventListener('click', async () => {
   for (const x of changed) await saveSession(x);
   renderHistory();
 });
-function applyTextSize(big) {
-  document.documentElement.classList.toggle('big-text', big);
-  $('btnText').setAttribute('aria-pressed', big ? 'true' : 'false');
-  $('btnText').textContent = big ? 'A−' : 'A+';
-  $('btnText').title = big ? 'Normal text size' : 'Larger text';
+// Text size: five steps, like browser zoom on the page (the camera layers stay full screen).
+const TEXT_STEPS = [0.85, 1, 1.15, 1.3, 1.5];
+function applyTextSize(step) {
+  const i = Math.max(0, Math.min(TEXT_STEPS.length - 1, Number.isInteger(step) ? step : 1));
+  document.documentElement.style.setProperty('--page-zoom', TEXT_STEPS[i]);
+  document.documentElement.classList.toggle('big-text', i >= 3);
+  $('btnTextDown').disabled = i === 0; $('btnTextUp').disabled = i === TEXT_STEPS.length - 1;
+  $('btnTextReset').setAttribute('aria-pressed', i === 1 ? 'true' : 'false');
+  $('textSizeNote').textContent = `Text size ${Math.round(TEXT_STEPS[i] * 100)} percent`;
+  prefs.set('textStep', i);
+  return i;
 }
-$('btnText').addEventListener('click', () => { const big = !document.documentElement.classList.contains('big-text'); prefs.set('bigText', big); applyTextSize(big); });
-applyTextSize(!!prefs.get('bigText'));
+const textStep = () => { const v = prefs.get('textStep'); return Number.isInteger(v) ? v : prefs.get('bigText') ? 3 : 1; };
+$('btnTextDown').addEventListener('click', () => applyTextSize(textStep() - 1));
+$('btnTextUp').addEventListener('click', () => applyTextSize(textStep() + 1));
+$('btnTextReset').addEventListener('click', () => applyTextSize(1));
+applyTextSize(textStep());
 
 $('btnResultsCsv').addEventListener('click', async () => { download('relaisecho-results.csv', resultsCsv(await listSessions()), 'text/csv'); });
 
@@ -2011,7 +2085,7 @@ async function reelLoadSample() {
   if (!profiles().some((p) => p.id === DEMO_PROFILE)) prefs.set('profiles', [...profiles(), { id: DEMO_PROFILE, name: DEMO_NAME }]);
   setProfile(DEMO_PROFILE);
   await clearAll();
-  for (const x of makeDemoSessions(new Date())) await saveSession(x);
+  for (const x of [...makeDemoSessions(new Date()), ...makeDemoExp(new Date())]) await saveSession(x);
   prefs.set('profile', DEMO_PROFILE);
   renderProfileBar();
 }
@@ -2306,3 +2380,130 @@ async function refreshCameraList() {
 }
 $('camPick').addEventListener('change', (e) => prefs.set('camId', e.target.value));
 document.querySelectorAll('input[name=source]').forEach((r) => r.addEventListener('change', refreshCameraList));
+
+/* ---------- experimental checks (js/expui.js) ---------- */
+expApi = initExp({ $, esc, fmtDate, state, acan, actx, startSource, stopSource, ensureModel, startLoop, stopLoop, moveStage, detect,
+  saveSession, listSessions, newId, download, openEvidence, sourceError, overlayCtx });
+if (state.screen === 'board') expApi.renderTile();
+
+
+/* ---------- overview: everything on one screen ---------- */
+const ovState = { region: null, metric: null };
+function sleepLastNight() {
+  const sv = prefs.get('sleep');
+  if (!sv?.start || !sv?.end) return null;
+  const start = +new Date(sv.start), end = +new Date(sv.end), now = Date.now();
+  if (!(end > start) || end > now + 60000 || now - end > 20 * H_MS) return null;
+  return Math.round(((end - start) / H_MS) * 10) / 10;
+}
+const OV_WORD = { urgent: 'urgent tick', review: 'look again', logged: 'logged', none: 'not measured' };
+const OV_GO = { pulse: ['setup', 'Start a checkup'], resp: ['setup', 'Start a checkup'], gum: ['setup', 'Start a checkup'], alert: ['alertness', 'Do the reaction test'],
+  eyegrid: ['vision', 'Do the eye grid'], gaze: ['exp', 'Open experimental checks'], pupil: ['exp', 'Open experimental checks'], pallor: ['exp', 'Open experimental checks'],
+  jaw: ['exp', 'Open experimental checks'], tremor: ['exp', 'Open experimental checks'], ptt: ['exp', 'Open experimental checks'], ror: ['exp', 'Open experimental checks'] };
+let ovCache = null;
+async function renderOverview() {
+  const all = await listSessions();
+  const { original } = await baselineAndRecent();
+  const bench = benchError(all);
+  const floors = { pulse: noiseFloor(bench, 'pulse').value, resp: noiseFloor(bench, 'resp').value };
+  const checkups = all.filter((s) => (s.kind === 'baseline' || s.kind === 'followup') && (s.pulse || s.resp));
+  const lastC = checkups.at(-1) || null;
+  const sleepH = sleepLastNight();
+  const regions = buildRegions(all, { original, floors, sleepHours: sleepH, latestChecklist: lastC?.context?.checklist || [] });
+  ovCache = { all, original, floors, regions };
+  if (!ovState.region || !regions.some((r) => r.id === ovState.region)) {
+    ovState.region = (regions.find((r) => r.status === 'urgent') || regions.find((r) => r.status === 'review') || regions.find((r) => r.id === 'heart')).id;
+    ovState.metric = null;
+  }
+  drawOvBody();
+  // Headline numbers
+  const kpi = (k, v, unit, sub, warn) => `<div class="ov-kpi"><p class="k">${k}</p><p class="v">${v ?? '-'}${v != null && unit ? ` <small>${unit}</small>` : ''}</p><p class="s${warn ? ' warn' : ''}">${sub}</p></div>`;
+  const ch = (val, base, floor) => (val == null ? null : changeVsBaseline(val, base, floor));
+  const pc = ch(lastC?.pulse?.bpm, original?.pulse?.bpm, floors.pulse), rc = ch(lastC?.resp?.rpm, original?.resp?.rpm, floors.resp);
+  const word = (c) => (!c ? 'No checkup yet' : c.kind === 'up' ? 'Above your baseline band' : c.kind === 'down' ? 'Below your baseline band' : c.kind === 'noise' ? 'Within your baseline band' : 'First checkup');
+  const tests = all.filter((x) => x.kind === 'alertness' && x.alertness);
+  const lastT = tests.at(-1), firstT = tests[0];
+  const slower = lastT && firstT && lastT !== firstT && lastT.alertness.medianMs > firstT.alertness.medianMs * 1.1;
+  $('ovKpis').innerHTML = kpi('Pulse', lastC?.pulse?.bpm, 'bpm', word(pc), pc && (pc.kind === 'up' || pc.kind === 'down'))
+    + kpi('Breathing', lastC?.resp?.rpm, '/min', word(rc), rc && (rc.kind === 'up' || rc.kind === 'down'))
+    + kpi('Reaction', lastT?.alertness.medianMs, 'ms', !lastT ? 'No test yet' : tests.length < 2 ? 'First test' : slower ? 'Over 10% slower than first' : 'Within 10% of first', slower)
+    + kpi('Sleep', sleepH, 'h', sleepH == null ? 'Enter last night on the Board' : sleepH < 6 ? 'Under 6 h last night' : 'Last night', sleepH != null && sleepH < 6);
+  drawOvChart();
+  // What to look at, and the next step
+  const flagged = regions.filter((r) => r.reasons.length).sort((a, b) => (a.status === 'urgent' ? -1 : 0) - (b.status === 'urgent' ? -1 : 0));
+  const t = todaySteps({ sessions: all.filter((x) => x.kind !== 'alertness' && x.kind !== 'vision' && x.kind !== 'demo'), alertTests: tests, sleep: state.lastSleep });
+  const next = t.steps.find((st) => !st.done);
+  $('ovNext').innerHTML = `<h2>${flagged.length ? 'Look here first' : 'Nothing stands out'}</h2>
+    ${flagged.length ? `<ul>${flagged.slice(0, 4).map((r) => `<li class="${r.status === 'urgent' ? 'warnline' : ''}"><button type="button" class="link-btn ov-jump" data-ov-region="${r.id}">${esc(r.label)}</button>: ${r.reasons.slice(0, 2).map(esc).join('; ')}${r.reasons.length > 2 ? ` and ${r.reasons.length - 2} more` : ''}</li>`).join('')}${flagged.length > 4 ? `<li>${flagged.length - 4} more region${flagged.length - 4 === 1 ? '' : 's'} on the chart</li>` : ''}</ul>` : '<p>Everything measured sits inside its band against your own first value.</p>'}
+    ${flagged.some((r) => r.status === 'urgent') ? `<p class="warnline">! ${esc(URGENT_TEXT)}</p>` : ''}
+    ${next ? `<p><strong>Next step:</strong> ${esc(next.text)} ${next.nav ? `<button type="button" class="link-btn" data-nav="${next.nav}">Go</button>` : ''}</p>` : ''}
+    <p class="fine">A reading order, not a diagnosis. Bands are design choices.</p>`;
+}
+function drawOvBody() {
+  const { regions } = ovCache;
+  const pts = regions.map((r) => `${r.id === ovState.region ? `<circle class="ov-pt-ring" cx="${r.dot[0]}" cy="${r.dot[1]}" r="14"/>` : ''}<circle class="ov-pt ${r.status}" cx="${r.dot[0]}" cy="${r.dot[1]}" r="8"/>`).join('');
+  $('ovBody').innerHTML = BODY_SVG.replace('</svg>', `${pts}</svg>`) + '<svg class="ov-leaders" aria-hidden="true"></svg>' + regions.map((r) => `<button type="button" class="ov-reg ${r.side}" style="top:${r.y}%" data-ov-region="${r.id}" aria-pressed="${r.id === ovState.region}" title="${esc(r.label)}"><span class="ov-dot ${r.status}" aria-hidden="true"></span><span>${esc(r.short || r.label)}<span class="sr-only">${r.short && r.short !== r.label ? ` (${esc(r.label)})` : ''}, ${OV_WORD[r.status]}</span></span></button>`).join('');
+  drawOvLeaders();
+}
+// Thin lines from each label to its dot on the figure, recomputed when the layout changes.
+function drawOvLeaders() {
+  const box = $('ovBody'), fig = box.querySelector('.ov-body-fig'), svg = box.querySelector('.ov-leaders');
+  if (!fig || !svg || !ovCache) return;
+  const b = box.getBoundingClientRect(), f = fig.getBoundingClientRect();
+  if (!b.width || !f.height) return;
+  const z = b.width / box.offsetWidth || 1; // page zoom from the text size buttons
+  const k = f.height / 460;
+  svg.setAttribute('viewBox', `0 0 ${b.width / z} ${b.height / z}`);
+  svg.innerHTML = ovCache.regions.map((r) => {
+    const el = box.querySelector(`[data-ov-region="${r.id}"]`);
+    if (!el) return '';
+    const e = el.getBoundingClientRect();
+    const x1 = ((r.side === 'left' ? e.right : e.left) - b.left) / z, y1 = (e.top + e.height / 2 - b.top) / z;
+    const x2 = (f.left - b.left + r.dot[0] * k) / z, y2 = (f.top - b.top + r.dot[1] * k) / z;
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${r.id === ovState.region ? 'on' : ''}"/>`;
+  }).join('');
+}
+if (window.ResizeObserver) new ResizeObserver(() => { if (state.screen === 'overview') drawOvLeaders(); }).observe($('ovBody'));
+function drawOvChart() {
+  const { all, original, floors, regions } = ovCache;
+  const r = regions.find((x) => x.id === ovState.region);
+  $('ovRegionName').textContent = r.label;
+  if (!r.metrics.length) {
+    $('ovMetric').hidden = true;
+    const neck = all.filter((s) => s.kind === 'exp' && s.exp?.check === 'neck' && s.exp.ok);
+    const last = neck.at(-1), first = neck[0];
+    const img = (src, cap) => (safeImage(src) ? `<figure><img src="${safeImage(src)}" alt="${esc(cap)}"><figcaption class="fine">${esc(cap)}</figcaption></figure>` : '');
+    $('ovChartTitle').textContent = 'Neck photos';
+    $('ovChart').innerHTML = last ? `<div class="ov-photos">${img(last.exp.images?.during || last.exp.images?.before, `Latest, ${fmtDate(last.createdAt)}`)}${first !== last ? img(first.exp.images?.during || first.exp.images?.before, `First check, ${fmtDate(first.createdAt)}`) : ''}</div>`
+      : '<div class="ov-empty"><div><p>No neck check yet. It saves photos only, so there is no graph.</p><button type="button" class="btn" data-nav="exp">Open experimental checks</button></div></div>';
+    $('ovChartNote').textContent = 'Photos for a reviewer to compare; the app looks for nothing in them.';
+    $('ovValues').innerHTML = '';
+    return;
+  }
+  $('ovMetric').hidden = false;
+  const withData = r.metrics.filter((m) => seriesFor(m, all).length);
+  if (!ovState.metric || !r.metrics.includes(ovState.metric)) ovState.metric = withData[0] || r.metrics[0];
+  $('ovMetric').innerHTML = r.metrics.map((m) => `<option value="${m}" ${m === ovState.metric ? 'selected' : ''}>${esc(METRIC_DEFS[m].label)}${withData.includes(m) ? '' : ' (no data)'}</option>`).join('');
+  const def = METRIC_DEFS[ovState.metric];
+  const pts = seriesFor(ovState.metric, all);
+  const ref = referenceFor(ovState.metric, pts, { original, floors });
+  $('ovChartTitle').textContent = `${def.label}${def.unit && def.unit !== 'index' ? `, ${def.unit}` : ''}`;
+  if (!pts.length) {
+    const go = OV_GO[ovState.metric];
+    $('ovChart').innerHTML = `<div class="ov-empty"><div><p>No values yet.</p>${go ? `<button type="button" class="btn" data-nav="${go[0]}">${go[1]}</button>` : ''}</div></div>`;
+    $('ovChartNote').textContent = ''; $('ovValues').innerHTML = '';
+    return;
+  }
+  $('ovChart').innerHTML = lineChart(pts, { unit: def.unit, ref, title: def.label });
+  const exp = def.src.startsWith('exp:');
+  $('ovChartNote').textContent = `${pts.length} value${pts.length === 1 ? '' : 's'}${ref ? ` · line: ${ref.label}${ref.band ? `, shaded band ±${Math.round(ref.band * 100) / 100}` : ''}` : ' · no baseline yet'}${exp ? ' · experimental' : ''}. Red dots sit outside the band; hollow dots were low quality captures.`;
+  $('ovValues').innerHTML = `<table><thead><tr><th scope="col">Date</th><th scope="col">${esc(def.label)}</th></tr></thead><tbody>${pts.slice().reverse().map((p) => `<tr><td>${fmtDate(new Date(p.t).toISOString())}</td><td>${p.v}${def.unit && def.unit !== 'index' ? ` ${esc(def.unit)}` : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+$('screen-overview').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ov-region]');
+  if (!b || !ovCache) return;
+  ovState.region = b.dataset.ovRegion; ovState.metric = null;
+  drawOvBody(); drawOvChart();
+  $('ovBody').querySelector(`[data-ov-region="${ovState.region}"]`)?.focus();
+});
+$('ovMetric').addEventListener('change', (e) => { ovState.metric = e.target.value; drawOvChart(); });

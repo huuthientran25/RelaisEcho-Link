@@ -7,6 +7,7 @@
 <meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
 <meta name="theme-color" content="#041D2B">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/logo-mark.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preload" href="fonts/atkinson-hyperlegible-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -18,7 +19,7 @@
 <header class="site-head">
 <div class="topbar">
   <a class="brand" href="#home" data-nav="home">
-    <img src="icons/logo-blue-bar-64.png" alt="" width="30" height="30">
+    <svg class="logo-mark" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"><path class="lm-a" d="M7 21 V13 A6 6 0 0 1 13 7 H21"/><path class="lm-b" d="M43 7 H51 A6 6 0 0 1 57 13 V21"/><path class="lm-a" d="M57 43 V51 A6 6 0 0 1 51 57 H43"/><path class="lm-b" d="M21 57 H13 A6 6 0 0 1 7 51 V43"/><path class="lm-a" d="M15 32 C21 23 26 20 32 20 C38 20 43 23 49 32 C43 41 38 44 32 44 C26 44 21 41 15 32 Z"/><path class="lm-b" stroke-width="3" d="M19 18 A18 18 0 0 1 29 13.2"/><path class="lm-b" stroke-width="3" d="M45 46 A18 18 0 0 1 35 50.8"/></g><circle class="lm-dot" cx="32" cy="32" r="6"/></svg>
     <span>RelaisÉcho Link</span>
   </a>
   <div class="topbar-right">
@@ -28,13 +29,23 @@
       <option value="fr">Français</option>
       <option value="iu">ᐃᓄᒃᑎᑐᑦ</option>
     </select>
-    <button type="button" class="link-btn" id="btnText" aria-pressed="false" title="Larger text">A+</button>
+    <div class="text-size" role="group" aria-label="Text size">
+      <button type="button" id="btnTextDown" title="Smaller text" aria-label="Aa− smaller text">Aa−</button>
+      <button type="button" id="btnTextReset" title="Standard text size" aria-label="Aa standard text size">Aa</button>
+      <button type="button" id="btnTextUp" title="Larger text" aria-label="Aa+ larger text">Aa+</button>
+    </div>
+    <span id="textSizeNote" class="sr-only" aria-live="polite"></span>
     <button type="button" class="link-btn" id="btnTheme" aria-pressed="false" title="Switch between light and dark">Dark</button>
     <span id="netStatus" class="pill" aria-live="polite"></span>
-    <button data-i18n="nav.board" type="button" class="link-btn" data-nav="board">Board</button>
-    <button data-i18n="nav.history" type="button" class="link-btn" data-nav="history">History</button>
   </div>
 </div>
+<nav class="tabs" aria-label="Main sections">
+  <button data-i18n="nav.overview" type="button" data-nav="overview" data-tab="overview">Overview</button>
+  <button data-i18n="nav.checkup" type="button" data-nav="setup" data-tab="setup">Checkup</button>
+  <button data-i18n="nav.board" type="button" data-nav="board" data-tab="board">Board</button>
+  <button data-i18n="nav.exp" type="button" data-nav="exp" data-tab="exp">Experimental</button>
+  <button data-i18n="nav.history" type="button" data-nav="history" data-tab="history">History</button>
+</nav>
 <p id="langNotice" class="lang-notice" hidden></p>
 <div class="profile-bar" id="profileBar">
   <label for="profileSel">Checkups for</label>
@@ -49,12 +60,13 @@
   <!-- HOME -->
   <section id="screen-home" class="screen" aria-labelledby="h-home">
     <div class="hero">
-      <img class="hero-logo" src="icons/logo-blue-128.png" alt="RelaisÉcho Link logo" width="88" height="88">
+      <svg class="hero-logo logo-mark" viewBox="0 0 64 64" width="88" height="88" role="img" aria-label="RelaisÉcho Link logo"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"><path class="lm-a" d="M7 21 V13 A6 6 0 0 1 13 7 H21"/><path class="lm-b" d="M43 7 H51 A6 6 0 0 1 57 13 V21"/><path class="lm-a" d="M57 43 V51 A6 6 0 0 1 51 57 H43"/><path class="lm-b" d="M21 57 H13 A6 6 0 0 1 7 51 V43"/><path class="lm-a" d="M15 32 C21 23 26 20 32 20 C38 20 43 23 49 32 C43 41 38 44 32 44 C26 44 21 41 15 32 Z"/><path class="lm-b" stroke-width="3" d="M19 18 A18 18 0 0 1 29 13.2"/><path class="lm-b" stroke-width="3" d="M45 46 A18 18 0 0 1 35 50.8"/></g><circle class="lm-dot" cx="32" cy="32" r="6"/></svg>
       <p data-i18n="home.eyebrow" class="eyebrow">Guided camera checkup · orbit to the North</p>
       <h1 data-i18n="home.h1" id="h-home">Your last checkup, lined up with today.</h1>
       <p data-i18n="home.lede" class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
       <div class="row">
         <button data-i18n="home.start" type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
+        <button data-i18n="home.overview" type="button" class="btn" data-nav="overview">Overview</button>
         <button data-i18n="home.board" type="button" class="btn" data-nav="board">Mission board</button>
         <button data-i18n="home.sample" type="button" class="btn" id="btnSample">Watch sample replay</button>
         <button type="button" class="btn" id="btnInstall" hidden>Install for offline use</button>
@@ -70,6 +82,7 @@
     <p class="fine"><button data-i18n="home.quality" type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
     <p class="fine">Reviewing for someone else? <button type="button" class="link-btn" data-nav="review">Open a review packet</button></p>
     <p class="fine">First time on this device? <button type="button" class="link-btn" data-nav="device">Check this device</button>: camera speed, face model, offline readiness.</p>
+    <p class="fine">More to try: <button type="button" class="link-btn" data-nav="exp">Experimental checks</button>: jaw, eye following, pupils, inner eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result, none validated.</p>
     <div class="card tour">
       <h2 data-i18n="tour.h">Try it in one minute, no camera needed</h2>
       <ol>
@@ -84,13 +97,44 @@
   </section>
 
   <!-- MISSION BOARD -->
+  <!-- OVERVIEW: everything on one screen -->
+  <section id="screen-overview" class="screen ov" hidden aria-labelledby="h-ov">
+    <div class="ov-top">
+      <div><p class="step">Overview</p><h1 id="h-ov" class="ov-h1">Everything at a glance</h1></div>
+      <p class="fine ov-note">Each part is compared with your own first value. No combined score. Details on the <button type="button" class="link-btn" data-nav="board">Board</button>.</p>
+    </div>
+    <div class="ov-grid">
+      <div class="card ov-bodycard">
+        <div class="row between"><h2>Body chart</h2><span class="fine">Select a region</span></div>
+        <div class="ov-body" id="ovBody"></div>
+        <p class="ov-legend fine"><span><span class="ov-dot urgent" aria-hidden="true"></span> Urgent tick</span><span><span class="ov-dot review" aria-hidden="true"></span> Look again</span><span><span class="ov-dot logged" aria-hidden="true"></span> Logged</span><span><span class="ov-dot none" aria-hidden="true"></span> Not measured</span></p>
+      </div>
+      <div class="ov-right">
+        <div class="ov-kpis" id="ovKpis"></div>
+        <div class="ov-rightgrid">
+        <div class="card ov-chartcard">
+          <div class="ov-charthead">
+            <div><p class="step" id="ovRegionName">The longer view</p><h2 id="ovChartTitle">Trend</h2></div>
+            <label class="sr-only" for="ovMetric">Measure to plot</label>
+            <select id="ovMetric" class="ov-select"></select>
+          </div>
+          <div id="ovChart"></div>
+          <p class="fine" id="ovChartNote"></p>
+          <details class="fine"><summary>Show values</summary><div id="ovValues"></div></details>
+        </div>
+        <div class="card ov-next" id="ovNext"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="screen-board" class="screen" hidden aria-labelledby="h-board">
     <p data-i18n="board.step" class="step">Mission board</p>
     <h1 data-i18n="board.h1" id="h-board">Keep the habits that keep you flying.</h1>
     <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
     <nav class="jump" aria-label="Jump to a tile">
-      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-crew">Crew data</a>
+      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-exp">Experimental</a><a href="#h-t-crew">Crew data</a>
     </nav>
     <div class="tiles">
       <article class="tile wide" aria-labelledby="h-t-today">
@@ -164,6 +208,12 @@
         <header><h2 data-i18n="board.t.eye" id="h-t-eye">Eye grid</h2><span class="tag">EXPERIMENTAL</span></header>
         <div id="eyeBody"></div>
         <p class="fine">What you mark, compared with your own first check. Not a test for any disease. <button type="button" class="link-btn" data-evidence="amsler">Evidence</button></p>
+      </article>
+
+      <article class="tile" aria-labelledby="h-t-exp">
+        <header><h2 data-i18n="board.t.exp" id="h-t-exp">Experimental checks</h2><span class="tag">EXPERIMENTAL</span></header>
+        <div id="expTileBody"></div>
+        <p class="fine">Jaw, eyes, pupils, eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result only.</p>
       </article>
 
       <article class="tile" aria-labelledby="h-t-crew">
@@ -356,6 +406,7 @@
     <div id="dentalStageSlot" class="stage-slot"></div>
     <p class="coach" id="dentalCoach" aria-live="assertive"></p>
     <div class="meter"><div id="dentalBar"></div></div>
+    <p class="fine" id="dentalDist"></p>
     <p class="fine">Tip: the rear camera with a light on gives sharper photos than a laptop webcam. Use the same setup every time.</p>
     <div class="row">
       <button type="button" class="btn" id="btnSkipView">Skip this view</button>
@@ -444,6 +495,33 @@
       </div>
     </div>
     <div id="visResult" hidden></div>
+  </section>
+
+  <!-- EXPERIMENTAL CHECKS -->
+  <section id="screen-exp" class="screen" hidden aria-labelledby="h-exp">
+    <p class="step">Experimental checks</p>
+    <h1 id="h-exp">Experimental checks</h1>
+    <div id="expMenu">
+      <p class="lede">Seven short camera checks. Each result is compared only with your own first result of the same check, on the same kind of device. None is validated and none is a diagnosis.</p>
+      <p>The blood pressure and oxygen items are indexes without units. A webcam has no cuff and no infrared light, so it cannot give mmHg or a saturation percentage, and the app never shows one.</p>
+      <p class="warnline">! Chest pain, trouble breathing, sudden weakness, a sudden change in vision, or a neck lump that grows quickly needs direct medical care. Do not wait for these checks.</p>
+      <div id="expList" class="exp-list"></div>
+      <p class="fine"><button type="button" class="link-btn" id="btnExpCsv">Export experimental results (.csv)</button></p>
+    </div>
+    <div id="expRun" hidden>
+      <h2 id="expTitle" tabindex="-1"></h2>
+      <ol id="expSteps" class="exp-steps"></ol>
+      <div id="expExtra"></div>
+      <div class="row" id="expButtons">
+        <button type="button" class="btn primary" id="btnExpGo">Start</button>
+        <button type="button" class="btn" id="btnExpBack">Back to the list</button>
+        <button type="button" class="link-btn" id="btnExpEvidence">Evidence</button>
+      </div>
+      <div id="expStageSlot" class="stage-slot"></div>
+      <p class="coach" id="expCoach" aria-live="polite"></p>
+      <div class="meter"><div id="expProg"></div></div>
+    </div>
+    <div id="expResult" hidden></div>
   </section>
 
   <!-- YOUR DATA -->
@@ -559,11 +637,17 @@
   </div>
 </div>
 
+<div id="expLayer" class="exp-layer" hidden>
+  <div id="expDot" class="exp-dot" aria-hidden="true"></div>
+  <p id="expLayerMsg" class="exp-layer-msg" aria-live="polite"></p>
+  <button type="button" id="expLayerStop">Stop</button>
+</div>
+
 <footer class="foot">
   <span>Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.</span>
   <span id="modelNote"></span>
-  <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button></span>
-  <span>RelaisÉcho Link <span id="appVersion">v0.56</span></span>
+  <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
+  <span>RelaisÉcho Link <span id="appVersion">v0.58</span></span>
 </footer>
 </body>
 </html>
