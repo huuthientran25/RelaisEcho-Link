@@ -68,3 +68,13 @@ export function torsoRoi(g) {
   const cx0 = Math.max(0, x0), cx1 = Math.min(g.W, x1), cy0 = Math.max(0, y0), cy1 = Math.min(g.H, y1);
   return { x: cx0, y: cy0, w: Math.max(0, cx1 - cx0), h: Math.max(0, cy1 - cy0), visibleFrac: Math.max(0, cy1 - cy0) / Math.max(1, y1 - y0) };
 }
+
+// Narrow band directly under the chin (neck and collar). It stays inside the frame when the
+// shoulders do not, so breathing can still be tracked on a close laptop camera.
+export function neckRoi(g) {
+  const cx = g.chin.x;
+  const x0 = cx - 0.55 * g.faceWidth, x1 = cx + 0.55 * g.faceWidth;
+  const y0 = g.chin.y + 0.10 * g.faceHeight, y1 = g.chin.y + 0.55 * g.faceHeight;
+  const cx0 = Math.max(0, x0), cx1 = Math.min(g.W, x1), cy0 = Math.max(0, y0), cy1 = Math.min(g.H, y1);
+  return { x: cx0, y: cy0, w: Math.max(0, cx1 - cx0), h: Math.max(0, cy1 - cy0), visibleFrac: Math.max(0, cy1 - cy0) / Math.max(1, y1 - y0) };
+}

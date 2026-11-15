@@ -23,7 +23,7 @@ export function defaultTemplate(aspect) {
 }
 
 // Returns { ok, error (0 = perfect, 1 = at tolerance), message, parts }
-export function compareToTemplate(g, tpl) {
+export function compareToTemplate(g, tpl, slack = 1) {
   const a = CONFIG.align;
   const k = tpl.isDefault ? a.defaultTolMultiplier : 1;
   const cx = g.center.x / g.W, cy = g.center.y / g.H, fw = g.faceWidth / g.W;
@@ -38,7 +38,7 @@ export function compareToTemplate(g, tpl) {
   };
   let worst = 'dx', worstVal = 0;
   for (const [key, v] of Object.entries(parts)) if (Math.abs(v) > worstVal) { worst = key; worstVal = Math.abs(v); }
-  const ok = worstVal <= 1;
+  const ok = worstVal <= slack;
   return { ok, error: worstVal, worst, parts, message: ok ? 'Hold still' : coach(worst, parts[worst]) };
 }
 

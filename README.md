@@ -24,6 +24,18 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.2 (15 Nov 2026)
+
+Made after the first real scans on a laptop webcam (four checkups, one Apple Watch reference).
+
+- **Breathing never ran** in those scans: the torso box sat below the bottom of the frame. Added a narrow **neck band** under the chin plus two **head channels** (vertical bob and tilt). Each channel is analysed separately, the best one is used, and all are listed on the results card. A peak stuck at the edge of the breathing band is ignored as drift. These channels are EXPERIMENTAL and unvalidated: bench test them against a metronome and publish failures.
+- **Alignment and stillness checks now have hysteresis** (`holdSlack`, `motionHoldSlack` in `js/config.js`, both MODELED), so edge wobble does not reset the timer. Each checkup also records which alignment axis kept failing (`alignRejects`).
+- **Pulse message fixed**: a low confidence result now says why (for example only 3 of 15 windows were clean).
+- **Frame rate**: the camera is asked for 60 fps when available. The scan screen shows measured camera fps, tracking time per frame and skipped frame share, and each checkup records them. The camera, not the app, sets the real limit; most laptop webcams run at 30. Higher frame rates do not make the pulse estimate better by themselves, and dim light often forces the camera back to a lower rate.
+- **History**: a baseline can be made the original baseline after a confirmation. Earlier baselines stay.
+- **Northern Navy restyle**: white ground, dark grey text, navy structure, one blue for actions, one red for things to fix, Atkinson Hyperlegible bundled (OFL). Buttons change colour on hover (only where a pointer exists) and on keyboard focus.
+- Bench CSV gains `resp_channel` and `camera_fps` columns.
+
 ## Run it
 
 ```sh

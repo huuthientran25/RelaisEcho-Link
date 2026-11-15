@@ -1,8 +1,9 @@
 // Offline cache for the app shell, the MediaPipe runtime and (if bundled) the face model.
-const CACHE = 'relaisecho-v1';
+const CACHE = 'relaisecho-v2';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg',
   'js/main.js', 'js/config.js', 'js/vision.js', 'js/geometry.js', 'js/frame.js', 'js/align.js',
+  'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-700-normal.woff2',
   'js/dsp.js', 'js/mock.js', 'js/pulse.js', 'js/resp.js', 'js/dental.js', 'js/store.js', 'js/packet.js', 'js/evidence.js',
   'vendor/mediapipe/vision_bundle.mjs', 'vendor/mediapipe/wasm/vision_wasm_internal.js', 'vendor/mediapipe/wasm/vision_wasm_internal.wasm',
 ];

@@ -13,6 +13,7 @@ export const CONFIG = {
     maxClippedFrac: 0.05,      // share of face pixels with a channel at 250 or more
     maxMotionPerSec: 0.12,     // landmark speed, in face widths per second
     minFps: 12,
+    motionHoldSlack: 1.3,      // same idea for the stillness check
   },
   align: {
     centerTol: 0.10,           // face widths
@@ -24,6 +25,7 @@ export const CONFIG = {
     defaultFaceWidthLandscape: 0.24,
     defaultFaceWidthPortrait: 0.45,
     defaultTolMultiplier: 1.8, // looser framing when no baseline exists yet
+    holdSlack: 1.35,           // once aligned, stay aligned until the error passes this multiple of tolerance
   },
   pulse: {
     fs: 30,

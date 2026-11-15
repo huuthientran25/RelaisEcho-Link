@@ -101,3 +101,55 @@ test('breathing needs enough usable seconds', () => {
   const res = estimateResp(samples);
   assert.equal(res.rpm, null);
 });
+
+// ---- added in v0.2: breathing channels, alignment hysteresis, honest pulse message ----
+import { estimateRespMulti } from '../js/resp.js';
+import { compareToTemplate } from '../js/align.js';
+
+function breathChannel({ rpm, seconds = 40, noise = 0.3, seed = 3, amp = 1 }) {
+  const r = rng(seed);
+  const out = [];
+  for (let t = 0; t < seconds * 1000; t += 33) {
+    out.push({ t, y: amp * Math.sin(2 * Math.PI * (rpm / 60) * (t / 1000)) + noise * gauss(r), ok: true });
+  }
+  return out;
+}
+
+test('multi channel breathing picks the clean channel and reports agreement', () => {
+  const noisy = breathChannel({ rpm: 15, noise: 4, seed: 5, amp: 0.05 });
+  const clean = breathChannel({ rpm: 15, noise: 0.2, seed: 6 });
+  const second = breathChannel({ rpm: 15.5, noise: 0.4, seed: 7 });
+  const res = estimateRespMulti({ head: noisy, neck: clean, chest: second });
+  assert.equal(res.channel === 'neck' || res.channel === 'chest', true);
+  assert.ok(Math.abs(res.rpm - 15) <= 1, `rpm ${res.rpm}`);
+  assert.ok(res.agreeing >= 1);
+  assert.equal(res.channels.length, 3);
+});
+
+test('multi channel breathing says so when nothing was tracked', () => {
+  const res = estimateRespMulti({ neck: [], chest: [], head: [], pitch: [] });
+  assert.equal(res.rpm, null);
+  assert.equal(res.quality, 'none');
+  assert.match(res.reason, /neck and shoulders/i);
+});
+
+test('alignment hysteresis keeps a slightly drifted pose aligned', () => {
+  const tpl = { center: { x: 0.5, y: 0.4 }, faceWidth: 0.3, roll: 0, yaw: 0, pitchIndex: null, aspect: 1.5 };
+  const mk = (dx) => ({ W: 480, H: 320, center: { x: (0.5 + 0.3 * 0.10 * dx) * 480, y: 0.4 * 320 }, faceWidth: 0.3 * 480, roll: 0, yaw: 0, pitchIndex: 0.5 });
+  assert.equal(compareToTemplate(mk(1.2), tpl, 1).ok, false);
+  assert.equal(compareToTemplate(mk(1.2), tpl, 1.35).ok, true);
+  assert.equal(compareToTemplate(mk(1.6), tpl, 1.35).ok, false);
+});
+
+test('low confidence pulse explains the real reason', () => {
+  const res = estimatePulse(syntheticSkin({ bpm: 72, seconds: 40, motionBursts: [[0, 9], [11, 19], [21, 25]] }));
+  assert.equal(res.quality, 'low');
+  assert.match(res.reason, /only \d+ of \d+ windows were clean/);
+});
+
+test('breathing peak at the band edge is ignored as drift', () => {
+  const slow = breathChannel({ rpm: 6, seconds: 60, noise: 0.05 });
+  const res = estimateResp(slow);
+  assert.equal(res.rpm, null);
+  assert.match(res.reason, /edge of the breathing range/);
+});

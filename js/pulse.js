@@ -82,7 +82,14 @@ export function estimatePulse(samples, cfg = CONFIG.pulse) {
   const frac = good.length / result.total;
   if (frac >= 0.7 && result.snrMedian >= 3 && result.spreadBpm <= cfg.maxSpreadBpm / 2) result.quality = 'high';
   else if (frac >= 0.4 && result.spreadBpm <= cfg.maxSpreadBpm) result.quality = 'medium';
-  else { result.quality = 'low'; result.reason = 'Window estimates disagree. Treat as unreliable and retake.'; }
+  else {
+    result.quality = 'low';
+    const why = [];
+    if (frac < 0.4) why.push(`only ${good.length} of ${result.total} windows were clean`);
+    if (result.snrMedian < 3) why.push('the pulse signal was weak');
+    if (result.spreadBpm > cfg.maxSpreadBpm) why.push('window estimates disagreed');
+    result.reason = `Low confidence: ${why.join(' and ') || 'signal not strong enough'}. Retake with steadier light and position.`;
+  }
   return result;
 }
 

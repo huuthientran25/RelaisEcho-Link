@@ -1,18 +1,19 @@
 // RelaisÉcho Link app controller: screens, camera or file source, frame loop.
 import { CONFIG } from './config.js';
 import { getFaceLandmarker, getModelSource, detect } from './vision.js';
-import { faceGeometry, keypointArray, motionSpeed, pulseRois, torsoRoi, LIPS_OUTER } from './geometry.js';
+import { faceGeometry, keypointArray, motionSpeed, pulseRois, torsoRoi, neckRoi, LIPS_OUTER } from './geometry.js';
 import { roiMeanRGB, rowProfile } from './frame.js';
 import { makeTemplate, defaultTemplate, compareToTemplate } from './align.js';
 import { estimatePulse, livePulse, estimateWindow } from './pulse.js';
-import { TorsoTracker, estimateResp } from './resp.js';
+import { TorsoTracker, estimateRespMulti } from './resp.js';
 import { DentalCapture, VIEWS } from './dental.js';
-import { saveSession, listSessions, baselineAndRecent, newId, clearAll } from './store.js';
+import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal } from './store.js';
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CHANNEL_LABEL = { neck: 'neck band', chest: 'upper torso', head: 'head bob', pitch: 'head tilt' };
 const fmtDate = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '');
 
 const state = {
@@ -32,7 +33,15 @@ function show(name) {
   const h = document.querySelector(`#screen-${name} h1`);
   if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
+  const mk = e.target.closest('[data-make-original]');
+  if (mk) {
+    if (window.confirm('Make this checkup your original baseline? Earlier baselines stay in History, but new comparisons will use this one.')) {
+      await setOriginal(mk.dataset.makeOriginal);
+      renderHistory();
+    }
+    return;
+  }
   const nav = e.target.closest('[data-nav]');
   if (nav) { e.preventDefault(); show(nav.dataset.nav); }
   const ev = e.target.closest('[data-evidence]');
@@ -123,7 +132,7 @@ async function startSource(kind, file) {
     state.session && (state.session.cameraLabel = `file: ${file.name}`);
   } else {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: kind, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false,
+      video: { facingMode: kind, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }, audio: false,
     });
     state.stream = stream;
     v.srcObject = stream;
@@ -154,7 +163,7 @@ function startLoop(handler) {
   const step = (now, meta) => {
     if (state.loop !== token) return;
     const t = meta && Number.isFinite(meta.mediaTime) ? meta.mediaTime * 1000 : performance.now();
-    try { handler(t); } catch (err) { console.error(err); }
+    try { handler(t, meta); } catch (err) { console.error(err); }
     schedule();
   };
   const schedule = () => {
@@ -197,15 +206,19 @@ async function startScan(src, file) {
     if (Math.abs(original.template.aspect - aspect) < 0.05) template = original.template;
     else state.session.notComparable = 'Camera shape differs from the baseline (portrait vs landscape); default framing used.';
   }
-  state.scan = { t0: null, lastT: null, usable: 0, elapsed: 0, pulse: [], resp: [], tracker: new TorsoTracker(),
-    prevKp: null, speed: null, rejects: {}, template, tplCandidate: null, fpsT: [], liveT: 0, finished: false };
+  state.scan = { t0: null, lastT: null, usable: 0, elapsed: 0, pulse: [], resp: { neck: [], chest: [], head: [], pitch: [] },
+    trackers: { neck: new TorsoTracker(), chest: new TorsoTracker() },
+    prevKp: null, speed: null, rejects: {}, alignWorst: {}, wasAligned: false, wasStill: false,
+    template, tplCandidate: null, fpsT: [], liveT: 0, finished: false,
+    frames: 0, skipped: 0, lastPresented: null, inferMs: null, fpsSum: 0, fpsN: 0 };
   $('video').onended = () => finishScan();
   startLoop(scanFrame);
 }
 
-function scanFrame(t) {
+function scanFrame(t, meta) {
   const s = state.scan;
   if (!s || s.finished) return;
+  const tw0 = performance.now();
   const v = $('video');
   const { AW, AH } = state;
   if (s.t0 === null) s.t0 = t;
@@ -215,16 +228,23 @@ function scanFrame(t) {
   s.fpsT.push(t);
   while (s.fpsT.length && t - s.fpsT[0] > 2000) s.fpsT.shift();
   const fps = s.fpsT.length / 2;
+  if (s.elapsed > 2) { s.fpsSum += fps; s.fpsN += 1; }
+  // Frames the browser presented that we did not get to: shows whether tracking keeps up with the camera.
+  if (meta && Number.isFinite(meta.presentedFrames)) {
+    if (s.lastPresented !== null) s.skipped += Math.max(0, meta.presentedFrames - s.lastPresented - 1);
+    s.lastPresented = meta.presentedFrames;
+  }
+  s.frames += 1;
 
   actx.drawImage(v, 0, 0, AW, AH);
   const img = actx.getImageData(0, 0, AW, AH);
   const lm = detect(state.landmarker, v);
   const q = CONFIG.quality;
   const checks = [];
-  let g = null, rois = null, torso = null, rgb = null, al = null, ok = false;
+  let g = null, rois = null, torso = null, neck = null, rgb = null, al = null, ok = false;
   if (!lm) {
     checks.push({ key: 'face', label: 'Face not found', ok: false });
-    s.prevKp = null;
+    s.prevKp = null; s.wasAligned = false; s.wasStill = false;
   } else {
     g = faceGeometry(lm, AW, AH);
     rois = pulseRois(lm, g);
@@ -235,8 +255,13 @@ function scanFrame(t) {
     s.speed = s.speed == null ? sp : 0.7 * s.speed + 0.3 * sp;
     const sizeOk = g.faceWidth / AW >= q.minFaceWidthFrac;
     const lightOk = rgb.meanLuma >= q.minLuma && rgb.meanLuma <= q.maxLuma && rgb.clippedFrac <= q.maxClippedFrac;
-    const stillOk = s.speed <= q.maxMotionPerSec;
-    al = compareToTemplate(g, s.template);
+    // Hysteresis: once a check passes it stays passed a little longer, so tiny wobble at the edge
+    // of a tolerance does not reset the timer every frame.
+    const stillOk = s.speed <= q.maxMotionPerSec * (s.wasStill ? q.motionHoldSlack : 1);
+    s.wasStill = stillOk;
+    al = compareToTemplate(g, s.template, s.wasAligned ? CONFIG.align.holdSlack : 1);
+    s.wasAligned = al.ok;
+    if (!al.ok) s.alignWorst[al.worst] = (s.alignWorst[al.worst] || 0) + dt;
     checks.push({ key: 'light', label: lightOk ? 'Light' : rgb.meanLuma < q.minLuma ? 'Too dark' : 'Too bright', ok: lightOk });
     checks.push({ key: 'still', label: stillOk ? 'Still' : 'Moving', ok: stillOk });
     checks.push({ key: 'size', label: sizeOk ? 'Distance' : 'Too far', ok: sizeOk });
@@ -244,18 +269,28 @@ function scanFrame(t) {
     if (s.elapsed > 2 && fps < q.minFps) checks.push({ key: 'fps', label: `Low frame rate (${fps.toFixed(0)} fps)`, ok: false });
     ok = checks.every((c) => c.ok);
     torso = torsoRoi(g);
+    neck = neckRoi(g);
   }
   for (const c of checks) if (!c.ok) s.rejects[c.key] = (s.rejects[c.key] || 0) + dt;
   if (ok) { s.usable += dt; s.tplCandidate = makeTemplate(lm, g); }
   if (rgb && rgb.n > 40) s.pulse.push({ t, r: rgb.r, g: rgb.g, b: rgb.b, ok });
-  let torsoOk = false;
+  // Breathing channels. Head channels need only a face. Neck and torso channels need their box in frame.
+  let breathCh = false;
+  if (g) {
+    s.resp.head.push({ t, y: (g.center.y / AH) * 1000, ok });
+    s.resp.pitch.push({ t, y: g.pitchIndex * 1000, ok });
+  }
+  if (neck && neck.visibleFrac >= 0.8) {
+    const prof = rowProfile(img, neck);
+    if (prof) { s.resp.neck.push({ t, y: s.trackers.neck.push(prof), ok }); breathCh = true; }
+  }
   if (torso && torso.visibleFrac >= 0.75) {
     const prof = rowProfile(img, torso);
-    if (prof) { s.resp.push({ t, y: s.tracker.push(prof), ok }); torsoOk = true; }
+    if (prof) { s.resp.chest.push({ t, y: s.trackers.chest.push(prof), ok }); breathCh = true; }
   }
-  if (g && !torsoOk) checks.push({ key: 'torso', label: 'Shoulders out of view', ok: false, soft: true });
+  if (g && !breathCh) checks.push({ key: 'torso', label: 'Neck and shoulders out of view', ok: false, soft: true });
 
-  drawScanOverlay(g, rois, torso, al);
+  drawScanOverlay(g, rois, torso, neck, al);
   if (t - state.uiT > 150 || t < state.uiT) {
     state.uiT = t;
     $('chips').innerHTML = checks.map((c) => `<span class="chip ${c.ok ? '' : 'bad'}">${c.ok ? '✓' : '!'} ${esc(c.label)}</span>`).join('');
@@ -263,12 +298,16 @@ function scanFrame(t) {
     const target = CONFIG.scan.targetUsableSeconds;
     $('usableBar').style.width = `${Math.min(100, (s.usable / target) * 100)}%`;
     $('usableText').textContent = `${Math.floor(s.usable)} of ${target} usable seconds`;
+    const skipPct = s.frames + s.skipped ? Math.round((100 * s.skipped) / (s.frames + s.skipped)) : 0;
+    $('fpsText').textContent = `Camera ${fps.toFixed(0)} fps · tracking ${Math.round(s.inferMs || 0)} ms per frame${skipPct ? ` · skipped ${skipPct}%` : ''}`;
   }
   if (t - s.liveT > 1000) {
     s.liveT = t;
     const lp = livePulse(s.pulse);
     $('livePulse').textContent = lp ? `Live preview: ${Math.round(lp.bpm)} bpm${lp.weak ? ' (weak signal)' : ''}` : '';
   }
+  const spent = performance.now() - tw0;
+  s.inferMs = s.inferMs == null ? spent : 0.9 * s.inferMs + 0.1 * spent;
   if (s.usable >= CONFIG.scan.targetUsableSeconds || s.elapsed >= CONFIG.scan.maxElapsedSeconds) finishScan();
 }
 
@@ -283,7 +322,7 @@ function coachMessage(lm, checks, al) {
   return 'Hold still and breathe normally';
 }
 
-function drawScanOverlay(g, rois, torso, al) {
+function drawScanOverlay(g, rois, torso, neck, al) {
   const c = $('overlay');
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
@@ -291,7 +330,7 @@ function drawScanOverlay(g, rois, torso, al) {
   const tpl = state.scan.template;
   ctx.lineWidth = Math.max(2, W / 200);
   ctx.setLineDash([W / 50, W / 70]);
-  ctx.strokeStyle = al && al.ok ? '#7FE3D4' : '#F2B36B';
+  ctx.strokeStyle = al && al.ok ? '#7CF0A8' : '#FFD166';
   ctx.beginPath();
   if (tpl.oval) {
     tpl.oval.forEach(([x, y], i) => (i ? ctx.lineTo(x * W, y * H) : ctx.moveTo(x * W, y * H)));
@@ -306,7 +345,9 @@ function drawScanOverlay(g, rois, torso, al) {
     ctx.lineWidth = Math.max(1.5, W / 300);
     ctx.strokeStyle = '#F2B36B';
     rois.forEach((b) => ctx.strokeRect(b.x, b.y, b.w, b.h));
-    if (torso && torso.h > 0) { ctx.strokeStyle = '#9CC3F5'; ctx.strokeRect(torso.x, torso.y, torso.w, torso.h); }
+    ctx.strokeStyle = '#9CC3F5';
+    if (neck && neck.h > 0 && neck.visibleFrac >= 0.8) ctx.strokeRect(neck.x, neck.y, neck.w, neck.h);
+    if (torso && torso.h > 0 && torso.visibleFrac >= 0.75) ctx.strokeRect(torso.x, torso.y, torso.w, torso.h);
   }
 }
 
@@ -319,11 +360,15 @@ async function finishScan() {
   stopLoop();
   const sess = state.session;
   sess.pulse = estimatePulse(s.pulse);
-  sess.resp = estimateResp(s.resp);
-  delete sess.resp.signal;
+  sess.resp = estimateRespMulti(s.resp);
   sess.usableSeconds = s.usable;
   sess.elapsedSeconds = s.elapsed;
   sess.rejectCounts = Object.fromEntries(Object.entries(s.rejects).map(([k, v]) => [k, Math.round(v)]));
+  // Which alignment axis kept failing, and how the loop kept up with the camera (for tuning).
+  sess.alignRejects = Object.fromEntries(Object.entries(s.alignWorst).map(([k, v]) => [k, Math.round(v)]));
+  sess.cameraFps = s.fpsN ? Math.round(s.fpsSum / s.fpsN) : null;
+  sess.trackerMs = Math.round(s.inferMs || 0);
+  sess.skippedFramesPct = s.frames + s.skipped ? Math.round((100 * s.skipped) / (s.frames + s.skipped)) : 0;
   if (sess.kind === 'baseline' && s.tplCandidate) sess.template = s.tplCandidate;
   // A baseline needs a recorded face position (for the ghost); measurements can be retaken later.
   sess.complete = sess.kind !== 'baseline' || !!sess.template;
@@ -340,6 +385,8 @@ function resultCard(title, value, unit, r, evKey) {
   return `<h2>${title}</h2><p>${big}</p>
     <p><span class="tag live">${live}</span><span class="tag">EXPERIMENTAL</span></p>
     <p class="q-${q}">Quality: ${q}${r?.total != null ? ` · ${r.accepted} of ${r.total} windows accepted` : ''}${r?.seconds ? ` · ${Math.round(r.seconds)} usable s` : ''}</p>
+    ${r?.channel ? `<p class="fine">Measured from: ${esc(CHANNEL_LABEL[r.channel] || r.channel)}${r.agreeing ? ` · ${r.agreeing} other channel${r.agreeing > 1 ? 's' : ''} agree` : ''}</p>` : ''}
+    ${r?.channels?.length ? `<p class="fine">${r.channels.map((c) => `${esc(CHANNEL_LABEL[c.name] || c.name)}: ${c.rpm ?? 'none'}`).join(' · ')}</p>` : ''}
     ${r?.reason ? `<p class="fine">${esc(r.reason)}</p>` : ''}
     <button type="button" class="link-btn" data-evidence="${evKey}">Why this number? Evidence</button>`;
 }
@@ -598,24 +645,26 @@ function download(name, text, type) {
 /* ---------- history ---------- */
 async function renderHistory() {
   const all = (await listSessions()).reverse();
+  const currentOriginal = (await baselineAndRecent()).original?.id;
   $('historyList').innerHTML = all.length ? all.map((s) => `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
       ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
-      · dental ${Object.values(s.dental || {}).filter((d) => d.captured).length}/3</span></div>`).join('')
+      · dental ${Object.values(s.dental || {}).filter((d) => d.captured).length}/3</span>
+      ${s.kind === 'baseline' && s.complete ? (s.id === currentOriginal ? '<span class="tag live">ORIGINAL BASELINE</span>' : `<button type="button" class="link-btn" data-make-original="${esc(s.id)}">Use as original baseline</button>`) : ''}</div>`).join('')
     : '<p class="fine">No checkups yet.</p>';
 }
 
 $('btnBenchCsv').addEventListener('click', async () => {
   const rows = (await listSessions()).filter((s) => s.reference && (s.reference.pulseBpm || s.reference.breathsPerMin));
   const head = ['created', 'kind', 'source', 'est_pulse_bpm', 'ref_pulse_bpm', 'pulse_error_bpm', 'pulse_quality', 'windows_accepted', 'windows_total',
-    'est_breaths_min', 'ref_breaths_min', 'breath_error', 'breath_quality', 'usable_s', 'elapsed_s', 'device', 'conditions'];
+    'est_breaths_min', 'ref_breaths_min', 'breath_error', 'breath_quality', 'resp_channel', 'camera_fps', 'usable_s', 'elapsed_s', 'device', 'conditions'];
   const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = rows.map((s) => {
     const pe = s.pulse?.bpm != null && s.reference.pulseBpm != null ? s.pulse.bpm - s.reference.pulseBpm : '';
     const re = s.resp?.rpm != null && s.reference.breathsPerMin != null ? s.resp.rpm - s.reference.breathsPerMin : '';
     return [s.createdAt, s.kind, s.source, s.pulse?.bpm, s.reference.pulseBpm, pe, s.pulse?.quality, s.pulse?.accepted, s.pulse?.total,
-      s.resp?.rpm, s.reference.breathsPerMin, re, s.resp?.quality, Math.round(s.usableSeconds || 0), Math.round(s.elapsedSeconds || 0),
+      s.resp?.rpm, s.reference.breathsPerMin, re, s.resp?.quality, s.resp?.channel, s.cameraFps, Math.round(s.usableSeconds || 0), Math.round(s.elapsedSeconds || 0),
       s.reference.device, s.reference.conditions].map(q).join(',');
   });
   download('relaisecho-bench-test.csv', [head.join(','), ...lines].join('\n'), 'text/csv');

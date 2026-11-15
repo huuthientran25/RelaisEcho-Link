@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RelaisÉcho Link: guided camera checkup</title>
 <meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
-<meta name="theme-color" content="#13202B">
+<meta name="theme-color" content="#26374A">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/atkinson-hyperlegible-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/app.css">
 <script type="module" src="js/main.js"></script>
 </head>
@@ -106,7 +107,8 @@
     <p class="coach" id="coach" aria-live="assertive">Starting camera…</p>
     <div class="meter"><div id="usableBar"></div></div>
     <p class="row between"><span id="usableText">0 of 30 usable seconds</span><span class="fine" id="livePulse"></span></p>
-    <p class="fine">Sit still, breathe normally and do not talk. Keep your shoulders inside the blue box.</p>
+    <p class="fine" id="fpsText"></p>
+    <p class="fine">Sit still, breathe normally and do not talk. Keep your neck and shoulders in view (blue boxes).</p>
     <div class="row">
       <button type="button" class="btn" id="btnStopScan">Stop and use what is usable</button>
       <label class="check"><input type="checkbox" id="showBoxes" checked> Show measurement boxes</label>
