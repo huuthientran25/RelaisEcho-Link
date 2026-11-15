@@ -1,0 +1,185 @@
+{
+  "status": "iu: awaiting certified translation; fr: draft, needs fluent review",
+  "strings": [
+    {
+      "key": "nav.board",
+      "en": "Board",
+      "fr_draft": "Tableau",
+      "iu": null
+    },
+    {
+      "key": "nav.history",
+      "en": "History",
+      "fr_draft": "Historique",
+      "iu": null
+    },
+    {
+      "key": "home.eyebrow",
+      "en": "Guided camera checkup · orbit to the North",
+      "fr_draft": "Bilan guidé par caméra · de l’orbite au Nord",
+      "iu": null
+    },
+    {
+      "key": "home.h1",
+      "en": "Your last checkup, lined up with today.",
+      "fr_draft": "Votre dernier bilan, aligné sur celui d’aujourd’hui.",
+      "iu": null
+    },
+    {
+      "key": "home.lede",
+      "en": "A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.",
+      "fr_draft": "La caméra d’un téléphone ou d’un portable vous guide jusqu’à la même position que votre bilan de référence, ne mesure que lorsque le signal est bon, et prépare un court dossier qu’un professionnel à distance peut consulter.",
+      "iu": null
+    },
+    {
+      "key": "home.start",
+      "en": "Start guided checkup",
+      "fr_draft": "Commencer le bilan guidé",
+      "iu": null
+    },
+    {
+      "key": "home.board",
+      "en": "Mission board",
+      "fr_draft": "Tableau de mission",
+      "iu": null
+    },
+    {
+      "key": "home.sample",
+      "en": "Watch sample replay",
+      "fr_draft": "Voir l’exemple",
+      "iu": null
+    },
+    {
+      "key": "home.disclaimer",
+      "en": "Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.",
+      "fr_draft": "Prototype de recherche créé au NASA Space Apps 2026, Montréal. Ce n’est pas un dispositif diagnostique. Si quelque chose ne va pas, contactez directement un professionnel de la santé.",
+      "iu": null
+    },
+    {
+      "key": "home.captures.h",
+      "en": "What it captures",
+      "fr_draft": "Ce qu’il mesure",
+      "iu": null
+    },
+    {
+      "key": "home.captures.1",
+      "en": "Pulse estimate from face video, with a quality score",
+      "fr_draft": "Estimation du pouls à partir de la vidéo du visage, avec un indice de qualité",
+      "iu": null
+    },
+    {
+      "key": "home.captures.2",
+      "en": "Breathing rate from neck and upper body movement",
+      "fr_draft": "Fréquence respiratoire à partir des mouvements du cou et du haut du corps",
+      "iu": null
+    },
+    {
+      "key": "home.captures.3",
+      "en": "Matched dental photos: front and both sides",
+      "fr_draft": "Photos dentaires appariées : face et deux côtés",
+      "iu": null
+    },
+    {
+      "key": "home.new.h",
+      "en": "What is new here",
+      "fr_draft": "Ce qui est nouveau",
+      "iu": null
+    },
+    {
+      "key": "home.new.1",
+      "en": "No wearable and no upload: video never leaves this device",
+      "fr_draft": "Aucun appareil à porter, aucun téléversement : la vidéo ne quitte jamais l’appareil",
+      "iu": null
+    },
+    {
+      "key": "home.new.2",
+      "en": "Compared with your own baseline, not a population average",
+      "fr_draft": "Comparé à votre propre référence, pas à une moyenne de population",
+      "iu": null
+    },
+    {
+      "key": "home.new.3",
+      "en": "Works offline and builds a short packet a nurse can review",
+      "fr_draft": "Fonctionne hors ligne et prépare un court dossier pour une infirmière",
+      "iu": null
+    },
+    {
+      "key": "home.quality",
+      "en": "How the quality checks work",
+      "fr_draft": "Comment fonctionnent les contrôles de qualité",
+      "iu": null
+    },
+    {
+      "key": "board.step",
+      "en": "Mission board",
+      "fr_draft": "Tableau de mission",
+      "iu": null
+    },
+    {
+      "key": "board.h1",
+      "en": "Keep the habits that keep you flying.",
+      "fr_draft": "Gardez les habitudes qui vous gardent en mission.",
+      "iu": null
+    },
+    {
+      "key": "board.lede",
+      "en": "Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.",
+      "fr_draft": "Des tuiles séparées, chacune indiquant d’où vient son chiffre. Il n’y a pas de score de santé combiné : un seul chiffre cacherait ce qui a changé.",
+      "iu": null
+    },
+    {
+      "key": "board.t.check",
+      "en": "Checkup rhythm",
+      "fr_draft": "Rythme des bilans",
+      "iu": null
+    },
+    {
+      "key": "board.t.alert",
+      "en": "Alertness",
+      "fr_draft": "Vigilance",
+      "iu": null
+    },
+    {
+      "key": "board.t.sleep",
+      "en": "Sleep pressure",
+      "fr_draft": "Pression de sommeil",
+      "iu": null
+    },
+    {
+      "key": "board.t.rad",
+      "en": "Radiation budget",
+      "fr_draft": "Budget de radiation",
+      "iu": null
+    },
+    {
+      "key": "board.t.gly",
+      "en": "Brain clearance and sleep",
+      "fr_draft": "Nettoyage du cerveau et sommeil",
+      "iu": null
+    },
+    {
+      "key": "alert.step",
+      "en": "Alertness check · experimental",
+      "fr_draft": "Test de vigilance · expérimental",
+      "iu": null
+    },
+    {
+      "key": "alert.h1",
+      "en": "3 minute reaction test",
+      "fr_draft": "Test de réaction de 3 minutes",
+      "iu": null
+    },
+    {
+      "key": "alert.lede",
+      "en": "A counter starts at random moments. Press the big button, or the space bar, the moment you see it. Tired brains miss more and respond slower, often before you feel it.",
+      "fr_draft": "Un compteur démarre à des moments aléatoires. Appuyez sur le grand bouton, ou sur la barre d’espace, dès que vous le voyez. Un cerveau fatigué rate plus de signaux et répond plus lentement, souvent avant qu’on le sente.",
+      "iu": null
+    },
+    {
+      "key": "alert.start",
+      "en": "Start the test",
+      "fr_draft": "Commencer le test",
+      "iu": null
+    }
+  ]
+}

@@ -11,11 +11,20 @@ import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOrigi
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
 import { sleepPressure, issMissionDose, consistency, RADIATION } from './board.js';
+import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
+import { applyLang } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CHANNEL_LABEL = { neck: 'neck band', chest: 'upper torso', head: 'head bob', pitch: 'head tilt' };
-const fmtDate = (iso) => (iso ? iso.slice(0, 16).replace('T', ' ') : '');
+// Local date and time (stored values are UTC ISO strings).
+const fmtDate = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 const state = {
   session: null, stream: null, fileUrl: null, sourceKind: null, landmarker: null,
@@ -25,13 +34,16 @@ const acan = document.createElement('canvas');
 const actx = acan.getContext('2d', { willReadFrequently: true });
 
 /* ---------- navigation ---------- */
+const pvt = { running: false }; // alertness test state; declared early because show() reads it
 function show(name) {
+  if (name !== 'alertness' && pvt.running) pvtAbort();
   document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.id !== `screen-${name}`; });
   window.scrollTo(0, 0);
   if (name === 'home') stopSource();
   if (name === 'history') renderHistory();
   if (name === 'setup') prepareSetup();
   if (name === 'board') renderBoard();
+  if (name === 'alertness') pvtReset();
   const h = document.querySelector(`#screen-${name} h1`);
   if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
@@ -649,7 +661,9 @@ async function renderPacket() {
   sess.complete = sess.kind !== 'baseline' || !!sess.template;
   await saveSession(sess);
   const cmp = await baselineAndRecent(sess.id);
-  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked });
+  const alert = (await listSessions()).filter((x) => x.kind === 'alertness'
+    && Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 24 * 3600 * 1000).pop() || null;
+  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert });
   $('packetText').textContent = packetText(lastPacket.packet);
   const kb = lastPacket.bytes / 1024;
   $('packetSize').textContent = kb < 10 ? `${kb.toFixed(1)} KB` : `${Math.round(kb)} KB`;
@@ -677,7 +691,9 @@ function download(name, text, type) {
 async function renderHistory() {
   const all = (await listSessions()).reverse();
   const currentOriginal = (await baselineAndRecent()).original?.id;
-  $('historyList').innerHTML = all.length ? all.map((s) => `<div class="hist-item">
+  const pvtLine = (s) => `<div class="hist-item"><span><strong>alertness</strong> · ${fmtDate(s.createdAt)}</span>
+      <span>Median ${s.alertness.medianMs ?? '-'} ms · lapses ${s.alertness.lapses} · false starts ${s.alertness.falseStarts}</span></div>`;
+  $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
       ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
@@ -764,6 +780,7 @@ async function renderBoard() {
   const days = prefs.get('radDays');
   if (Number.isFinite(days)) $('radDays').value = days;
   updateSleepTile(); updateRadTile();
+  renderAlertTile();
 }
 
 function updateSleepTile() {
@@ -811,3 +828,168 @@ function updateRadTile() {
 
 $('sleepForm').addEventListener('input', updateSleepTile);
 $('radDays').addEventListener('input', () => requestAnimationFrame(updateRadTile));
+
+/* ---------- alertness check (brief PVT) ---------- */
+const pvtTests = async () => (await listSessions()).filter((x) => x.kind === 'alertness' && x.alertness);
+
+function pvtReset() {
+  $('pvtIntro').hidden = false; $('pvtRun').hidden = true; $('pvtResult').hidden = true;
+}
+
+function pvtStart() {
+  const durationSec = Number(document.querySelector('input[name=pvtLen]:checked').value);
+  const now = performance.now();
+  Object.assign(pvt, {
+    running: true, save: durationSec >= PVT_CONFIG.durationSec, durationSec, trials: [],
+    t0: now, endAt: now + durationSec * 1000, phase: 'wait', nextAt: now + randomIsi(), onset: null,
+    feedbackUntil: 0, shown: '', leftShown: '',
+  });
+  $('pvtIntro').hidden = true; $('pvtResult').hidden = true; $('pvtRun').hidden = false;
+  $('pvtCounter').textContent = ''; $('pvtHint').textContent = 'Wait for the counter';
+  $('pvtTarget').classList.remove('live', 'early');
+  $('pvtTarget').focus({ preventScroll: true });
+  requestAnimationFrame(pvtFrame);
+}
+
+function pvtSet(text, cls) {
+  if (pvt.shown !== text) { $('pvtCounter').textContent = text; pvt.shown = text; }
+  const tgt = $('pvtTarget');
+  tgt.classList.toggle('live', cls === 'live');
+  tgt.classList.toggle('early', cls === 'early');
+}
+
+function pvtFrame(ts) {
+  if (!pvt.running) return;
+  const c = PVT_CONFIG;
+  if (pvt.phase === 'feedback' && ts >= pvt.feedbackUntil) {
+    pvt.phase = 'wait'; pvt.nextAt = ts + randomIsi();
+    pvtSet('', null); $('pvtHint').textContent = '';
+  }
+  if (pvt.phase === 'wait') {
+    if (ts >= pvt.endAt) { pvtFinish(); return; }
+    if (ts >= pvt.nextAt) { pvt.phase = 'stim'; pvt.onset = ts; $('pvtHint').textContent = ''; }
+  }
+  if (pvt.phase === 'stim') {
+    const el = ts - pvt.onset;
+    if (el >= c.timeoutMs) {
+      pvt.trials.push({ rt: null });
+      pvt.phase = 'feedback'; pvt.feedbackUntil = ts + c.feedbackMs; pvtSet('Missed', 'early');
+    } else pvtSet(String(Math.round(el)).padStart(3, '0'), 'live');
+  }
+  const frac = Math.min(1, (ts - pvt.t0) / (pvt.durationSec * 1000));
+  $('pvtBar').style.transform = `scaleX(${frac.toFixed(3)})`;
+  const left = `${Math.max(0, Math.ceil((pvt.endAt - ts) / 1000))} s left`;
+  if (left !== pvt.leftShown) { $('pvtLeft').textContent = left; pvt.leftShown = left; }
+  requestAnimationFrame(pvtFrame);
+}
+
+function pvtRespond(e) {
+  if (!pvt.running) return;
+  e.preventDefault();
+  const c = PVT_CONFIG;
+  const ts = e.timeStamp || performance.now();
+  if (pvt.phase === 'stim') {
+    const rt = Math.max(0, ts - pvt.onset);
+    pvt.trials.push({ rt });
+    pvt.phase = 'feedback'; pvt.feedbackUntil = performance.now() + c.feedbackMs;
+    if (rt < c.falseStartMs) pvtSet('Too fast', 'early');
+    else pvtSet(`${Math.round(rt)} ms`, null);
+  } else if (pvt.phase === 'wait') {
+    pvt.trials.push({ early: true });
+    pvt.phase = 'feedback'; pvt.feedbackUntil = performance.now() + c.feedbackMs;
+    pvtSet('Too early', 'early');
+  }
+}
+
+function pvtAbort(message) {
+  pvt.running = false;
+  pvtReset();
+  if (message) { $('pvtResult').hidden = false; $('pvtResult').innerHTML = `<p class="warnline">! ${esc(message)}</p>`; }
+}
+
+async function pvtFinish() {
+  pvt.running = false;
+  const sum = summarizePvt(pvt.trials);
+  const rts = pvt.trials.filter((t) => !t.early).map((t) => (t.rt == null ? null : Math.round(t.rt)));
+  const before = await pvtTests();
+  const ref = before.length ? before[0].alertness : null;
+  if (pvt.save) {
+    await saveSession({ id: newId(), createdAt: new Date().toISOString(), kind: 'alertness', source: 'device', complete: false,
+      alertness: { ...sum, durationSec: pvt.durationSec, rts, device: navigator.userAgent.slice(0, 120) } });
+  }
+  const cmp = comparePvt(sum, ref);
+  const verdict = !pvt.save ? 'Practice run, not saved.'
+    : !ref ? 'Saved as your reference test on this device. Later tests are compared with it.'
+      : cmp.verdict === 'similar' ? `Similar to your reference test (${cmp.pct > 0 ? '+' : ''}${cmp.pct}% median).`
+        : cmp.verdict === 'slower' ? `${cmp.pct}% slower than your reference test. Short sleep, illness and time of day can all do this; rest before demanding tasks if you can.`
+          : `${Math.abs(cmp.pct)}% faster than your reference test. Practice also speeds people up over the first few tests.`;
+  $('pvtRun').hidden = true; $('pvtIntro').hidden = true; $('pvtResult').hidden = false;
+  $('pvtResult').innerHTML = `<div class="card result">
+      <p><span class="tag live">LIVE</span><span class="tag">EXPERIMENTAL</span></p>
+      <p class="big">${sum.medianMs ?? '-'}<span class="unit"> ms median reaction time</span></p>
+      <p>${sum.lapses} lapse${sum.lapses === 1 ? '' : 's'} (355 ms or slower, or missed) · ${sum.falseStarts} false start${sum.falseStarts === 1 ? '' : 's'} · ${sum.valid} of ${sum.stimuli} responses counted</p>
+      <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${esc(verdict)}</p>
+      <svg class="spark" viewBox="0 0 600 180" role="img" aria-label="Reaction time for each response across the test">${pvtChart(rts)}</svg>
+      <p class="fine">Each dot is one response, left to right through the test; the dashed line is the 355 ms lapse threshold. Device delay is included, so compare only on this device.</p>
+    </div>
+    <p class="row"><button type="button" class="btn primary" id="btnPvtAgain">Test again</button>
+      <button type="button" class="btn" data-nav="board">Mission board</button></p>`;
+  $('btnPvtAgain').addEventListener('click', pvtReset);
+}
+
+function pvtChart(rts) {
+  const W = 600, Hh = 180, padL = 50, padR = 10, padT = 12, padB = 24;
+  const vals = rts.map((r) => (r == null ? PVT_CONFIG.timeoutMs : r));
+  if (!vals.length) return '';
+  const maxY = Math.min(1000, Math.max(500, ...vals.filter((v) => v < PVT_CONFIG.timeoutMs)) * 1.1);
+  const x = (i) => padL + (vals.length === 1 ? 0.5 : i / (vals.length - 1)) * (W - padL - padR);
+  const y = (v) => padT + (1 - Math.min(v, maxY) / maxY) * (Hh - padT - padB);
+  const lapse = PVT_CONFIG.lapseMs;
+  const dots = vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="5" class="${v >= lapse ? 'now' : 'dotpt'}"/>`).join('');
+  return `<line x1="${padL}" x2="${W - padR}" y1="${y(lapse).toFixed(1)}" y2="${y(lapse).toFixed(1)}" class="lapse"/>
+    <text x="${padL - 6}" y="${(y(lapse) + 6).toFixed(1)}" class="ax" text-anchor="end">355</text>
+    <text x="${padL - 6}" y="${(y(0)).toFixed(1)}" class="ax" text-anchor="end">0</text>
+    <text x="${padL - 6}" y="${(y(maxY) + 16).toFixed(1)}" class="ax" text-anchor="end">${Math.round(maxY)}</text>${dots}`;
+}
+
+$('btnPvtStart').addEventListener('click', pvtStart);
+$('btnPvtStop').addEventListener('click', () => pvtAbort('Test stopped. Nothing was saved.'));
+$('pvtTarget').addEventListener('pointerdown', pvtRespond);
+$('pvtTarget').addEventListener('click', (e) => e.preventDefault());
+document.addEventListener('keydown', (e) => {
+  if (!pvt.running || e.repeat) return;
+  if (e.code === 'Space' || e.key === ' ') pvtRespond(e);
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && pvt.running) pvtAbort('Test stopped because the app was hidden. Nothing was saved.');
+});
+
+async function renderAlertTile() {
+  const tests = await pvtTests();
+  const body = $('alertBody');
+  if (!tests.length) {
+    body.innerHTML = `<p>A 3 minute reaction test, like the one astronauts take on the ISS. Slower responses and more lapses can show tiredness before you feel it.</p>
+      <p><button type="button" class="btn primary" data-nav="alertness">Take the 3 minute test</button></p>`;
+    return;
+  }
+  const last = tests[tests.length - 1].alertness, ref = tests[0].alertness;
+  const cmp = tests.length > 1 ? comparePvt(last, ref) : null;
+  const msg = !cmp ? 'This is your reference test.'
+    : cmp.verdict === 'similar' ? 'Similar to your reference test.'
+      : cmp.verdict === 'slower' ? `${cmp.pct}% slower than your reference test.` : `${Math.abs(cmp.pct)}% faster than your reference test.`;
+  body.innerHTML = `<p class="big-num">${last.medianMs ?? '-'}<span class="unit"> ms median</span></p>
+    <p>${last.lapses} lapse${last.lapses === 1 ? '' : 's'} · ${last.falseStarts} false start${last.falseStarts === 1 ? '' : 's'} · ${fmtDate(tests[tests.length - 1].createdAt)}</p>
+    <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${msg}</p>
+    <p><button type="button" class="btn" data-nav="alertness">Test again</button></p>`;
+}
+
+/* ---------- language ---------- */
+function setLang(code) {
+  const { code: used, notice } = applyLang(code);
+  $('langSel').value = used;
+  $('langNotice').hidden = !notice;
+  $('langNotice').textContent = notice;
+  prefs.set('lang', used);
+}
+$('langSel').addEventListener('change', (e) => setLang(e.target.value));
+setLang(prefs.get('lang') || 'en');

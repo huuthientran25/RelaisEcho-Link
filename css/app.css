@@ -4,6 +4,10 @@
 @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; font-style: normal; font-display: swap; src: url("../fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; font-style: normal; font-display: swap; src: url("../fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2"); }
 
+/* Syllabics: loaded only when Canadian Aboriginal syllabics appear on the page. */
+@font-face { font-family: "Noto Sans Canadian Aboriginal"; font-weight: 400; font-style: normal; font-display: swap; src: url("../fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-400-normal.woff2") format("woff2"); unicode-range: U+1400-167F, U+18B0-18FF, U+11AB0-11ABF; }
+@font-face { font-family: "Noto Sans Canadian Aboriginal"; font-weight: 700; font-style: normal; font-display: swap; src: url("../fonts/noto-sans-canadian-aboriginal-canadian-aboriginal-700-normal.woff2") format("woff2"); unicode-range: U+1400-167F, U+18B0-18FF, U+11AB0-11ABF; }
+
 :root {
   --ground: #FFFFFF; --panel: #FFFFFF; --soft: #F5F5F5; --ink: #333333; --muted: #4A5560; --line: #C9D0D8;
   --navy: #26374A; --blue: #0B3FBF; --blue-tint: #E8EEF9; --blue-ink: #0A3399;
@@ -11,7 +15,7 @@
   --ok-tint: #E4ECF6; --ok-ink: #1C2D40;
   --dark: #0E1820; --ghost: #7CF0A8; --roi: #FFD166; --torso: #9CC3F5;
   --radius: 6px;
-  font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-family: "Atkinson Hyperlegible", "Noto Sans Canadian Aboriginal", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   font-size: 18px;
 }
 * { box-sizing: border-box; }
@@ -143,7 +147,25 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .spark .band { fill: var(--blue-tint); stroke: var(--blue); stroke-width: 1; stroke-dasharray: 4 3; }
 .spark .line { fill: none; stroke: var(--navy); stroke-width: 3; stroke-linejoin: round; }
 .spark .now { fill: var(--alert); stroke: #fff; stroke-width: 2; }
-.spark .ax { font-size: 20px; fill: var(--muted); font-family: inherit; }
+.spark .ax { font-size: 17px; fill: var(--muted); font-family: inherit; }
 .budget { position: relative; height: 22px; margin: 8px 0; border: 2px solid var(--navy); border-radius: var(--radius); background: linear-gradient(90deg, #fff 0 99.5%, var(--alert) 99.5%); overflow: hidden; }
 .budget-range { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: var(--navy); transition: left 80ms linear, width 80ms linear; }
-@media (max-width: 520px) { .topbar { padding: 10px 12px; } .topbar-right { gap: 6px; } .brand span { font-size: 17px; } .pill { font-size: 12px; padding: 2px 8px; } }
+@media (max-width: 560px) { .topbar { padding: 8px 12px; flex-wrap: wrap; row-gap: 6px; } .topbar-right { width: 100%; gap: 8px; justify-content: space-between; } .brand span { font-size: 18px; } .pill { font-size: 12px; padding: 2px 8px; } .lang-notice { padding: 8px 12px; font-size: 15px; } .topbar .link-btn { padding: 0 2px; font-size: 16px; } .lang-sel { font-size: 14px; padding: 2px 4px; } }
+
+/* Alertness check */
+.pvt-target { width: 100%; min-height: 46vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: var(--dark); color: #fff; border: 3px solid var(--navy); border-radius: var(--radius); font: inherit; cursor: pointer;
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; contain: layout paint; margin-bottom: 12px; }
+.pvt-counter { display: block; min-height: 1.1em; font-size: clamp(64px, 14vw, 140px); font-weight: 700; line-height: 1; color: #FFFFFF; font-variant-numeric: tabular-nums; }
+.pvt-target.live .pvt-counter { color: #FFD166; }
+.pvt-target.early .pvt-counter { color: #FF9C9C; font-size: clamp(40px, 8vw, 72px); }
+.pvt-hint { min-height: 1.4em; font-size: 18px; color: #C9D0D8; }
+.meter > #pvtBar { transition: none; }
+.spark .lapse { stroke: var(--alert); stroke-width: 2; stroke-dasharray: 6 4; }
+.spark .dotpt { fill: var(--navy); }
+
+/* Language */
+.lang-sel { font: inherit; font-size: 15px; font-weight: 700; min-height: 36px; padding: 2px 8px; border-radius: var(--radius); border: 2px solid #fff; background: var(--navy); color: #fff; cursor: pointer; }
+.lang-sel option { color: var(--ink); background: #fff; }
+.lang-notice { margin: 0; padding: 8px 20px; background: var(--blue-tint); color: var(--blue-ink); border-bottom: 2px solid var(--blue); font-weight: 700; font-size: 16px; text-align: center; }
+@media (hover: hover), (any-hover: hover) { .lang-sel:hover { border-color: #BFD2FF; } }

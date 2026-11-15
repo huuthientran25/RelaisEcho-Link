@@ -24,6 +24,12 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.4 (15 Nov 2026)
+
+- **Alertness check** (new screen, tile on the Mission board): a 3 minute brief psychomotor vigilance test in the style of PVT-B (Basner, Mollicone and Dinges 2011): random 1 to 4 s waits, a millisecond counter, lapses at 355 ms or slower, false starts under 100 ms. Reports median reaction time, lapses and false starts, a dot chart across the test, and the change against your first full test on the same device (10% band, MODELED). A 1 minute practice is not saved. Responses use the event's own timestamp; the test stops if the app is hidden. EXPERIMENTAL: screen and input delay are included, so results are only compared on the same device. The latest test within 24 hours of a checkup is added to the review packet. Jones et al. 2022 linked 6 h or less of sleep to worse PVT-B scores in ISS astronauts. PVT-B constants are from the cited paper as recalled by the team; check them against the paper before the final submission.
+- **Language selector** (English, Français, ᐃᓄᒃᑎᑐᑦ). French is a draft for the home page, board and alertness intro; other screens stay English. Inuktitut shows the syllabics name and a notice, and falls back to English: every string has an empty slot in `lang/translation-template.json` for a certified translator. No machine translation. Syllabics use the bundled Noto Sans Canadian Aboriginal (OFL), loaded only when syllabics appear.
+- 23 unit tests, including one that fails if a translatable string lacks its French draft.
+
 ## Changes in v0.3 (15 Nov 2026)
 
 - **Mission board** (new screen, button on home and in the top bar). Separate labelled tiles, no combined score:

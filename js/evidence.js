@@ -37,6 +37,12 @@ export const EVIDENCE = {
     source: 'Career limit below 600 mSv for all ages and sexes: NASA-STD-3001 Volume 1, standard 4030. Low end: 19 ISS crew averaged 72 mSv over about 6 months (Cucinotta et al., Radiation Research 2008). High end: about 310 mSv per year (Chancellor et al. 2017, as cited in later reviews). Deep space for comparison: Curiosity\'s RAD instrument measured about 0.46 mGy per day absorbed dose during the cruise to Mars (Zeitlin et al. 2013) and about 0.23 on the surface (Hassler et al. 2014).',
     limits: 'Actual dose depends on solar cycle, shielding, spacewalks and orbit. This is context for planning, not a dosimeter reading.',
   },
+  alertness: {
+    title: 'Alertness check',
+    method: 'A brief psychomotor vigilance test: a counter appears after a random 1 to 4 second wait, for 3 minutes. The app reports the median reaction time, lapses (responses of 355 ms or slower, the threshold published for the 3 minute version, plus missed counters) and false starts (pressing early).',
+    source: 'Brief 3 minute PVT (PVT-B): Basner, Mollicone and Dinges, Acta Astronautica 2011. In ISS astronauts, nights of 6 hours of sleep or less were linked to worse PVT-B scores (Jones et al. 2022).',
+    limits: 'Screens, keyboards and browsers add their own delay, so numbers are compared only with your own earlier tests on the same device, never with published norms. Practice makes the first tests slower. It does not diagnose fatigue or any condition.',
+  },
   glymphatic: {
     title: 'Brain clearance and sleep',
     method: 'Educational tile only. Nothing is measured or scored.',

@@ -7,7 +7,7 @@ export const LIMITS = [
   'No diagnosis is made. New or severe symptoms need direct clinical contact.',
 ];
 
-export function buildPacket(session, cmp, { includeImages = false } = {}) {
+export function buildPacket(session, cmp, { includeImages = false, alertness = null } = {}) {
   const src = session.source === 'file' ? 'recorded video' : 'live camera';
   const packet = {
     schema: 'relaisecho-packet/0.1',
@@ -27,6 +27,8 @@ export function buildPacket(session, cmp, { includeImages = false } = {}) {
       reviewer_marks: (d.marks || []).map((m) => ({ x: +m.x.toFixed(3), y: +m.y.toFixed(3), note: m.note })),
       ...(includeImages && d.image ? { image_jpeg_dataurl: d.image } : {}),
     })),
+    alertness: alertness?.alertness ? { date: alertness.createdAt, median_ms: alertness.alertness.medianMs, lapses: alertness.alertness.lapses,
+      false_starts: alertness.alertness.falseStarts, label: 'EXPERIMENTAL 3 minute reaction test; device delay included' } : null,
     self_report: session.context?.symptoms || '',
     reference_values: session.reference || null,
     not_assessed: LIMITS,
@@ -38,13 +40,14 @@ export function buildPacket(session, cmp, { includeImages = false } = {}) {
 export function packetText(p) {
   const r = p.results;
   const lines = [
-    `RelaisÉcho Link review packet (${p.checkup.kind}, ${p.checkup.capturedAt.slice(0, 16).replace('T', ' ')})`,
+    `RelaisÉcho Link review packet (${p.checkup.kind}, ${p.checkup.capturedAt.slice(0, 16).replace('T', ' ')} UTC)`,
     `Source: ${p.checkup.source}`,
     `Pulse: ${r.pulse_bpm.value ?? 'no result'} bpm (${r.pulse_bpm.quality}; ${r.pulse_bpm.windows})`,
     `Breathing: ${r.breathing_per_min.value ?? 'no result'} /min (${r.breathing_per_min.quality})`,
   ];
   if (p.comparison.original_baseline) lines.push(`Original baseline ${p.comparison.original_baseline.date.slice(0, 10)}: pulse ${p.comparison.original_baseline.pulse_bpm ?? '-'}, breathing ${p.comparison.original_baseline.breathing_per_min ?? '-'}`);
   for (const d of p.dental) lines.push(`Dental ${d.view}: ${d.captured ? 'captured' : 'not captured'}${d.reviewer_marks.length ? `, ${d.reviewer_marks.length} mark(s)` : ''}`);
+  if (p.alertness) lines.push(`Alertness test ${p.alertness.date.slice(0, 16).replace('T', ' ')} UTC: median ${p.alertness.median_ms ?? '-'} ms, ${p.alertness.lapses} lapses, ${p.alertness.false_starts} false starts (experimental)`);
   if (p.self_report) lines.push(`Self report: ${p.self_report}`);
   lines.push('Not assessed: back tooth surfaces, below gum line; no diagnosis made. Estimates are experimental.');
   return lines.join('\n');

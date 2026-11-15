@@ -20,48 +20,60 @@
     <span>RelaisÉcho Link</span>
   </a>
   <div class="topbar-right">
+    <label class="sr-only" for="langSel">Language</label>
+    <select id="langSel" class="lang-sel">
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="iu">ᐃᓄᒃᑎᑐᑦ</option>
+    </select>
     <span id="netStatus" class="pill" aria-live="polite"></span>
-    <button type="button" class="link-btn" data-nav="board">Board</button>
-    <button type="button" class="link-btn" data-nav="history">History</button>
+    <button data-i18n="nav.board" type="button" class="link-btn" data-nav="board">Board</button>
+    <button data-i18n="nav.history" type="button" class="link-btn" data-nav="history">History</button>
   </div>
 </header>
+<p id="langNotice" class="lang-notice" hidden></p>
 
 <main id="main">
   <!-- HOME -->
   <section id="screen-home" class="screen" aria-labelledby="h-home">
     <div class="hero">
-      <p class="eyebrow">Guided camera checkup · orbit to the North</p>
-      <h1 id="h-home">Your last checkup, lined up with today.</h1>
-      <p class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
+      <p data-i18n="home.eyebrow" class="eyebrow">Guided camera checkup · orbit to the North</p>
+      <h1 data-i18n="home.h1" id="h-home">Your last checkup, lined up with today.</h1>
+      <p data-i18n="home.lede" class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
       <div class="row">
-        <button type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
-        <button type="button" class="btn" data-nav="board">Mission board</button>
-        <button type="button" class="btn" id="btnSample">Watch sample replay</button>
+        <button data-i18n="home.start" type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
+        <button data-i18n="home.board" type="button" class="btn" data-nav="board">Mission board</button>
+        <button data-i18n="home.sample" type="button" class="btn" id="btnSample">Watch sample replay</button>
       </div>
       <p class="fine" id="sampleNote"></p>
-      <p class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
+      <p data-i18n="home.disclaimer" class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
     </div>
     <div class="cards">
-      <div class="card"><h2>What it captures</h2><ul><li>Pulse estimate from face video, with a quality score</li><li>Breathing rate from neck and upper body movement</li><li>Matched dental photos: front and both sides</li></ul></div>
-      <div class="card"><h2>What is new here</h2><ul><li>No wearable and no upload: video never leaves this device</li><li>Compared with your own baseline, not a population average</li><li>Works offline and builds a short packet a nurse can review</li></ul></div>
+      <div class="card"><h2 data-i18n="home.captures.h">What it captures</h2><ul><li data-i18n="home.captures.1">Pulse estimate from face video, with a quality score</li><li data-i18n="home.captures.2">Breathing rate from neck and upper body movement</li><li data-i18n="home.captures.3">Matched dental photos: front and both sides</li></ul></div>
+      <div class="card"><h2 data-i18n="home.new.h">What is new here</h2><ul><li data-i18n="home.new.1">No wearable and no upload: video never leaves this device</li><li data-i18n="home.new.2">Compared with your own baseline, not a population average</li><li data-i18n="home.new.3">Works offline and builds a short packet a nurse can review</li></ul></div>
     </div>
-    <p class="fine"><button type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
+    <p class="fine"><button data-i18n="home.quality" type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
   </section>
 
   <!-- MISSION BOARD -->
   <section id="screen-board" class="screen" hidden aria-labelledby="h-board">
-    <p class="step">Mission board</p>
-    <h1 id="h-board">Keep the habits that keep you flying.</h1>
-    <p class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
+    <p data-i18n="board.step" class="step">Mission board</p>
+    <h1 data-i18n="board.h1" id="h-board">Keep the habits that keep you flying.</h1>
+    <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
     <div class="tiles">
       <article class="tile" id="tileCheckups" aria-labelledby="h-t-check">
-        <header><h2 id="h-t-check">Checkup rhythm</h2><span class="tag live">LIVE</span></header>
+        <header><h2 data-i18n="board.t.check" id="h-t-check">Checkup rhythm</h2><span class="tag live">LIVE</span></header>
         <div id="checkupBody"></div>
       </article>
 
+      <article class="tile" aria-labelledby="h-t-alert">
+        <header><h2 data-i18n="board.t.alert" id="h-t-alert">Alertness</h2><span class="tag live">LIVE</span></header>
+        <div id="alertBody"></div>
+      </article>
+
       <article class="tile" aria-labelledby="h-t-sleep">
-        <header><h2 id="h-t-sleep">Sleep pressure</h2><span class="tag">MODELED</span></header>
+        <header><h2 data-i18n="board.t.sleep" id="h-t-sleep">Sleep pressure</h2><span class="tag">MODELED</span></header>
         <form id="sleepForm" class="grid2 tight">
           <label>Went to sleep<input type="datetime-local" id="sleepStart" required></label>
           <label>Woke up<input type="datetime-local" id="sleepEnd" required></label>
@@ -73,7 +85,7 @@
       </article>
 
       <article class="tile" aria-labelledby="h-t-rad">
-        <header><h2 id="h-t-rad">Radiation budget</h2><span class="tag pub">PUBLISHED</span></header>
+        <header><h2 data-i18n="board.t.rad" id="h-t-rad">Radiation budget</h2><span class="tag pub">PUBLISHED</span></header>
         <label for="radDays">Days on the ISS: <strong id="radDaysOut">180</strong></label>
         <input type="range" id="radDays" min="0" max="1000" step="10" value="180">
         <div id="radBody" aria-live="polite"></div>
@@ -82,12 +94,44 @@
       </article>
 
       <article class="tile" aria-labelledby="h-t-gly">
-        <header><h2 id="h-t-gly">Brain clearance and sleep</h2><span class="tag">EDUCATIONAL</span></header>
+        <header><h2 data-i18n="board.t.gly" id="h-t-gly">Brain clearance and sleep</h2><span class="tag">EDUCATIONAL</span></header>
         <p>After about six months on the ISS, MRI showed larger fluid spaces around brain blood vessels (perivascular spaces) in astronauts, larger in NASA crew than in cosmonauts.</p>
         <p>Whether sleep speeds up the brain's waste clearance (the glymphatic system) is still debated: a 2024 mouse study found clearance went down during sleep, and the original group disputed it in 2025.</p>
         <p class="fine">No glymphatic number is shown, because none can be measured with a camera. <button type="button" class="link-btn" data-evidence="glymphatic">Evidence</button></p>
       </article>
     </div>
+  </section>
+
+  <!-- ALERTNESS CHECK -->
+  <section id="screen-alertness" class="screen" hidden aria-labelledby="h-alert">
+    <p data-i18n="alert.step" class="step">Alertness check · experimental</p>
+    <h1 data-i18n="alert.h1" id="h-alert">3 minute reaction test</h1>
+    <div id="pvtIntro">
+      <p data-i18n="alert.lede" class="lede">A counter starts at random moments. Press the big button, or the space bar, the moment you see it. Tired brains miss more and respond slower, often before you feel it.</p>
+      <ul>
+        <li>Same device, same posture, same time of day as last time, so results compare fairly.</li>
+        <li>Do not press before the counter appears.</li>
+        <li>Your first full test on this device becomes your reference.</li>
+      </ul>
+      <fieldset>
+        <legend>Length</legend>
+        <div class="seg">
+          <label><input type="radio" name="pvtLen" value="180" checked> 3 minutes, saved</label>
+          <label><input type="radio" name="pvtLen" value="60"> 1 minute practice, not saved</label>
+        </div>
+      </fieldset>
+      <p class="row"><button data-i18n="alert.start" type="button" class="btn primary" id="btnPvtStart">Start the test</button>
+        <button type="button" class="link-btn" data-evidence="alertness">Evidence</button></p>
+    </div>
+    <div id="pvtRun" hidden>
+      <button type="button" id="pvtTarget" class="pvt-target" aria-label="Respond: press when the counter appears">
+        <span id="pvtCounter" class="pvt-counter" aria-hidden="true"></span>
+        <span id="pvtHint" class="pvt-hint">Wait for the counter</span>
+      </button>
+      <div class="meter"><div id="pvtBar"></div></div>
+      <p class="fine"><span id="pvtLeft"></span> · <button type="button" class="link-btn" id="btnPvtStop">Stop without saving</button></p>
+    </div>
+    <div id="pvtResult" hidden aria-live="polite"></div>
   </section>
 
   <!-- SETUP -->
