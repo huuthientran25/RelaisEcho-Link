@@ -17,6 +17,8 @@ import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS } from './cha
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
 import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from './crew.js';
 import { eyeAspect, EyeTracker } from './eyes.js';
+import { makeSpeaker } from './speech.js';
+import { parseBackup, mergePlan } from './backup.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1064,9 +1066,47 @@ async function renderAlertTile() {
     <p><button type="button" class="btn" data-nav="alertness">Test again</button></p>`;
 }
 
+/* ---------- spoken coaching ---------- */
+const speaker = makeSpeaker({ synth: window.speechSynthesis, Utterance: window.SpeechSynthesisUtterance });
+if (!('speechSynthesis' in window)) { $('speakToggle').disabled = true; $('speakToggle').closest('label').append(' (not available in this browser)'); }
+speaker.setEnabled(!!prefs.get('speak'));
+$('speakToggle').checked = !!prefs.get('speak');
+$('speakToggle').addEventListener('change', (e) => { prefs.set('speak', e.target.checked); speaker.setEnabled(e.target.checked); if (e.target.checked) speaker.say('Spoken instructions on.'); });
+for (const id of ['coach', 'dentalCoach']) {
+  new MutationObserver(() => { if (!$(id).closest('.screen').hidden) speaker.say($(id).textContent); })
+    .observe($(id), { childList: true, characterData: true, subtree: true });
+}
+
+/* ---------- night mode ---------- */
+function setNight(on) {
+  document.documentElement.dataset.theme = on ? 'night' : '';
+  $('btnNight').setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('btnNight').textContent = on ? 'Day' : 'Night';
+  document.querySelector('meta[name=theme-color]').setAttribute('content', on ? '#1A0D08' : '#26374A');
+  prefs.set('night', on);
+}
+$('btnNight').addEventListener('click', () => setNight($('btnNight').getAttribute('aria-pressed') !== 'true'));
+setNight(!!prefs.get('night'));
+
+/* ---------- restore backup ---------- */
+$('restoreFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const parsed = parseBackup(await file.text());
+  if (parsed.error) { window.alert(parsed.error); return; }
+  const plan = mergePlan(await listSessions(), parsed.sessions);
+  if (!plan.toAdd.length) { window.alert(`Nothing new: all ${parsed.sessions.length} checkups in this file are already on this device.`); return; }
+  if (!window.confirm(`Add ${plan.toAdd.length} checkup${plan.toAdd.length === 1 ? '' : 's'} from this backup? ${plan.skipped} already here will be kept as they are. Nothing is deleted.`)) return;
+  for (const x of plan.toAdd) await saveSession(x);
+  $('restoreMsg').textContent = `Restored ${plan.toAdd.length} checkups.`;
+  renderHistory();
+});
+
 /* ---------- language ---------- */
 function setLang(code) {
   const { code: used, notice } = applyLang(code);
+  speaker.setLang(used === 'fr' ? 'fr-CA' : 'en-CA');
   $('langSel').value = used;
   $('langNotice').hidden = !notice;
   $('langNotice').textContent = notice;

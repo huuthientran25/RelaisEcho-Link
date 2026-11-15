@@ -26,12 +26,14 @@
       <option value="fr">Français</option>
       <option value="iu">ᐃᓄᒃᑎᑐᑦ</option>
     </select>
+    <button type="button" class="link-btn" id="btnNight" aria-pressed="false" title="Dim, red-shifted screen for use at night">Night</button>
     <span id="netStatus" class="pill" aria-live="polite"></span>
     <button data-i18n="nav.board" type="button" class="link-btn" data-nav="board">Board</button>
     <button data-i18n="nav.history" type="button" class="link-btn" data-nav="history">History</button>
   </div>
 </header>
 <p id="langNotice" class="lang-notice" hidden></p>
+<p id="restoreMsg" class="sr-only" aria-live="polite"></p>
 
 <main id="main">
   <!-- HOME -->
@@ -206,6 +208,7 @@
       <label for="symptoms">Anything new?</label>
       <textarea id="symptoms" rows="3" placeholder="For example: tooth sensitivity, gum soreness, headache"></textarea>
       <p class="fine">New or severe symptoms: contact your clinician now. Do not wait for this checkup.</p>
+      <label class="check"><input type="checkbox" id="speakToggle"> Speak the instructions aloud (useful when you cannot read the screen while holding still)</label>
       <p class="fine">Video is processed in this browser. Only a packet you choose to export leaves the device.</p>
       <div class="row">
         <button type="submit" class="btn primary">Start resting scan</button>
@@ -315,6 +318,8 @@
     <div class="row">
       <button type="button" class="btn" id="btnBenchCsv">Export bench test CSV</button>
       <button type="button" class="btn" id="btnExportAll">Export all (.json)</button>
+      <label class="btn file-btn" for="restoreFile">Restore from backup (.json)</label>
+      <input type="file" id="restoreFile" accept="application/json,.json" class="sr-only">
       <button type="button" class="btn danger" id="btnClear">Delete all checkups</button>
     </div>
   </section>

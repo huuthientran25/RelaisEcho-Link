@@ -200,3 +200,40 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .today-list .mark-box { flex: 0 0 auto; width: 26px; height: 26px; border: 2px solid var(--navy); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
 .today-list li.done .mark-box { background: var(--navy); }
 .today-list li.done > span:nth-child(2) { color: var(--muted); }
+
+.file-btn { display: inline-flex; align-items: center; }
+
+/* Night mode: dim, red-shifted, no pure white. For reading at night; makes no health claim. */
+[data-theme=night] {
+  --ground: #120A08; --panel: #1A0F0C; --soft: #22140F; --ink: #F2C7A5; --muted: #C9A487; --line: #4A2A1C;
+  --navy: #FFB27A; --blue: #FF9E5E; --blue-tint: #3A1E12; --blue-ink: #FFC79E;
+  --alert: #FF7A6B; --alert-tint: #3A1410; --alert-ink: #FFB1A6;
+  --ok-tint: #2A1A12; --ok-ink: #F2C7A5; --dark: #0A0605;
+  color-scheme: dark;
+}
+[data-theme=night] body { background: var(--ground); }
+[data-theme=night] .topbar { background: #1A0D08; border-bottom-color: #7A3E26; color: var(--ink); }
+[data-theme=night] .brand, [data-theme=night] .topbar .link-btn { color: var(--ink); }
+[data-theme=night] .pill { background: var(--panel); color: var(--ink); border-color: var(--line); }
+[data-theme=night] .lang-sel { background: #1A0D08; color: var(--ink); border-color: var(--line); }
+[data-theme=night] .lang-sel option { background: var(--panel); color: var(--ink); }
+[data-theme=night] .btn.primary { background: var(--navy); color: #120A08; border-color: var(--navy); }
+[data-theme=night] .tag.live, [data-theme=night] thead th, [data-theme=night] .seg label:has(input:checked),
+[data-theme=night] .views li.active, [data-theme=night] .status-row li.good { background: var(--navy); color: #120A08; border-color: var(--navy); }
+[data-theme=night] table, [data-theme=night] textarea, [data-theme=night] input[type=text], [data-theme=night] input[type=number],
+[data-theme=night] input[type=datetime-local], [data-theme=night] .select, [data-theme=night] .meter, [data-theme=night] .hist-item,
+[data-theme=night] .views li, [data-theme=night] .status-row li, [data-theme=night] .dot, [data-theme=night] .crew-fig, [data-theme=night] .budget,
+[data-theme=night] dialog { background: var(--panel); color: var(--ink); }
+[data-theme=night] .dot.on, [data-theme=night] .today-list li.done .mark-box { background: var(--navy); }
+[data-theme=night] .today-list .mark-box { color: #120A08; }
+[data-theme=night] .crew-fig .lab { fill: #2A1A12; }
+[data-theme=night] .crew-fig .own { fill: rgba(255, 158, 94, 0.16); }
+[data-theme=night] .crew-fig .unusual { fill: var(--panel); }
+[data-theme=night] .qr-img { background: #fff; } /* QR codes need dark on light to scan */
+[data-theme=night] .pvt-target.live .pvt-counter { color: #FF9E5E; }
+[data-theme=night] .lang-notice { background: var(--blue-tint); color: var(--blue-ink); }
+@media (hover: hover), (any-hover: hover) {
+  [data-theme=night] .btn:hover { background: var(--blue-tint); color: var(--blue-ink); border-color: var(--blue); }
+  [data-theme=night] .btn.primary:hover { background: var(--blue); color: #120A08; }
+  [data-theme=night] .topbar .link-btn:hover, [data-theme=night] .brand:hover { color: #FFD9BF; }
+}

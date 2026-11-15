@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.10 to v0.12, released together as v0.12 (15 Nov 2026)
+
+- **v0.10, spoken coaching** (checkbox in setup, remembered): the device's own speech engine reads the coach messages aloud during the scan and dental capture, in English or French to match the language setting. Speaks only when the message changes, at most every 2 s, always the latest. Useful when you are holding still and cannot read the screen.
+- **v0.11, night mode** (Night/Day in the top bar, remembered): dim, red-shifted palette with no pure white, every text pair at least 7:1 contrast. Meant for checking the board at night; it makes no sleep or health claim. QR codes stay black on white so they still scan. For camera checkups, a lit room matters more than the screen colour.
+- **v0.12, restore from backup** (History): load an "Export all" file onto a new device or after clearing the browser. Nothing is overwritten, checkups already present are skipped, and the device's own original baseline stays the original. Invalid files are refused with a reason.
+- 36 unit tests.
+
 ## Changes in v0.7 to v0.9, released together as v0.9 (15 Nov 2026)
 
 - **v0.7, inflammation markers from NASA OSDR OSD-575.** 12 markers from the Eve Technologies cardiovascular and immune panels (CRP, fibrinogen, haptoglobin, alpha-1 acid glycoprotein, serum amyloid P, IL-6, IL-8, IL-10, TNF-alpha, interferon gamma, MCP-1, IP-10) join the 15 metabolic tests, grouped by panel. They have no clinical reference range, so only each person's own pre-flight range is shown. From the data: 20 of 48 day-after-landing values rose above that person's highest pre-flight value; IL-6 rose above it in all four crew members. Built by `scripts/build_osd575.py` with the two extra CSVs.
