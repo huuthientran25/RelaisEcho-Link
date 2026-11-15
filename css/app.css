@@ -425,10 +425,12 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .ov-jump { min-height: 0; padding: 0; font-weight: 700; }
 .ov-next li { margin: 3px 0; }
 
-/* Logo mark: flat, two colours, drawn as SVG so it stays sharp at every size and follows the theme. */
-:root { --logo-a: var(--navy); --logo-b: #00A9C7; }
-[data-theme=dark] { --logo-b: var(--accent); }
-.logo-mark .lm-a { stroke: var(--logo-a); }
-.logo-mark .lm-b { stroke: var(--logo-b); }
-.logo-mark .lm-dot { fill: var(--logo-b); }
-.brand .logo-mark { --logo-a: var(--bar-ink); --logo-b: var(--accent); flex: none; }
+.ov-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 12px; }
+.ov-mission { flex: 1 1 260px; min-width: 220px; }
+.ov-mission p { margin: 0; font-weight: 700; }
+.ov-mission .meter { height: 10px; margin-top: 4px; }
+.ov-scen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ov-scen label, .ov-clock label { font-size: 15px; }
+.ov-clock input { font: inherit; font-size: 16px; min-height: 40px; padding: 2px 6px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); color: var(--ink); width: auto; }
+.ov-clock .row { align-items: center; gap: 6px 8px; flex-wrap: wrap; }
+@media print { .ov-bar .ov-scen, .ov-clock, #btnOvPrint, .ov-select { display: none !important; } .ov-grid { grid-template-columns: 300px 1fr; } .ov-rightgrid { grid-template-columns: 1fr; } .ov-body { height: 420px; } }

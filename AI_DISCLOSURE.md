@@ -11,5 +11,5 @@ Edit this file so it describes what the team actually did.
   - The README and the licence and data source notes
   - The planning document, the UI mockups and the 30 second video storyboard
 - **What the team did:** [describe the team's review, testing on real devices, bench test, threshold changes, design decisions and edits]
-- **AI images or video:** the first logo concept was generated with ChatGPT (OpenAI) at the team's request. In v0.58 Claude redrew it as a flat vector (`icons/logo-mark.svg`: corner brackets, an eye, two echo arcs) and rendered the app icons from it, so the logo in the app is AI made in both steps. [Check the current Space Apps rule on AI generated images, including any watermark requirement, and state here how the team handled it.] Any AI generated image or footage in the submission video must follow the same rule.
+- **AI images or video:** the logo was generated with ChatGPT (OpenAI) at the team's request; the app icons were cut from that image. [Check the current Space Apps rule on AI generated images, including any watermark requirement, and state here how the team handled it.] Any AI generated image or footage in the submission video must follow the same rule.
 - **AI inside the app:** none. No language model or generative model runs in the app. The face landmark model is MediaPipe's (see `LICENSES.md`).

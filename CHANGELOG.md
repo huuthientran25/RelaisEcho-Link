@@ -2,6 +2,14 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## Changes in v0.59 (15 Nov 2026)
+
+- **Original logo kept.** The flat redraw from v0.58 is removed; the app uses the team's ChatGPT logo again.
+- **Explore a scenario** on the Overview, all invented sample data in the sample profile: Three short nights (pulse up, reactions slower), A steady fortnight (everything inside its band), Gums getting redder (front dental colour drifts redder, gum pain ticked), Short of breath today (the urgent path). Each one changes the body chart, graphs and "Look here first".
+- **Mission clock** on the Overview: set a start date and length to see "Mission day N of M" with a progress bar (a field rotation or winter posting works the same way). Display only.
+- **Print** the Overview on one page.
+- 104 unit tests.
+
 ## Changes in v0.58 (15 Nov 2026)
 
 - **Overview tab: everything on one screen.** A body chart with seven regions (sleep and alertness, eyes, mouth and jaw, neck, heart and circulation, breathing, hands). Each region's dot shows urgent tick, look again, logged or not measured, with a dashed line to its label. Selecting a region plots its measures over time with the person's own first value (or the original baseline) and its band; "Show values" gives the same numbers as a table. Four headline numbers (pulse, breathing, reaction time, last night's sleep), a short "Look here first" list and the next step sit beside it. The Board stays the detailed view. A reading order, not a score.
@@ -9,7 +17,7 @@ Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov
 - **Text size: Aa−, Aa, Aa+.** Five steps from 85% to 150%, applied like browser zoom so layouts reflow instead of overlapping; the camera layers stay full size. Replaces the single A+ toggle (an old "larger text" setting maps to 130%).
 - **Dental photos at the baseline's distance.** Each dental photo records how large the iris appears (vertical size, so turning the head does not change it). Later dental photos on the same camera must be within 12% of the original baseline's distance before they count, with "Move closer" or "Move back a little" coaching (English and French). A different camera is named as not comparable. The first dental set shows a rough distance in cm.
 - **Sharper camera overlays.** The guide outline and measurement boxes are now drawn at the screen's real pixel density, with rounded corners, a light fill and small labels (forehead, cheek, neck, chest; eyelid, neck, palm, hand in the experimental checks) that read correctly in selfie view.
-- **Logo redrawn as a flat vector** (`icons/logo-mark.svg`): corner brackets, an eye and two echo arcs in two colours, no gradients or fake shading. It is inlined in the page so it follows the light and dark themes; app icons are rendered from it. AI disclosure updated.
+- The team kept its original logo (made with ChatGPT); AI disclosure updated to say so.
 - 102 unit tests; browser regression extended; no accessibility violations on 11 screens in light and dark.
 
 ## Changes in v0.57 (15 Nov 2026)

@@ -29,7 +29,7 @@ Or let it play by itself: Home page > **30 second captioned demo** (also `/?reel
 | Dental photos | Front and both sides, levelled and scaled by the mouth corners, baseline against today slider, reviewer marks, colour comparison with a lighting check | EXPERIMENTAL |
 | Change against baseline | A difference counts only when it beats the method's noise band (published figures, or your own bench error after 5 reference pairs) | MODELED |
 | Alertness | 3 minute reaction test with the published PVT-B settings, compared with your own first test | EXPERIMENTAL |
-| Overview | One screen: a body chart whose regions open trend graphs against your own first value, four headline numbers, a short "look here first" list and the next step. A reading order, not a score | LIVE |
+| Overview | One screen: a body chart whose regions open trend graphs against your own first value, four headline numbers, a short "look here first" list and the next step; four sample scenarios to explore, a mission clock (day N of M) and one page printing. A reading order, not a score | LIVE |
 | Mission board | Today checklist, checkup rhythm, sleep pressure (two process model), daylight by latitude next to the station's 16 sunrises a day, radiation budget for ISS and Mars missions (NASA-STD-3001, Curiosity RAD), live space weather (NASA DONKI), signal delay to Mars today (JPL orbital elements), Inspiration4 crew blood data (NASA OSDR OSD-575), brain clearance explainer | LIVE, MODELED, PUBLISHED or NASA DATA per tile |
 | Eye grid | Amsler grid self check, one eye at a time, compared with your own first check; counts travel in the packet | EXPERIMENTAL |
 | Experimental checks | Seven short camera checks, each compared only with your own first result: jaw opening (mm, iris scaled), eye following a moving dot (match and delay), pupil light response (screen flash), inner eyelid colour (redness against the white of the eye, confirmed before saving), neck photos before and during a swallow, hand steadiness (phone motion sensor or camera, 3 to 12 Hz), and a pulse timing index plus a colour ratio index (face against an open palm). The last two are indexes, never mmHg or a saturation percentage | EXPERIMENTAL |
@@ -56,7 +56,7 @@ Full list with links: `DATA_SOURCES.md`. Software and font licences: `LICENSES.m
 
 ## What is tested, and what is not
 
-- `npm test`: 102 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
+- `npm test`: 104 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
 - A synthetic video with a known 72 bpm colour pulse and 15 breaths per minute runs through the whole browser pipeline (`tests/e2e_synthetic.mjs`) and returns 72 and 15. This shows the code path works.
 - An automated accessibility audit (axe-core) of eight screens (home, board, history, crew data, reaction test, nurse view, checkup setup, device check) in light and dark mode found no violations at v0.50.
 - **Not shown: accuracy on real people.** Camera pulse error is known to rise on darker skin (a published meta analysis reports about 4 beats per minute for Fitzpatrick types I to V and about 14 for type VI), cold skin is untested, and every threshold in `js/config.js` is a design choice. That is why every estimate is labelled EXPERIMENTAL and the app refuses to give a number when a capture fails its checks.

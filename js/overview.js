@@ -120,3 +120,16 @@ export const BODY_SVG = `<svg viewBox="0 0 300 460" class="ov-body-fig" aria-hid
   <path class="ov-skin" d="M136 104 C120 108 100 110 92 124 C84 138 80 170 76 210 L70 268 C68 286 66 300 66 312 C66 326 82 326 82 314 L86 270 L94 214 L100 176 L104 240 L106 300 L112 380 L116 440 C116 454 140 454 140 442 L146 356 L150 318 L154 356 L160 442 C160 454 184 454 184 440 L188 380 L194 300 L196 240 L200 176 L206 214 L214 270 L218 314 C218 326 234 326 234 312 C234 300 232 286 230 268 L224 210 C220 170 216 138 208 124 C200 110 180 108 164 104 Z"/>
   <ellipse cx="150" cy="54" rx="29" ry="35" class="ov-skin"/>
 </svg>`;
+
+// Mission clock: day N of M from a start date (local calendar days, day 1 = start date).
+export function missionDay(startIso, lengthDays, now = new Date()) {
+  const len = Math.round(Number(lengthDays));
+  if (!startIso || !(len >= 1 && len <= 2000)) return null;
+  const s = new Date(`${startIso}T00:00:00`);
+  if (Number.isNaN(+s)) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = Math.round((today - s) / 86400000) + 1;
+  if (day < 1) return { phase: 'before', day, length: len, daysToGo: 1 - day, pct: 0 };
+  if (day > len) return { phase: 'after', day, length: len, daysSince: day - len, pct: 1 };
+  return { phase: 'during', day, length: len, pct: day / len };
+}

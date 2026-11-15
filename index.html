@@ -7,7 +7,6 @@
 <meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
 <meta name="theme-color" content="#041D2B">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/logo-mark.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preload" href="fonts/atkinson-hyperlegible-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -19,7 +18,7 @@
 <header class="site-head">
 <div class="topbar">
   <a class="brand" href="#home" data-nav="home">
-    <svg class="logo-mark" viewBox="0 0 64 64" width="32" height="32" aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"><path class="lm-a" d="M7 21 V13 A6 6 0 0 1 13 7 H21"/><path class="lm-b" d="M43 7 H51 A6 6 0 0 1 57 13 V21"/><path class="lm-a" d="M57 43 V51 A6 6 0 0 1 51 57 H43"/><path class="lm-b" d="M21 57 H13 A6 6 0 0 1 7 51 V43"/><path class="lm-a" d="M15 32 C21 23 26 20 32 20 C38 20 43 23 49 32 C43 41 38 44 32 44 C26 44 21 41 15 32 Z"/><path class="lm-b" stroke-width="3" d="M19 18 A18 18 0 0 1 29 13.2"/><path class="lm-b" stroke-width="3" d="M45 46 A18 18 0 0 1 35 50.8"/></g><circle class="lm-dot" cx="32" cy="32" r="6"/></svg>
+    <img src="icons/logo-blue-bar-64.png" alt="" width="30" height="30">
     <span>RelaisÉcho Link</span>
   </a>
   <div class="topbar-right">
@@ -60,7 +59,7 @@
   <!-- HOME -->
   <section id="screen-home" class="screen" aria-labelledby="h-home">
     <div class="hero">
-      <svg class="hero-logo logo-mark" viewBox="0 0 64 64" width="88" height="88" role="img" aria-label="RelaisÉcho Link logo"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"><path class="lm-a" d="M7 21 V13 A6 6 0 0 1 13 7 H21"/><path class="lm-b" d="M43 7 H51 A6 6 0 0 1 57 13 V21"/><path class="lm-a" d="M57 43 V51 A6 6 0 0 1 51 57 H43"/><path class="lm-b" d="M21 57 H13 A6 6 0 0 1 7 51 V43"/><path class="lm-a" d="M15 32 C21 23 26 20 32 20 C38 20 43 23 49 32 C43 41 38 44 32 44 C26 44 21 41 15 32 Z"/><path class="lm-b" stroke-width="3" d="M19 18 A18 18 0 0 1 29 13.2"/><path class="lm-b" stroke-width="3" d="M45 46 A18 18 0 0 1 35 50.8"/></g><circle class="lm-dot" cx="32" cy="32" r="6"/></svg>
+      <img class="hero-logo" src="icons/logo-blue-128.png" alt="RelaisÉcho Link logo" width="88" height="88">
       <p data-i18n="home.eyebrow" class="eyebrow">Guided camera checkup · orbit to the North</p>
       <h1 data-i18n="home.h1" id="h-home">Your last checkup, lined up with today.</h1>
       <p data-i18n="home.lede" class="lede">A phone or laptop camera coaches you into the same position as your baseline, measures only when the signal is good, and prepares a short packet a remote practitioner can review.</p>
@@ -101,7 +100,17 @@
   <section id="screen-overview" class="screen ov" hidden aria-labelledby="h-ov">
     <div class="ov-top">
       <div><p class="step">Overview</p><h1 id="h-ov" class="ov-h1">Everything at a glance</h1></div>
-      <p class="fine ov-note">Each part is compared with your own first value. No combined score. Details on the <button type="button" class="link-btn" data-nav="board">Board</button>.</p>
+      <p class="fine ov-note">Each part is compared with your own first value. No combined score. Details on the <button type="button" class="link-btn" data-nav="board">Board</button>. <button type="button" class="link-btn" id="btnOvPrint">Print</button></p>
+    </div>
+    <div class="ov-bar">
+      <div class="ov-mission" id="ovMission"></div>
+      <details class="ov-clock fine"><summary>Set the mission clock</summary>
+        <div class="row"><label for="ovStart">Start date</label><input type="date" id="ovStart"><label for="ovLen">Length (days)</label><input type="number" id="ovLen" min="1" max="2000" inputmode="numeric" placeholder="180">
+        <button type="button" class="btn" id="btnOvClock">Save</button><button type="button" class="link-btn" id="btnOvClockClear">Clear</button></div>
+        <p class="fine">For a field rotation, a winter posting or a mission. Shown here only; it changes no result.</p>
+      </details>
+      <div class="ov-scen"><label for="ovScenario">Explore a scenario (sample data)</label>
+        <select id="ovScenario" class="ov-select"></select><button type="button" class="btn" id="btnOvScenario">Load</button></div>
     </div>
     <div class="ov-grid">
       <div class="card ov-bodycard">
@@ -647,7 +656,7 @@
   <span>Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.</span>
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
-  <span>RelaisÉcho Link <span id="appVersion">v0.58</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v0.59</span></span>
 </footer>
 </body>
 </html>

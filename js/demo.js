@@ -11,7 +11,15 @@ function rng(seed) {
   return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 2 ** 32; };
 }
 
-export function makeDemoSessions(now = new Date(), seed = 42) {
+// Scenarios for "Explore a scenario": the same two invented weeks, told four ways.
+export const SCENARIOS = [
+  { id: 'shortsleep', label: 'Three short nights', line: 'Pulse rises and reactions slow after a run of short sleep.' },
+  { id: 'steady', label: 'A steady fortnight', line: 'Everything stays inside its band. What a calm record looks like.' },
+  { id: 'gums', label: 'Gums getting redder', line: 'The front dental photo drifts redder over the last checkups, with gum pain ticked.' },
+  { id: 'breath', label: 'Short of breath today', line: 'Today\'s checkup has shortness of breath ticked and a faster breathing rate: the urgent path.' },
+];
+
+export function makeDemoSessions(now = new Date(), seed = 42, scenario = 'shortsleep') {
   const r = rng(seed);
   const day = 24 * 3600 * 1000;
   const out = [];
@@ -24,9 +32,10 @@ export function makeDemoSessions(now = new Date(), seed = 42) {
   // 12 checkups over 14 days; pulse rises on days 3 to 1 ago (a short sleep stretch in the story).
   const plan = [14, 13, 12, 11, 9, 8, 7, 6, 5, 3, 2, 1];
   plan.forEach((ago, i) => {
-    const elevated = ago <= 3;
-    const pulse = Math.round(63 + (r() - 0.5) * 5 + (elevated ? 9 : 0));
-    const resp = Math.round(14 + (r() - 0.5) * 3);
+    const elevated = scenario === 'shortsleep' && ago <= 3;
+    const breathless = scenario === 'breath' && ago === 1;
+    const pulse = Math.round(63 + (r() - 0.5) * 5 + (elevated ? 9 : 0) + (breathless ? 11 : 0));
+    const resp = Math.round(14 + (r() - 0.5) * 3 + (breathless ? 7 : 0));
     const quality = r() < 0.15 ? 'medium' : 'high';
     const s = {
       id: id(i), demo: true, profileId: DEMO_PROFILE, createdAt: at(ago, Math.round((r() - 0.5) * 70)).toISOString(),
@@ -35,16 +44,26 @@ export function makeDemoSessions(now = new Date(), seed = 42) {
       pulse: { bpm: pulse, quality, accepted: 11, total: 11, reason: '' },
       resp: { rpm: resp, quality: 'high', seconds: 30, channel: i % 3 ? 'chest' : 'neck', reason: '' },
       usableSeconds: 30, elapsedSeconds: 38 + Math.round(r() * 20), dental: {},
-      context: { symptoms: elevated && ago === 2 ? 'Slept badly two nights, mild headache.' : '',
-        checklist: ago === 3 ? ['sleep'] : ago === 2 ? ['headache', 'sleep'] : ago === 1 ? ['headache', 'sleep', 'mouth'] : ago === 9 ? ['back'] : [] },
+      context: { symptoms: elevated && ago === 2 ? 'Slept badly two nights, mild headache.' : breathless ? 'Out of breath after the stairs this morning. (Invented sample.)' : '',
+        checklist: scenario === 'shortsleep' ? (ago === 3 ? ['sleep'] : ago === 2 ? ['headache', 'sleep'] : ago === 1 ? ['headache', 'sleep', 'mouth'] : ago === 9 ? ['back'] : [])
+          : scenario === 'gums' ? (ago <= 2 ? ['mouth'] : [])
+            : scenario === 'breath' ? (ago === 1 ? ['breath', 'tired'] : [])
+              : (ago === 9 ? ['back'] : []) },
     };
+    // Gum story: the front photo's automatic colour comparison drifts redder (a* units against baseline).
+    if (scenario === 'gums') {
+      const drift = { 6: 1.5, 5: 3, 3: 7.5, 2: 9, 1: 12 }[ago] ?? (ago === 14 ? null : Math.round((r() - 0.5) * 30) / 10);
+      if (drift != null) s.dental = { front: { view: 'front', captured: true, marks: [], auto: { comparable: true, gumRedDelta: drift, toothYellowDelta: 0.4, lightingDelta: 1.1,
+        flags: drift > 6 ? [`Gums look redder than the baseline photo (a* +${drift}).`] : [], notes: [], changedPct: drift > 6 ? 9 : 2 } } };
+      else s.dental = { front: { view: 'front', captured: true, marks: [] } };
+    }
     // Six checkups have a reference watch reading, so the bench test panel is filled in.
     if (i % 2 === 0) s.reference = { pulseBpm: pulse + Math.round((r() - 0.5) * 4), breathsPerMin: resp + Math.round((r() - 0.5) * 2), device: 'sample watch', conditions: 'sample data' };
     out.push(s);
   });
   // Five reaction tests; slower on the short sleep days.
   [13, 9, 6, 2, 1].forEach((ago, k) => {
-    const slow = ago <= 2;
+    const slow = scenario === 'shortsleep' && ago <= 2;
     const median = Math.round(262 + (r() - 0.5) * 16 + (slow ? 34 : 0));
     const rts = Array.from({ length: 52 }, () => Math.round(median + (r() - 0.35) * 90 + (r() < (slow ? 0.12 : 0.03) ? 200 : 0)));
     const lapses = rts.filter((x) => x >= 355).length;
@@ -58,19 +77,20 @@ export function makeDemoSessions(now = new Date(), seed = 42) {
 
 // Invented experimental check results for the demo profile (no photos). The later jaw and timing
 // results sit outside their bands on purpose, so the "differs from your first check" view can be seen.
-export function makeDemoExp(now = new Date()) {
+export function makeDemoExp(now = new Date(), scenario = 'shortsleep') {
+  const calm = scenario !== 'shortsleep';
   const day = 24 * 3600 * 1000;
   const at = (daysAgo, h) => { const d = new Date(+now - daysAgo * day); d.setHours(h, 15, 0, 0); return d.toISOString(); };
   const rec = (i, daysAgo, exp) => ({ id: `demo-exp-${String(i).padStart(2, '0')}`, createdAt: at(daysAgo, 9), kind: 'exp', source: 'device', demo: true, complete: false, exp: { ok: true, method: 'Invented sample result.', ...exp } });
   return [
     rec(1, 13, { check: 'jaw', maxOpenMm: 44.5, deviationMm: 0.8, openings: 3 }),
-    rec(2, 1, { check: 'jaw', maxOpenMm: 37.0, deviationMm: 1.4, openings: 3 }),
+    rec(2, 1, { check: 'jaw', maxOpenMm: calm ? 43.6 : 37.0, deviationMm: calm ? 0.9 : 1.4, openings: 3 }),
     rec(3, 12, { check: 'gaze', followCorr: 0.91, lagMs: 160, eyeTravel: 0.11, smoothnessPct: 78, jumpsPer10s: 1.5, holdJitterPct: 6.2 }),
     rec(4, 2, { check: 'gaze', followCorr: 0.88, lagMs: 190, eyeTravel: 0.1, smoothnessPct: 74, jumpsPer10s: 2.5, holdJitterPct: 7.9 }),
     rec(5, 11, { check: 'pupil', right: { constrictionPct: 31.5, latencyMs: 330, restRatio: 0.41 }, left: { constrictionPct: 29.8, latencyMs: 360, restRatio: 0.4 }, asymmetryPct: 2.5, irisPx: 38 }),
     rec(6, 10, { check: 'pallor', eye: 'right', eyelidEi: 21.4, whiteEi: 6.1, relEi: 15.3 }),
     rec(7, 9, { check: 'tremor', mode: 'motion', unit: 'm/s²', right: { peakHz: null, share: 0.12, rms: 0.021 }, left: { peakHz: null, share: 0.1, rms: 0.019 } }),
     rec(8, 12, { check: 'circ', pttMs: 64, pttSpreadMs: 18, bpm: 62, rorFace: 0.912, rorPalm: 0.88, windows: '9 of 11', cameraFps: 30 }),
-    rec(9, 1, { check: 'circ', pttMs: 31, pttSpreadMs: 22, bpm: 72, rorFace: 0.934, rorPalm: 0.9, windows: '7 of 11', cameraFps: 30 }),
+    rec(9, 1, { check: 'circ', pttMs: calm ? 58 : 31, pttSpreadMs: 22, bpm: scenario === 'breath' ? 75 : calm ? 63 : 72, rorFace: 0.934, rorPalm: 0.9, windows: '7 of 11', cameraFps: 30 }),
   ];
 }

@@ -59,3 +59,30 @@ test('chart: one dot per value, band drawn, out of band dots marked', () => {
   assert.equal(lineChart([], {}), '');
   assert.equal((lineChart([{ t: 5, v: 1 }], {}).match(/<circle /g) || []).length, 1);
 });
+
+test('mission clock: day 1 on the start date, before and after handled, bad input refused', async () => {
+  const { missionDay } = await import('../js/overview.js');
+  const now = new Date(2026, 10, 15, 13, 0);
+  assert.deepEqual(missionDay('2026-11-15', 180, now), { phase: 'during', day: 1, length: 180, pct: 1 / 180 });
+  assert.equal(missionDay('2026-10-07', 180, now).day, 40);
+  assert.equal(missionDay('2026-11-20', 30, now).daysToGo, 5);
+  assert.equal(missionDay('2026-01-01', 30, now).phase, 'after');
+  assert.equal(missionDay('', 30, now), null);
+  assert.equal(missionDay('2026-11-01', 0, now), null);
+});
+
+test('scenarios tell different stories on the body chart', async () => {
+  const { makeDemoSessions, makeDemoExp, SCENARIOS } = await import('../js/demo.js');
+  const status = (id) => {
+    const all = [...makeDemoSessions(now, 42, id), ...makeDemoExp(now, id)];
+    const original = all.find((s) => s.kind === 'baseline');
+    const last = all.filter((s) => s.kind === 'followup').at(-1);
+    return Object.fromEntries(buildRegions(all, { original, floors: { pulse: 8, resp: 3 }, latestChecklist: last.context.checklist }).map((r) => [r.id, r.status]));
+  };
+  assert.equal(SCENARIOS.length, 4);
+  const steady = status('steady');
+  assert.ok(Object.values(steady).every((s) => s !== 'review' && s !== 'urgent'), JSON.stringify(steady));
+  assert.equal(status('gums').mouth, 'review');
+  assert.equal(status('breath').lungs, 'urgent');
+  assert.equal(status('shortsleep').head, 'review');
+});

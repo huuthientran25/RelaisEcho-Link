@@ -23,7 +23,7 @@ import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from 
 import { eyeAspect, EyeTracker } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
-import { makeDemoSessions, makeDemoExp, DEMO_PROFILE, DEMO_NAME } from './demo.js';
+import { makeDemoSessions, makeDemoExp, SCENARIOS, DEMO_PROFILE, DEMO_NAME } from './demo.js';
 import { validatePacket, safeImage, standouts } from './review.js';
 import { analyzeMouth, compareMouth, changeMap, mouthMask } from './dentalcmp.js';
 import { REPLY_STATUSES, makeReply, validateReply, gzipText, readMaybeGzip } from './reply.js';
@@ -33,7 +33,7 @@ import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType } from './reel.js'
 import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
 import { initExp } from './expui.js';
 import { expForPacket, checkTitle, CHECKS as EXP_CHECKS } from './exp.js';
-import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG } from './overview.js';
+import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay } from './overview.js';
 import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
 
 const $ = (id) => document.getElementById(id);
@@ -1376,7 +1376,9 @@ function applyTheme(dark) {
   $('btnTheme').setAttribute('aria-pressed', dark ? 'true' : 'false');
   $('btnTheme').textContent = dark ? 'Light' : 'Dark';
   document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#101113' : '#041D2B');
-  // The logo is inline SVG coloured from the theme (css/app.css, .logo-mark), so nothing to swap here.
+  // Blue logo in light mode, amber logo in dark mode.
+  document.querySelector('.brand img').src = dark ? 'icons/logo-64.png' : 'icons/logo-blue-bar-64.png';
+  document.querySelector('.hero-logo').src = dark ? 'icons/logo-128.png' : 'icons/logo-blue-128.png';
 }
 const savedTheme = prefs.get('theme');
 applyTheme(savedTheme ? savedTheme === 'dark' : !!(darkQuery && darkQuery.matches));
@@ -1581,16 +1583,18 @@ setProfile(profiles().some((p) => p.id === prefs.get('profile')) ? prefs.get('pr
 renderProfileBar();
 
 /* ---------- sample data ---------- */
-$('btnDemo').addEventListener('click', async () => {
+// Fill the sample profile with one scenario. Rebuilt every time so the dates stay recent.
+async function loadDemo(scenario = prefs.get('demoScenario') || 'shortsleep') {
   if (!profiles().some((p) => p.id === DEMO_PROFILE)) prefs.set('profiles', [...profiles(), { id: DEMO_PROFILE, name: DEMO_NAME }]);
   setProfile(DEMO_PROFILE);
-  // Rebuild so the dates stay recent.
   await clearAll();
-  for (const x of [...makeDemoSessions(new Date()), ...makeDemoExp(new Date())]) await saveSession(x);
+  const now = new Date();
+  for (const x of [...makeDemoSessions(now, 42, scenario), ...makeDemoExp(now, scenario)]) await saveSession(x);
   prefs.set('profile', DEMO_PROFILE);
+  prefs.set('demoScenario', scenario);
   renderProfileBar();
-  show('board');
-});
+}
+$('btnDemo').addEventListener('click', async () => { await loadDemo(); show('board'); });
 
 /* ---------- trends ---------- */
 function trendHtml(sessions) {
@@ -2083,11 +2087,7 @@ async function reelLoadSample() {
   reel.prevProfile = getProfile();
   reel.prevMission = prefs.get('radMission');
   if (!profiles().some((p) => p.id === DEMO_PROFILE)) prefs.set('profiles', [...profiles(), { id: DEMO_PROFILE, name: DEMO_NAME }]);
-  setProfile(DEMO_PROFILE);
-  await clearAll();
-  for (const x of [...makeDemoSessions(new Date()), ...makeDemoExp(new Date())]) await saveSession(x);
-  prefs.set('profile', DEMO_PROFILE);
-  renderProfileBar();
+  await loadDemo('shortsleep');
 }
 // countdown: seconds of "start your recorder" before the first scene (0 when the app records by itself).
 async function reelStart({ countdown = 3, onBegin = null } = {}) {
@@ -2416,6 +2416,17 @@ async function renderOverview() {
     ovState.metric = null;
   }
   drawOvBody();
+  // Mission clock and scenario picker
+  const mc = prefs.get('missionClock');
+  const md = mc ? missionDay(mc.start, mc.length) : null;
+  $('ovMission').innerHTML = !md ? '<p class="fine">No mission clock set.</p>'
+    : md.phase === 'before' ? `<p>Mission starts in ${md.daysToGo} day${md.daysToGo === 1 ? '' : 's'} (${md.length} days long)</p>`
+      : md.phase === 'after' ? `<p>Mission ended ${md.daysSince} day${md.daysSince === 1 ? '' : 's'} ago (${md.length} days)</p>`
+        : `<p>Mission day ${md.day} of ${md.length}</p><div class="meter" role="img" aria-label="${Math.round(md.pct * 100)} percent of the mission done"><div style="transform:scaleX(${md.pct.toFixed(3)})"></div></div>`;
+  if (mc) { $('ovStart').value = mc.start; $('ovLen').value = mc.length; }
+  const cur = getProfile() === DEMO_PROFILE ? prefs.get('demoScenario') || 'shortsleep' : 'shortsleep';
+  $('ovScenario').innerHTML = SCENARIOS.map((x) => `<option value="${x.id}" ${x.id === cur ? 'selected' : ''}>${esc(x.label)}</option>`).join('');
+  $('ovScenario').title = (SCENARIOS.find((x) => x.id === cur) || SCENARIOS[0]).line;
   // Headline numbers
   const kpi = (k, v, unit, sub, warn) => `<div class="ov-kpi"><p class="k">${k}</p><p class="v">${v ?? '-'}${v != null && unit ? ` <small>${unit}</small>` : ''}</p><p class="s${warn ? ' warn' : ''}">${sub}</p></div>`;
   const ch = (val, base, floor) => (val == null ? null : changeVsBaseline(val, base, floor));
@@ -2482,7 +2493,8 @@ function drawOvChart() {
   }
   $('ovMetric').hidden = false;
   const withData = r.metrics.filter((m) => seriesFor(m, all).length);
-  if (!ovState.metric || !r.metrics.includes(ovState.metric)) ovState.metric = withData[0] || r.metrics[0];
+  const flaggedM = withData.find((m) => { const p = seriesFor(m, all), rf = referenceFor(m, p, { original, floors }); const v = p.at(-1).v; return rf && rf.band != null && (p.length > 1 || ['pulse', 'resp', 'gum'].includes(m)) && Math.abs(v - rf.base) > rf.band; });
+  if (!ovState.metric || !r.metrics.includes(ovState.metric)) ovState.metric = flaggedM || withData[0] || r.metrics[0];
   $('ovMetric').innerHTML = r.metrics.map((m) => `<option value="${m}" ${m === ovState.metric ? 'selected' : ''}>${esc(METRIC_DEFS[m].label)}${withData.includes(m) ? '' : ' (no data)'}</option>`).join('');
   const def = METRIC_DEFS[ovState.metric];
   const pts = seriesFor(ovState.metric, all);
@@ -2507,3 +2519,19 @@ $('screen-overview').addEventListener('click', (e) => {
   $('ovBody').querySelector(`[data-ov-region="${ovState.region}"]`)?.focus();
 });
 $('ovMetric').addEventListener('change', (e) => { ovState.metric = e.target.value; drawOvChart(); });
+
+$('btnOvScenario').addEventListener('click', async () => {
+  const id = $('ovScenario').value;
+  await loadDemo(id);
+  ovState.region = null; ovState.metric = null;
+  await renderOverview();
+  $('restoreMsg').textContent = `Sample scenario loaded: ${(SCENARIOS.find((x) => x.id === id) || {}).label}. ${(SCENARIOS.find((x) => x.id === id) || {}).line}`;
+});
+$('btnOvClock').addEventListener('click', () => {
+  const start = $('ovStart').value, length = Number($('ovLen').value);
+  if (!start || !missionDay(start, length)) { $('ovLen').focus(); return; }
+  prefs.set('missionClock', { start, length });
+  renderOverview();
+});
+$('btnOvClockClear').addEventListener('click', () => { prefs.set('missionClock', null); $('ovStart').value = ''; $('ovLen').value = ''; renderOverview(); });
+$('btnOvPrint').addEventListener('click', () => window.print());
