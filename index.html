@@ -44,6 +44,7 @@
         <button data-i18n="home.start" type="button" class="btn primary" data-nav="setup">Start guided checkup</button>
         <button data-i18n="home.board" type="button" class="btn" data-nav="board">Mission board</button>
         <button data-i18n="home.sample" type="button" class="btn" id="btnSample">Watch sample replay</button>
+        <button type="button" class="btn" id="btnInstall" hidden>Install for offline use</button>
       </div>
       <p class="fine" id="sampleNote"></p>
       <p data-i18n="home.disclaimer" class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
@@ -126,6 +127,7 @@
           <label><input type="radio" name="pvtLen" value="60"> 1 minute practice, not saved</label>
         </div>
       </fieldset>
+      <label class="check"><input type="checkbox" id="pvtEyes"> Also track blinks and eye closure with the front camera (experimental; video stays on this device)</label>
       <p class="row"><button data-i18n="alert.start" type="button" class="btn primary" id="btnPvtStart">Start the test</button>
         <button type="button" class="link-btn" data-evidence="alertness">Evidence</button></p>
     </div>
@@ -134,6 +136,7 @@
         <span id="pvtCounter" class="pvt-counter" aria-hidden="true"></span>
         <span id="pvtHint" class="pvt-hint">Wait for the counter</span>
       </button>
+      <div class="pvt-cam" id="pvtCamBox" hidden><video id="pvtVideo" muted playsinline aria-hidden="true"></video><span>Camera on</span></div>
       <div class="meter"><div id="pvtBar"></div></div>
       <p class="fine"><span id="pvtLeft"></span> · <button type="button" class="link-btn" id="btnPvtStop">Stop without saving</button></p>
     </div>

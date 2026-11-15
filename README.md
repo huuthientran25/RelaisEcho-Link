@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.6 (15 Nov 2026)
+
+- **Blinks and eye closure during the alertness check** (optional checkbox). The front camera tracks eyelid landmarks at up to 15 frames a second; eye opening is lid height over eye width (eye aspect ratio, Soukupová and Čech 2016) against the person's own open-eye value. Reports blinks per minute, percent of time eyes closed and closures of half a second or longer, plus how much of the test was tracked (no result under 50%). Thresholds are MODELED. Camera tests are compared only with camera tests, because analysis can add delay. Camera stops when the test ends.
+- **Install for offline use** button (Chromium browsers), with 192 and 512 px PNG icons in the navy palette. Verified that the browser offers installation.
+- Global `[hidden]` rule so hidden buttons never show.
+- 30 unit tests.
+
 ## Changes in v0.5 (15 Nov 2026)
 
 - **NASA open data: Inspiration4 crew blood tests** (new screen, tile on the Mission board). OSDR OSD-575 comprehensive metabolic panel for the 4 crew, 3 draws before and 4 after the 2021 flight, against the lab's population range and each person's own pre-flight range. Across 15 tests, 23 of 60 day-after-landing results were inside the population range but outside that person's own pre-flight values, and 11 of 180 pre-flight results would already be flagged by the population range. This is the case for RelaisÉcho's own-baseline design, shown on real astronaut data. Three pre-flight values is a small baseline; the screen says so.

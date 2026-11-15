@@ -16,6 +16,7 @@ import { applyLang } from './i18n.js';
 import { NOISE, changeVsBaseline } from './change.js';
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
 import { summarizeCrew, rangeDisagreements } from './crew.js';
+import { eyeAspect, EyeTracker } from './eyes.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -848,8 +849,60 @@ function pvtReset() {
   $('pvtIntro').hidden = false; $('pvtRun').hidden = true; $('pvtResult').hidden = true;
 }
 
-function pvtStart() {
+async function pvtStartEyes() {
+  const v = $('pvtVideo');
+  $('pvtIntro').hidden = true; $('pvtRun').hidden = false;
+  $('pvtCounter').textContent = ''; $('pvtHint').textContent = 'Starting the camera…';
+  try {
+    await ensureModel($('pvtHint'));
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: false });
+    v.srcObject = stream; await v.play();
+    pvt.eyeStream = stream;
+    $('pvtCamBox').hidden = false;
+    return true;
+  } catch (err) {
+    console.warn('Eye tracking unavailable', err);
+    pvt.eyeError = err && err.name === 'NotAllowedError' ? 'Camera permission was denied, so eye closure was not tracked.' : 'The camera or face model could not start, so eye closure was not tracked.';
+    return false;
+  }
+}
+
+function pvtEyeLoop() {
+  const v = $('pvtVideo');
+  const step = () => {
+    if (!pvt.running || !pvt.eyes) return;
+    const now = performance.now();
+    if (now - pvt.eyeLastT >= 66) { // at most about 15 analysed frames per second, to keep the counter smooth
+      pvt.eyeLastT = now;
+      const w0 = performance.now();
+      const lm = detect(state.landmarker, v);
+      pvt.eyes.push(now, eyeAspect(lm));
+      const spent = performance.now() - w0;
+      pvt.eyeMs = pvt.eyeMs == null ? spent : 0.9 * pvt.eyeMs + 0.1 * spent;
+    }
+    if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(step); else requestAnimationFrame(step);
+  };
+  step();
+}
+
+function pvtStopEyes() {
+  if (pvt.eyeStream) { pvt.eyeStream.getTracks().forEach((t) => t.stop()); pvt.eyeStream = null; }
+  const v = $('pvtVideo'); v.pause(); v.srcObject = null;
+  $('pvtCamBox').hidden = true;
+}
+
+async function pvtStart() {
+  if (pvt.starting || pvt.running) return;
+  pvt.starting = true;
+  try { await pvtBegin(); } finally { pvt.starting = false; }
+}
+
+async function pvtBegin() {
   const durationSec = Number(document.querySelector('input[name=pvtLen]:checked').value);
+  pvt.eyes = null; pvt.eyeError = ''; pvt.eyeMs = null; pvt.eyeLastT = 0;
+  const wantEyes = $('pvtEyes').checked;
+  if (wantEyes && await pvtStartEyes()) pvt.eyes = new EyeTracker();
+  pvt.withEyes = !!pvt.eyes;
   const now = performance.now();
   Object.assign(pvt, {
     running: true, save: durationSec >= PVT_CONFIG.durationSec, durationSec, trials: [],
@@ -861,6 +914,7 @@ function pvtStart() {
   $('pvtTarget').classList.remove('live', 'early');
   $('pvtTarget').focus({ preventScroll: true });
   requestAnimationFrame(pvtFrame);
+  if (pvt.eyes) pvtEyeLoop();
 }
 
 function pvtSet(text, cls) {
@@ -915,19 +969,24 @@ function pvtRespond(e) {
 
 function pvtAbort(message) {
   pvt.running = false;
+  pvtStopEyes();
   pvtReset();
   if (message) { $('pvtResult').hidden = false; $('pvtResult').innerHTML = `<p class="warnline">! ${esc(message)}</p>`; }
 }
 
 async function pvtFinish() {
   pvt.running = false;
+  pvtStopEyes();
   const sum = summarizePvt(pvt.trials);
+  const eyes = pvt.eyes ? { ...pvt.eyes.summary(), analysisMs: Math.round(pvt.eyeMs || 0) } : null;
   const rts = pvt.trials.filter((t) => !t.early).map((t) => (t.rt == null ? null : Math.round(t.rt)));
   const before = await pvtTests();
-  const ref = before.length ? before[0].alertness : null;
+  // Reference: the first saved test run the same way (with or without the camera), since camera work can add delay.
+  const refRec = before.find((x) => !!x.alertness.withEyes === pvt.withEyes);
+  const ref = refRec ? refRec.alertness : null;
   if (pvt.save) {
     await saveSession({ id: newId(), createdAt: new Date().toISOString(), kind: 'alertness', source: 'device', complete: false,
-      alertness: { ...sum, durationSec: pvt.durationSec, rts, device: navigator.userAgent.slice(0, 120) } });
+      alertness: { ...sum, durationSec: pvt.durationSec, rts, withEyes: pvt.withEyes, eyes, device: navigator.userAgent.slice(0, 120) } });
   }
   const cmp = comparePvt(sum, ref);
   const verdict = !pvt.save ? 'Practice run, not saved.'
@@ -941,6 +1000,7 @@ async function pvtFinish() {
       <p class="big">${sum.medianMs ?? '-'}<span class="unit"> ms median reaction time</span></p>
       <p>${sum.lapses} lapse${sum.lapses === 1 ? '' : 's'} (355 ms or slower, or missed) · ${sum.falseStarts} false start${sum.falseStarts === 1 ? '' : 's'} · ${sum.valid} of ${sum.stimuli} responses counted</p>
       <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${esc(verdict)}</p>
+      ${eyes ? pvtEyesHtml(eyes, ref && ref.eyes) : pvt.eyeError ? `<p class="fine">${esc(pvt.eyeError)}</p>` : ''}
       <svg class="spark" viewBox="0 0 600 180" role="img" aria-label="Reaction time for each response across the test">${pvtChart(rts)}</svg>
       <p class="fine">Each dot is one response, left to right through the test; the dashed line is the 355 ms lapse threshold. Device delay is included, so compare only on this device.</p>
     </div>
@@ -1085,3 +1145,31 @@ function drawCrew() {
     <tbody>${d.crew.map((c) => { const s = sum[c]; return s ? `<tr><th scope="row">${esc(c)}</th><td>${s.preMin} to ${s.preMax}</td><td>${s.r1}</td><td>${s.inLab ? 'normal' : '<strong>outside</strong>'}</td><td>${s.inOwn ? 'usual' : '<strong>unusual</strong>'}</td></tr>` : `<tr><th scope="row">${esc(c)}</th><td colspan="4">missing</td></tr>`; }).join('')}</tbody></table>
     <p class="fine">Dots: navy within both ranges, blue outlined unusual for that person after flight, red outside the lab range.</p>`;
 }
+
+function pvtEyesHtml(e, refEyes) {
+  if (e.trackedPct < 50) return `<p class="warnline">! Eyes were tracked for only ${e.trackedPct}% of the test (face out of view or too dark), so no eye result is given.</p>`;
+  const cmp = refEyes && refEyes.blinksPerMin != null && e.blinksPerMin != null
+    ? ` Your reference test: ${refEyes.blinksPerMin} blinks per minute, eyes closed ${refEyes.closedPct}%.` : '';
+  return `<h3>Eyes <span class="tag">EXPERIMENTAL</span></h3>
+    <p>${e.blinksPerMin ?? '-'} blinks per minute · eyes closed ${e.closedPct ?? '-'}% of the time · ${e.longClosures} closure${e.longClosures === 1 ? '' : 's'} of half a second or longer.${cmp}</p>
+    <p class="fine">Tracked ${e.trackedPct}% of the test. Eye analysis took about ${e.analysisMs} ms per frame on this device; tests with the camera are only compared with other camera tests. <button type="button" class="link-btn" data-evidence="eyes">Evidence</button></p>`;
+}
+
+/* ---------- install for offline use ---------- */
+// Chromium browsers offer an install prompt; elsewhere the button stays hidden and the
+// service worker still caches the app after the first visit.
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvent = e;
+  $('btnInstall').hidden = false;
+});
+$('btnInstall').addEventListener('click', async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  const choice = await installEvent.userChoice.catch(() => null);
+  installEvent = null;
+  $('btnInstall').hidden = true;
+  if (choice && choice.outcome === 'accepted') $('sampleNote').textContent = 'Installed. It opens like an app and works without internet after the first visit.';
+});
+window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; });

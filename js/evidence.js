@@ -43,6 +43,12 @@ export const EVIDENCE = {
     source: 'Brief 3 minute PVT (PVT-B): Basner, Mollicone and Dinges, Acta Astronautica 2011. In ISS astronauts, nights of 6 hours of sleep or less were linked to worse PVT-B scores (Jones et al. 2022).',
     limits: 'Screens, keyboards and browsers add their own delay, so numbers are compared only with your own earlier tests on the same device, never with published norms. Practice makes the first tests slower. It does not diagnose fatigue or any condition.',
   },
+  eyes: {
+    title: 'Blinks and eye closure',
+    method: 'During the reaction test the front camera finds eyelid landmarks up to about 15 times a second. Eye opening is measured as lid height over eye width (eye aspect ratio). Your own open-eye value is learned in the first seconds; the eye counts as closed below 60% of it. Closures under half a second count as blinks, longer ones are counted separately.',
+    source: 'Eye aspect ratio: Soukupová and Čech, Real-time eye blink detection using facial landmarks, 2016. Long and frequent eye closures are a recognised sign of drowsiness in fatigue research; this app uses no published cut off.',
+    limits: 'Not validated. Glasses, glare, dim light, looking down and low frame rates all affect it, and a 15 per second rate can miss very quick blinks. The thresholds are design choices. It does not diagnose drowsiness or any eye condition.',
+  },
   change: {
     title: 'Change against your baseline',
     method: 'A difference only counts as a change if it is bigger than the method\'s typical error: 8 beats per minute for pulse and 3 breaths per minute for breathing.',

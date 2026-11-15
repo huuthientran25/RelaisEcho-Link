@@ -38,4 +38,4 @@
 - Motion-based respiratory rate estimation with motion artifact removal using video of face and upper body. IEEE EMBC, 2022.
 - Nowara EM et al., meta analysis of skin type and remote PPG error (cited in npj Digital Medicine, 2025).
 - Overbey EG et al. The Space Omics and Medical Atlas (SOMA) and international astronaut biobank. Nature, 2024.
-
+- Soukupová T, Čech J. Real-time eye blink detection using facial landmarks. Computer Vision Winter Workshop, 2016.
