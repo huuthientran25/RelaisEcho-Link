@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "description": "Guided camera checkup: positioning, pulse, breathing and dental capture compared against your own baseline. NASA Space Apps 2026 prototype.",
   "scripts": {
-    "test": "node --test tests/dsp.test.mjs tests/board.test.mjs tests/pvt_i18n.test.mjs",
+    "test": "node --test tests/dsp.test.mjs tests/board.test.mjs tests/pvt_i18n.test.mjs tests/v05.test.mjs",
     "serve": "python3 -m http.server 8080"
   }
 }

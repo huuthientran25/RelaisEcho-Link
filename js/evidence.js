@@ -43,6 +43,18 @@ export const EVIDENCE = {
     source: 'Brief 3 minute PVT (PVT-B): Basner, Mollicone and Dinges, Acta Astronautica 2011. In ISS astronauts, nights of 6 hours of sleep or less were linked to worse PVT-B scores (Jones et al. 2022).',
     limits: 'Screens, keyboards and browsers add their own delay, so numbers are compared only with your own earlier tests on the same device, never with published norms. Practice makes the first tests slower. It does not diagnose fatigue or any condition.',
   },
+  change: {
+    title: 'Change against your baseline',
+    method: 'A difference only counts as a change if it is bigger than the method\'s typical error: 8 beats per minute for pulse and 3 breaths per minute for breathing.',
+    source: 'Pulse: POS at rest had a mean error of 3.8 and a root mean square error of 7.6 beats per minute on the UBFC-Phys dataset (light skin, published analysis). Breathing: about 1.3 breaths per minute from chest motion and 2.0 from head motion (IEEE EMBC 2022). These describe other implementations, so they are placeholders until this app has its own bench test.',
+    limits: 'Error is larger on darker skin, in poor light and with movement. A change can be real and still smaller than the band, and a change beyond the band can still be noise.',
+  },
+  crew: {
+    title: 'Inspiration4 crew blood data',
+    method: 'Serum comprehensive metabolic panel from the four Inspiration4 crew members, three times before flight (92, 44 and 3 days before launch) and four times after (1, 45, 82 and 194 days after return). The chart shows each person\'s values against the lab\'s population range and their own pre-flight range.',
+    source: 'NASA Open Science Data Repository, OSD-575 (LSDS-8), doi 10.26030/mc5d-p710; Overbey et al., Nature 2024 (Space Omics and Medical Atlas). Values copied from the published TRANSFORMED file by scripts/build_osd575.py. Race based eGFR columns are left out.',
+    limits: 'Four people, single blood draws, fasting and time of day not shown here. Three pre-flight values is a small baseline and lab tests vary day to day. Shown to explain personal baselines, not to judge anyone\'s health.',
+  },
   glymphatic: {
     title: 'Brain clearance and sleep',
     method: 'Educational tile only. Nothing is measured or scored.',

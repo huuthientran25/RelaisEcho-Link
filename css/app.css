@@ -169,3 +169,23 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .lang-sel option { color: var(--ink); background: #fff; }
 .lang-notice { margin: 0; padding: 8px 20px; background: var(--blue-tint); color: var(--blue-ink); border-bottom: 2px solid var(--blue); font-weight: 700; font-size: 16px; text-align: center; }
 @media (hover: hover), (any-hover: hover) { .lang-sel:hover { border-color: #BFD2FF; } }
+
+/* Crew data */
+.select { width: 100%; max-width: 420px; font: inherit; padding: 10px 12px; min-height: 48px; border-radius: var(--radius); border: 2px solid var(--navy); background: #fff; color: var(--ink); margin: 4px 0 12px; }
+.crew-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 8px 0 14px; }
+.crew-fig { margin: 0; background: #fff; border: 2px solid var(--navy); border-radius: var(--radius); padding: 6px; }
+.crew-fig svg { width: 100%; height: auto; display: block; }
+.crew-fig figcaption { font-size: 15px; font-weight: 700; color: var(--navy); padding: 2px 4px; }
+.crew-fig .lab { fill: #ECEFF2; }
+.crew-fig .own { fill: rgba(11, 63, 191, 0.14); stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.crew-fig .flight { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.crew-fig .line { fill: none; stroke: var(--navy); stroke-width: 2; }
+.crew-fig .pt { fill: var(--navy); }
+.crew-fig .unusual { fill: #fff; stroke: var(--blue); stroke-width: 3; }
+.crew-fig .out { fill: var(--alert); stroke: #fff; stroke-width: 1.5; }
+.crew-fig .ax { font-size: 12px; fill: var(--muted); font-family: inherit; }
+.change-list { margin: 10px 0; padding-left: 20px; }
+.qr-box { margin: 14px 0; }
+.qr-img { width: min(320px, 80vw); background: #fff; border: 2px solid var(--navy); border-radius: var(--radius); padding: 6px; }
+.qr-img svg { width: 100%; height: auto; display: block; }
+@media (max-width: 600px) { .crew-grid { grid-template-columns: 1fr; } }

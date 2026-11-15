@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.5 (15 Nov 2026)
+
+- **NASA open data: Inspiration4 crew blood tests** (new screen, tile on the Mission board). OSDR OSD-575 comprehensive metabolic panel for the 4 crew, 3 draws before and 4 after the 2021 flight, against the lab's population range and each person's own pre-flight range. Across 15 tests, 23 of 60 day-after-landing results were inside the population range but outside that person's own pre-flight values, and 11 of 180 pre-flight results would already be flagged by the population range. This is the case for RelaisÉcho's own-baseline design, shown on real astronaut data. Three pre-flight values is a small baseline; the screen says so.
+- **Change against baseline with a noise band**: results now say whether a difference beats the method's typical error (pulse ±8 bpm, breathing ±3 /min, MODELED from published figures until the bench test replaces them), and warn when the checkup is far from the baseline's time of day.
+- **QR code of the text summary** on the packet screen: a nurse can scan it off the screen with any phone, no internet. Text only, no photos; refused above 1200 bytes. Verified by decoding the rendered code (jsQR) and matching it to the summary text exactly.
+- 27 unit tests.
+
 ## Changes in v0.4 (15 Nov 2026)
 
 - **Alertness check** (new screen, tile on the Mission board): a 3 minute brief psychomotor vigilance test in the style of PVT-B (Basner, Mollicone and Dinges 2011): random 1 to 4 s waits, a millisecond counter, lapses at 355 ms or slower, false starts under 100 ms. Reports median reaction time, lapses and false starts, a dot chart across the test, and the change against your first full test on the same device (10% band, MODELED). A 1 minute practice is not saved. Responses use the event's own timestamp; the test stops if the app is hidden. EXPERIMENTAL: screen and input delay are included, so results are only compared on the same device. The latest test within 24 hours of a checkup is added to the review packet. Jones et al. 2022 linked 6 h or less of sleep to worse PVT-B scores in ISS astronauts. PVT-B constants are from the cited paper as recalled by the team; check them against the paper before the final submission.

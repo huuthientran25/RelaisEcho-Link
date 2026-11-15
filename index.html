@@ -93,6 +93,12 @@
         <p class="fine">Range from published ISS crew doses applied to your number of days; not a personal dose. Career limit from NASA-STD-3001. <button type="button" class="link-btn" data-evidence="radiation">Evidence</button></p>
       </article>
 
+      <article class="tile" aria-labelledby="h-t-crew">
+        <header><h2 id="h-t-crew">Crew blood data</h2><span class="tag pub">NASA DATA</span></header>
+        <div id="crewTileBody"><p>Blood tests from the Inspiration4 crew show how a person can move a lot and still look "normal" on a population range.</p></div>
+        <p><button type="button" class="btn" data-nav="crew">Explore the crew data</button></p>
+      </article>
+
       <article class="tile" aria-labelledby="h-t-gly">
         <header><h2 data-i18n="board.t.gly" id="h-t-gly">Brain clearance and sleep</h2><span class="tag">EDUCATIONAL</span></header>
         <p>After about six months on the ISS, MRI showed larger fluid spaces around brain blood vessels (perivascular spaces) in astronauts, larger in NASA crew than in cosmonauts.</p>
@@ -132,6 +138,19 @@
       <p class="fine"><span id="pvtLeft"></span> · <button type="button" class="link-btn" id="btnPvtStop">Stop without saving</button></p>
     </div>
     <div id="pvtResult" hidden aria-live="polite"></div>
+  </section>
+
+  <!-- CREW DATA (NASA OSDR) -->
+  <section id="screen-crew" class="screen" hidden aria-labelledby="h-crew">
+    <p class="step">NASA open data · Inspiration4</p>
+    <h1 id="h-crew">Why your own baseline matters</h1>
+    <p class="lede">Real blood tests from the four Inspiration4 crew members, before and after their 3 day flight in 2021. Grey is the lab's normal range for everyone; blue is each person's own range before flight.</p>
+    <p id="crewSummary"></p>
+    <label for="crewAnalyte">Blood test</label>
+    <select id="crewAnalyte" class="select"></select>
+    <div id="crewCharts" class="crew-grid"></div>
+    <div id="crewTable"></div>
+    <p class="fine">Source: NASA Open Science Data Repository, OSD-575, Inspiration4 comprehensive metabolic panel. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
   </section>
 
   <!-- SETUP -->
@@ -271,8 +290,10 @@
     <div class="row">
       <button type="button" class="btn primary" id="btnDownload">Download packet (.json)</button>
       <button type="button" class="btn" id="btnCopy">Copy text summary</button>
+      <button type="button" class="btn" id="btnQr">Show QR code</button>
       <button type="button" class="btn" data-nav="home">Done</button>
     </div>
+    <div id="qrBox" class="qr-box" hidden></div>
     <p class="fine">Sending over a satellite or mission link is a planned feature. For now, export the file and send it through an approved channel.</p>
   </section>
 
