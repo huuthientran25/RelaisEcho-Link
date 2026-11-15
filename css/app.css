@@ -237,3 +237,14 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
   [data-theme=night] .btn.primary:hover { background: var(--blue); color: #120A08; }
   [data-theme=night] .topbar .link-btn:hover, [data-theme=night] .brand:hover { color: #FFD9BF; }
 }
+
+.profile-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 6px 20px; background: var(--soft); border-bottom: 2px solid var(--line); font-size: 16px; font-weight: 700; color: var(--navy); }
+.profile-sel { font: inherit; font-size: 16px; min-height: 40px; padding: 2px 8px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); color: var(--ink); max-width: 60vw; }
+.trend { margin: 6px 0 14px; }
+.trend figcaption { margin-bottom: 4px; }
+.spark .baseline { stroke: var(--blue); stroke-width: 2; }
+.spark .lowq { fill: var(--panel); stroke: var(--navy); stroke-width: 2; }
+.review-photo { margin: 10px 0 18px; }
+.review-img { cursor: default; }
+@media (max-width: 560px) { .profile-bar { padding: 6px 12px; } }
+[data-theme=night] .profile-bar { background: var(--soft); }

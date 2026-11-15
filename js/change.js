@@ -9,7 +9,8 @@ export function changeVsBaseline(today, base, floor) {
   if (today == null || base == null) return { kind: 'none', text: 'Not comparable: one of the two values is missing.' };
   const d = today - base;
   const abs = Math.abs(d);
-  if (abs < floor) return { kind: 'noise', diff: d, text: `Within measurement noise (±${floor}).` };
+  // On the edge of the band still counts as noise: estimates are whole numbers, so a change must clear the band.
+  if (abs <= floor) return { kind: 'noise', diff: d, text: `Within measurement noise (±${floor}).` };
   return { kind: d > 0 ? 'up' : 'down', diff: d, text: `${d > 0 ? 'Higher' : 'Lower'} by ${Math.round(abs)}, more than the ±${floor} measurement noise. Worth a recheck at a similar time of day.` };
 }
 

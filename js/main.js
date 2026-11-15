@@ -7,7 +7,7 @@ import { makeTemplate, defaultTemplate, compareToTemplate } from './align.js';
 import { estimatePulse, livePulse, estimateWindow } from './pulse.js';
 import { TorsoTracker, estimateRespMulti } from './resp.js';
 import { DentalCapture, VIEWS } from './dental.js';
-import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal } from './store.js';
+import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, setProfile, getProfile, countByProfile, allIds, DEFAULT_PROFILE } from './store.js';
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
 import { sleepPressure, issMissionDose, consistency, RADIATION, todaySteps } from './board.js';
@@ -19,6 +19,8 @@ import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from 
 import { eyeAspect, EyeTracker } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
+import { makeDemoSessions, DEMO_PROFILE, DEMO_NAME } from './demo.js';
+import { validatePacket, safeImage } from './review.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,6 +44,7 @@ const actx = acan.getContext('2d', { willReadFrequently: true });
 /* ---------- navigation ---------- */
 const pvt = { running: false }; // alertness test state; declared early because show() reads it
 function show(name) {
+  state.screen = name;
   if (name !== 'alertness' && pvt.running) pvtAbort();
   document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.id !== `screen-${name}`; });
   window.scrollTo(0, 0);
@@ -679,7 +682,14 @@ async function renderPacket() {
   const cmp = await baselineAndRecent(sess.id);
   const alert = (await listSessions()).filter((x) => x.kind === 'alertness'
     && Math.abs(+new Date(x.createdAt) - +new Date(sess.createdAt)) <= 24 * 3600 * 1000).pop() || null;
-  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert });
+  let change = null;
+  if (cmp.original) {
+    const bench = benchError(await listSessions());
+    const pf = noiseFloor(bench, 'pulse'), rf = noiseFloor(bench, 'resp');
+    change = { pulse: { ...changeVsBaseline(sess.pulse?.bpm, cmp.original.pulse?.bpm, pf.value), band: pf.value, band_source: pf.source },
+      breathing: { ...changeVsBaseline(sess.resp?.rpm, cmp.original.resp?.rpm, rf.value), band: rf.value, band_source: rf.source } };
+  }
+  lastPacket = buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change });
   $('packetText').textContent = packetText(lastPacket.packet);
   const kb = lastPacket.bytes / 1024;
   $('packetSize').textContent = kb < 10 ? `${kb.toFixed(1)} KB` : `${Math.round(kb)} KB`;
@@ -708,6 +718,8 @@ async function renderHistory() {
   const all = (await listSessions()).reverse();
   const b = benchError(all);
   const row = (label, x, unit) => (x.n ? `<li>${label}: ${x.n} pair${x.n === 1 ? '' : 's'}, mean error ${x.mae} ${unit}, bias ${x.bias > 0 ? '+' : ''}${x.bias} ${unit}${x.n < MIN_BENCH_PAIRS ? ` (${MIN_BENCH_PAIRS - x.n} more to replace the published noise band)` : ' (now used as your noise band)'}</li>` : `<li>${label}: no reference values yet</li>`);
+  $('trendBox').innerHTML = trendHtml(all.slice().reverse());
+  $('btnDeleteProfile').hidden = getProfile() === DEFAULT_PROFILE;
   $('benchSummary').innerHTML = `<div class="card"><h2>Your bench test</h2>
     <p>Enter a watch, oximeter or counted breaths reference on the results screen. Once there are ${MIN_BENCH_PAIRS} pairs, comparisons use your own measured error instead of published figures.</p>
     <ul>${row('Pulse', b.pulse, 'bpm')}${row('Breathing', b.resp, '/min')}</ul></div>`;
@@ -741,7 +753,7 @@ $('btnExportAll').addEventListener('click', async () => {
   download('relaisecho-all-checkups.json', JSON.stringify(await listSessions(), null, 2), 'application/json');
 });
 $('btnClear').addEventListener('click', async () => {
-  if (!window.confirm('Delete every checkup stored in this browser? This cannot be undone.')) return;
+  if (!window.confirm(`Delete every checkup for ${profileName(getProfile())} on this device? Other people's checkups stay. This cannot be undone.`)) return;
   await clearAll();
   renderHistory();
 });
@@ -1098,7 +1110,8 @@ $('restoreFile').addEventListener('change', async (e) => {
   const plan = mergePlan(await listSessions(), parsed.sessions);
   if (!plan.toAdd.length) { window.alert(`Nothing new: all ${parsed.sessions.length} checkups in this file are already on this device.`); return; }
   if (!window.confirm(`Add ${plan.toAdd.length} checkup${plan.toAdd.length === 1 ? '' : 's'} from this backup? ${plan.skipped} already here will be kept as they are. Nothing is deleted.`)) return;
-  for (const x of plan.toAdd) await saveSession(x);
+  const taken = await allIds();
+  for (const x of plan.toAdd) await saveSession({ ...x, profileId: getProfile(), id: taken.has(x.id) ? newId() : x.id });
   $('restoreMsg').textContent = `Restored ${plan.toAdd.length} checkups.`;
   renderHistory();
 });
@@ -1234,3 +1247,142 @@ async function renderToday() {
   $('todayList').innerHTML = t.steps.map((st) => `<li class="${st.done ? 'done' : ''}"><span class="mark-box" aria-hidden="true">${st.done ? '✓' : ''}</span>
     <span>${esc(st.text)}</span>${!st.done && st.nav ? ` <button type="button" class="link-btn" data-nav="${st.nav}">Go</button>` : ''}</li>`).join('');
 }
+
+/* ---------- profiles (one shared device, several people) ---------- */
+function profiles() {
+  const list = prefs.get('profiles');
+  const base = Array.isArray(list) && list.length ? list : [{ id: DEFAULT_PROFILE, name: 'Me' }];
+  return base.some((p) => p.id === DEFAULT_PROFILE) ? base : [{ id: DEFAULT_PROFILE, name: 'Me' }, ...base];
+}
+const profileName = (id) => (profiles().find((p) => p.id === id) || { name: 'this person' }).name;
+
+function renderProfileBar() {
+  const cur = getProfile();
+  $('profileSel').innerHTML = profiles().map((p) => `<option value="${esc(p.id)}"${p.id === cur ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+  $('demoBadge').hidden = cur !== DEMO_PROFILE;
+}
+
+function switchProfile(id) {
+  if (pvt.running) pvtAbort();
+  setProfile(id);
+  prefs.set('profile', id);
+  renderProfileBar();
+  const scr = state.screen || 'home';
+  show(['scan', 'dental', 'results', 'compare', 'packet'].includes(scr) ? 'home' : scr);
+}
+
+$('profileSel').addEventListener('change', (e) => switchProfile(e.target.value));
+$('btnAddProfile').addEventListener('click', () => {
+  const name = (window.prompt('Name or initials for the new person (stays on this device only):') || '').trim().slice(0, 40);
+  if (!name) return;
+  const id = `p-${Date.now().toString(36)}`;
+  prefs.set('profiles', [...profiles(), { id, name }]);
+  switchProfile(id);
+});
+$('btnDeleteProfile').addEventListener('click', async () => {
+  const id = getProfile();
+  if (id === DEFAULT_PROFILE) return;
+  if (!window.confirm(`Remove ${profileName(id)} and all of their checkups from this device? This cannot be undone.`)) return;
+  await clearAll();
+  prefs.set('profiles', profiles().filter((p) => p.id !== id));
+  switchProfile(DEFAULT_PROFILE);
+});
+
+setProfile(profiles().some((p) => p.id === prefs.get('profile')) ? prefs.get('profile') : DEFAULT_PROFILE);
+renderProfileBar();
+
+/* ---------- sample data ---------- */
+$('btnDemo').addEventListener('click', async () => {
+  if (!profiles().some((p) => p.id === DEMO_PROFILE)) prefs.set('profiles', [...profiles(), { id: DEMO_PROFILE, name: DEMO_NAME }]);
+  setProfile(DEMO_PROFILE);
+  // Rebuild so the dates stay recent.
+  await clearAll();
+  for (const x of makeDemoSessions(new Date())) await saveSession(x);
+  prefs.set('profile', DEMO_PROFILE);
+  renderProfileBar();
+  show('board');
+});
+
+/* ---------- trends ---------- */
+function trendHtml(sessions) {
+  const pts = sessions.filter((x) => x.kind !== 'alertness' && x.kind !== 'demo' && (x.pulse?.bpm != null || x.resp?.rpm != null));
+  if (pts.length < 2) return '';
+  const original = pts.find((x) => x.kind === 'baseline' && x.isOriginal) || pts.find((x) => x.kind === 'baseline');
+  const bench = benchError(sessions);
+  const chart = (title, unit, get, qual, floor, base) => {
+    const data = pts.map((x) => ({ t: +new Date(x.createdAt), v: get(x), q: qual(x) })).filter((d) => d.v != null);
+    if (data.length < 2) return '';
+    const W = 600, H = 190, L = 40, R = 10, T = 14, B = 28;
+    const t0 = data[0].t, t1 = data[data.length - 1].t || t0 + 1;
+    const vals = data.map((d) => d.v).concat(base != null ? [base - floor.value, base + floor.value] : []);
+    const lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2);
+    const x = (t) => L + ((t - t0) / Math.max(1, t1 - t0)) * (W - L - R);
+    const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const band = base != null ? `<rect x="${L}" y="${y(base + floor.value).toFixed(1)}" width="${W - L - R}" height="${(y(base - floor.value) - y(base + floor.value)).toFixed(1)}" class="band"/>
+      <line x1="${L}" x2="${W - R}" y1="${y(base).toFixed(1)}" y2="${y(base).toFixed(1)}" class="baseline"/>` : '';
+    const line = data.map((d) => `${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`).join(' ');
+    const dots = data.map((d) => `<circle cx="${x(d.t).toFixed(1)}" cy="${y(d.v).toFixed(1)}" r="5" class="${d.q === 'low' ? 'lowq' : base != null && Math.abs(d.v - base) > floor.value ? 'now' : 'dotpt'}"/>`).join('');
+    const fmtD = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+    return `<figure class="trend"><figcaption><strong>${title}</strong> <span class="fine">${unit} · band ±${floor.value} around the original baseline (${esc(floor.source)})</span></figcaption>
+      <svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="${title} over time">${band}<polyline points="${line}" class="line"/>${dots}
+      <text x="${L - 6}" y="${(y(hi) + 12).toFixed(1)}" class="ax" text-anchor="end">${hi}</text><text x="${L - 6}" y="${y(lo).toFixed(1)}" class="ax" text-anchor="end">${lo}</text>
+      <text x="${L}" y="${H - 6}" class="ax">${fmtD(t0)}</text><text x="${W - R}" y="${H - 6}" class="ax" text-anchor="end">${fmtD(t1)}</text></svg></figure>`;
+  };
+  return `<div class="card"><h2>Trends</h2>
+    ${chart('Pulse', 'bpm', (x) => x.pulse?.bpm, (x) => x.pulse?.quality, noiseFloor(bench, 'pulse'), original?.pulse?.bpm ?? null)}
+    ${chart('Breathing', 'per minute', (x) => x.resp?.rpm, (x) => x.resp?.quality, noiseFloor(bench, 'resp'), original?.resp?.rpm ?? null)}
+    <p class="fine">Red dots sit outside the band, hollow dots were low quality captures. Outside the band means "worth a recheck", not a diagnosis.</p></div>`;
+}
+
+/* ---------- practitioner review ---------- */
+$('reviewFile').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let p = null;
+  try { p = JSON.parse(await file.text()); } catch { /* handled below */ }
+  const err = p ? validatePacket(p) : 'This file is not valid JSON.';
+  $('reviewOut').innerHTML = err ? `<p class="warnline">! ${esc(err)}</p>` : reviewHtml(p);
+});
+
+function reviewHtml(p) {
+  const r = p.results, c = p.comparison || {};
+  const ch = c.change_vs_original;
+  const chLine = (label, x) => (x ? `<li class="${x.kind === 'up' || x.kind === 'down' ? 'warnline' : ''}">${label}: ${esc(x.text)} <span class="fine">(band ±${esc(x.band)}, ${esc(x.band_source)})</span></li>` : '');
+  const when = (iso) => (iso ? fmtDate(iso) : '-');
+  const dental = (p.dental || []).map((d) => {
+    const img = safeImage(d.image_jpeg_dataurl);
+    const marks = (d.reviewer_marks || []).map((m, i) => `<span class="mark" style="left:${(+m.x * 100).toFixed(1)}%;top:${(+m.y * 100).toFixed(1)}%"><span>${i + 1}</span></span>`).join('');
+    return `<figure class="review-photo"><figcaption><strong>${esc(d.view)}</strong>: ${d.captured ? 'captured' : 'not captured'}${d.reviewer_marks?.length ? ` · ${d.reviewer_marks.length} mark(s): ${d.reviewer_marks.map((m, i) => `${i + 1}. ${esc(m.note || 'no note')}`).join('; ')}` : ''}</figcaption>
+      ${img ? `<div class="cmp review-img"><img src="${img}" alt="${esc(d.view)} dental photo">${marks}</div>` : d.captured ? '<p class="fine">Photo not included in this packet (the sender left images out to keep it small).</p>' : ''}</figure>`;
+  }).join('');
+  return `<div class="card result">
+      <p><span class="tag">${esc(p.checkup.kind)}</span> captured ${when(p.checkup.capturedAt)} · ${esc(p.checkup.source)} · packet ${esc(p.schema)}</p>
+      <table><thead><tr><th scope="col"></th><th scope="col">This checkup</th><th scope="col">Original baseline${c.original_baseline ? `<br><span class="fine">${when(c.original_baseline.date)}</span>` : ''}</th><th scope="col">Quality</th></tr></thead>
+      <tbody><tr><th scope="row">Pulse, bpm</th><td>${r.pulse_bpm.value ?? '-'}</td><td>${c.original_baseline?.pulse_bpm ?? '-'}</td><td>${esc(r.pulse_bpm.quality)} · ${esc(r.pulse_bpm.windows)}</td></tr>
+      <tr><th scope="row">Breathing, /min</th><td>${r.breathing_per_min.value ?? '-'}</td><td>${c.original_baseline?.breathing_per_min ?? '-'}</td><td>${esc(r.breathing_per_min.quality)}</td></tr></tbody></table>
+      ${ch ? `<ul class="change-list">${chLine('Pulse', ch.pulse)}${chLine('Breathing', ch.breathing)}</ul>` : '<p class="fine">No original baseline in this packet, so no change is assessed.</p>'}
+      ${r.pulse_bpm.note ? `<p class="fine">Pulse note: ${esc(r.pulse_bpm.note)}</p>` : ''}${r.breathing_per_min.note ? `<p class="fine">Breathing note: ${esc(r.breathing_per_min.note)}</p>` : ''}
+      ${c.recent?.length ? `<p class="fine">Recent: ${c.recent.map((x) => `${when(x.date)} pulse ${x.pulse_bpm ?? '-'}, breathing ${x.breathing_per_min ?? '-'}`).join(' · ')}</p>` : ''}
+      ${p.alertness ? `<p><strong>Alertness test</strong> ${when(p.alertness.date)}: median ${esc(p.alertness.median_ms)} ms, ${esc(p.alertness.lapses)} lapses, ${esc(p.alertness.false_starts)} false starts <span class="fine">(${esc(p.alertness.label)})</span></p>` : ''}
+      ${p.self_report ? `<p><strong>Self report:</strong> ${esc(p.self_report)}</p>` : ''}
+      <p><strong>Capture:</strong> ${esc(r.capture?.usable_seconds)} usable of ${esc(r.capture?.elapsed_seconds)} seconds.</p>
+    </div>
+    ${dental ? `<h2>Dental photos</h2>${dental}` : ''}
+    <div class="card"><h2>Not assessed</h2><ul>${(p.not_assessed || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}
+
+// A sample packet built from the invented demo data, so a reviewer can see the nurse view without a file.
+$('btnSamplePacket').addEventListener('click', () => {
+  const demo = makeDemoSessions(new Date());
+  const checkups = demo.filter((x) => x.kind !== 'alertness');
+  const sess = checkups.at(-1), original = checkups[0];
+  const bench = benchError(demo);
+  const pf = noiseFloor(bench, 'pulse'), rf = noiseFloor(bench, 'resp');
+  const change = { pulse: { ...changeVsBaseline(sess.pulse.bpm, original.pulse.bpm, pf.value), band: pf.value, band_source: pf.source },
+    breathing: { ...changeVsBaseline(sess.resp.rpm, original.resp.rpm, rf.value), band: rf.value, band_source: rf.source } };
+  const alert = demo.filter((x) => x.kind === 'alertness').at(-1);
+  const { packet } = buildPacket({ ...sess, context: { symptoms: 'Slept badly two nights, mild headache. (Invented sample.)' } },
+    { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change });
+  $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${reviewHtml(packet)}`;
+});

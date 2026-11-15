@@ -24,6 +24,14 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.13 to v0.16, released together as v0.16 (15 Nov 2026)
+
+- **v0.13, several people on one device.** A "Checkups for" bar picks the person; every checkup, baseline, reaction test, trend, bench test, export, restore and delete is scoped to that person. Fits a shared station laptop or a family or clinic tablet. Names stay on the device and are never put in packets. Checkups from before profiles exist belong to "Me".
+- **v0.14, explore with sample data.** One button creates a clearly labelled "Sample crew member (invented data)" profile with 12 checkups over two weeks, 6 watch references and 5 reaction tests, including a short sleep stretch where pulse rises and reactions slow. Judges and new users can see every screen filled in without a camera. The numbers are invented and deterministic.
+- **v0.15, trends in History.** Pulse and breathing over time with the original baseline line and the noise band (published, or your own bench error once you have 5 pairs). Points beyond the band are red, low quality captures hollow. A value on the edge of the band now counts as noise, since estimates are whole numbers.
+- **v0.16, nurse side packet viewer.** "Open a review packet" (home page) shows a packet file in the browser with no upload: results with quality, change against the original baseline with the band used, recent values, reaction test, self report, dental photos with the sender's marks, and what was not assessed. Images must be JPEG or PNG data URLs; anything else is refused. "Show a sample packet" demonstrates it with invented data. Packets now include the change assessment.
+- 38 unit tests.
+
 ## Changes in v0.10 to v0.12, released together as v0.12 (15 Nov 2026)
 
 - **v0.10, spoken coaching** (checkbox in setup, remembered): the device's own speech engine reads the coach messages aloud during the scan and dental capture, in English or French to match the language setting. Speaks only when the message changes, at most every 2 s, always the latest. Useful when you are holding still and cannot read the screen.

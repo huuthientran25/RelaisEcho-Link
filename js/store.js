@@ -3,6 +3,15 @@
 const DB = 'relaisecho-link';
 const STORE = 'sessions';
 
+// Profiles: one shared device (a station laptop, a family tablet, a clinic iPad) can hold
+// checkups for several people. Every read and write below is scoped to the current profile.
+// Checkups saved before profiles existed belong to 'default'.
+export const DEFAULT_PROFILE = 'default';
+let currentProfile = DEFAULT_PROFILE;
+export function setProfile(id) { currentProfile = id || DEFAULT_PROFILE; }
+export function getProfile() { return currentProfile; }
+const inProfile = (s) => (s.profileId || DEFAULT_PROFILE) === currentProfile;
+
 function open() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 1);
@@ -27,20 +36,35 @@ async function tx(mode, fn) {
 }
 
 export function saveSession(session) {
-  return tx('readwrite', (s) => s.put(session));
+  const rec = session.profileId ? session : { ...session, profileId: currentProfile };
+  if (rec !== session) session.profileId = currentProfile;
+  return tx('readwrite', (s) => s.put(rec));
+}
+
+async function allSessions() {
+  return (await tx('readonly', (s) => s.getAll())) || [];
 }
 
 export async function listSessions() {
-  const all = await tx('readonly', (s) => s.getAll());
-  return (all || []).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return (await allSessions()).filter(inProfile).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+// Every profile, for the profile list and for deleting a whole profile.
+export async function countByProfile() {
+  const out = {};
+  for (const s of await allSessions()) { const k = s.profileId || DEFAULT_PROFILE; out[k] = (out[k] || 0) + 1; }
+  return out;
 }
 
 export function deleteSession(id) {
   return tx('readwrite', (s) => s.delete(id));
 }
 
-export function clearAll() {
-  return tx('readwrite', (s) => s.clear());
+// Deletes the current profile's checkups only; other people on this device are untouched.
+export async function clearAll() {
+  const ids = (await listSessions()).map((s) => s.id);
+  if (!ids.length) return;
+  await tx('readwrite', (s) => { ids.forEach((id) => s.delete(id)); });
 }
 
 // The original baseline is the first baseline ever saved; it is never replaced automatically,
@@ -63,4 +87,8 @@ export async function setOriginal(id) {
   for (const s of all) {
     if (s.kind === 'baseline' && (s.isOriginal || s.id === id)) await saveSession({ ...s, isOriginal: s.id === id });
   }
+}
+
+export async function allIds() {
+  return new Set((await allSessions()).map((s) => s.id));
 }

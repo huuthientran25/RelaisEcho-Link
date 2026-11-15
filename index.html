@@ -33,6 +33,12 @@
   </div>
 </header>
 <p id="langNotice" class="lang-notice" hidden></p>
+<div class="profile-bar" id="profileBar">
+  <label for="profileSel">Checkups for</label>
+  <select id="profileSel" class="profile-sel"></select>
+  <button type="button" class="link-btn" id="btnAddProfile">Add person</button>
+  <span id="demoBadge" class="tag pub" hidden>SAMPLE DATA</span>
+</div>
 <p id="restoreMsg" class="sr-only" aria-live="polite"></p>
 
 <main id="main">
@@ -47,6 +53,7 @@
         <button data-i18n="home.board" type="button" class="btn" data-nav="board">Mission board</button>
         <button data-i18n="home.sample" type="button" class="btn" id="btnSample">Watch sample replay</button>
         <button type="button" class="btn" id="btnInstall" hidden>Install for offline use</button>
+        <button type="button" class="btn" id="btnDemo">Explore with sample data</button>
       </div>
       <p class="fine" id="sampleNote"></p>
       <p data-i18n="home.disclaimer" class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
@@ -56,6 +63,7 @@
       <div class="card"><h2 data-i18n="home.new.h">What is new here</h2><ul><li data-i18n="home.new.1">No wearable and no upload: video never leaves this device</li><li data-i18n="home.new.2">Compared with your own baseline, not a population average</li><li data-i18n="home.new.3">Works offline and builds a short packet a nurse can review</li></ul></div>
     </div>
     <p class="fine"><button data-i18n="home.quality" type="button" class="link-btn" data-evidence="quality">How the quality checks work</button></p>
+    <p class="fine">Reviewing for someone else? <button type="button" class="link-btn" data-nav="review">Open a review packet</button></p>
   </section>
 
   <!-- MISSION BOARD -->
@@ -162,6 +170,17 @@
     <div id="crewCharts" class="crew-grid"></div>
     <div id="crewTable"></div>
     <p class="fine">Source: NASA Open Science Data Repository, OSD-575, Inspiration4 comprehensive metabolic panel and Eve Technologies inflammation panels. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
+  </section>
+
+  <!-- PRACTITIONER REVIEW -->
+  <section id="screen-review" class="screen" hidden aria-labelledby="h-review">
+    <p class="step">For the reviewing nurse or clinician</p>
+    <h1 id="h-review">Open a review packet</h1>
+    <p class="lede">Load a packet file (.json) that someone exported from RelaisÉcho Link. It opens here, in this browser, with no upload and no account.</p>
+    <p class="row"><label class="btn primary file-btn" for="reviewFile">Choose packet file</label>
+      <input type="file" id="reviewFile" accept="application/json,.json" class="sr-only">
+      <button type="button" class="btn" id="btnSamplePacket">Show a sample packet</button></p>
+    <div id="reviewOut" aria-live="polite"></div>
   </section>
 
   <!-- SETUP -->
@@ -312,7 +331,8 @@
   <!-- HISTORY -->
   <section id="screen-history" class="screen" hidden aria-labelledby="h-history">
     <h1 id="h-history">History</h1>
-    <p class="fine">Stored only in this browser. The first baseline is kept as the original reference.</p>
+    <p class="fine">Stored only in this browser, for the person chosen above. The first baseline is kept as the original reference.</p>
+    <div id="trendBox"></div>
     <div id="benchSummary"></div>
     <div id="historyList"></div>
     <div class="row">
@@ -320,7 +340,8 @@
       <button type="button" class="btn" id="btnExportAll">Export all (.json)</button>
       <label class="btn file-btn" for="restoreFile">Restore from backup (.json)</label>
       <input type="file" id="restoreFile" accept="application/json,.json" class="sr-only">
-      <button type="button" class="btn danger" id="btnClear">Delete all checkups</button>
+      <button type="button" class="btn danger" id="btnClear">Delete this person's checkups</button>
+      <button type="button" class="btn danger" id="btnDeleteProfile" hidden>Remove this person</button>
     </div>
   </section>
 </main>

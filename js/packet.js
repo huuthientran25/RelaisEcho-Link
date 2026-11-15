@@ -7,7 +7,7 @@ export const LIMITS = [
   'No diagnosis is made. New or severe symptoms need direct clinical contact.',
 ];
 
-export function buildPacket(session, cmp, { includeImages = false, alertness = null } = {}) {
+export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null } = {}) {
   const src = session.source === 'file' ? 'recorded video' : 'live camera';
   const packet = {
     schema: 'relaisecho-packet/0.1',
@@ -21,6 +21,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     comparison: {
       original_baseline: cmp.original ? { date: cmp.original.createdAt, pulse_bpm: cmp.original.pulse?.bpm ?? null, breathing_per_min: cmp.original.resp?.rpm ?? null } : null,
       recent: cmp.recent.map((s) => ({ date: s.createdAt, pulse_bpm: s.pulse?.bpm ?? null, breathing_per_min: s.resp?.rpm ?? null })),
+      change_vs_original: change,
     },
     dental: Object.values(session.dental || {}).map((d) => ({
       view: d.view, captured: !!d.captured, sharpness: d.sharpness ? Math.round(d.sharpness) : null,
