@@ -61,7 +61,8 @@
      80.0,
      84.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "calcium",
@@ -106,7 +107,8 @@
      10.0,
      9.8
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "sodium",
@@ -151,7 +153,8 @@
      140.0,
      141.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "potassium",
@@ -196,7 +199,8 @@
      4.2,
      3.8
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "chloride",
@@ -241,7 +245,8 @@
      103.0,
      105.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "carbon_dioxide",
@@ -286,7 +291,8 @@
      24.0,
      19.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "creatinine",
@@ -331,7 +337,8 @@
      1.11,
      1.31
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "urea_nitrogen_bun",
@@ -376,7 +383,8 @@
      16.0,
      27.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "albumin",
@@ -421,7 +429,8 @@
      4.6,
      4.3
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "total_protein",
@@ -466,7 +475,8 @@
      7.4,
      7.2
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "globulin",
@@ -511,7 +521,8 @@
      2.8,
      2.9
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "alkaline_phosphatase",
@@ -556,7 +567,8 @@
      54.0,
      57.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "alt",
@@ -601,7 +613,8 @@
      23.0,
      43.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "ast",
@@ -646,7 +659,8 @@
      25.0,
      38.0
     ]
-   }
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
   },
   {
    "key": "total_bilirubin",
@@ -690,6 +704,559 @@
      0.7,
      1.0,
      0.5
+    ]
+   },
+   "panel": "Comprehensive metabolic panel (Quest Diagnostics)"
+  },
+  {
+   "key": "crp",
+   "name": "CRP (C-reactive protein)",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, cardiovascular panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     18385000.0,
+     2191000.0,
+     5131700.0,
+     10637600.0,
+     6713900.0,
+     25030000.0,
+     15415000.0
+    ],
+    "C002": [
+     8927100.0,
+     1568500.0,
+     11967000.0,
+     9311500.0,
+     3677200.0,
+     8633700.0,
+     21462000.0
+    ],
+    "C003": [
+     75749000.0,
+     9383100.0,
+     42838000.0,
+     83617000.0,
+     39190000.0,
+     12680000.0,
+     9379400.0
+    ],
+    "C004": [
+     21378000.0,
+     1289600.0,
+     13742000.0,
+     17701000.0,
+     22407000.0,
+     7902300.0,
+     46006000.0
+    ]
+   }
+  },
+  {
+   "key": "fibrinogen",
+   "name": "Fibrinogen",
+   "unit": "ng/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, cardiovascular panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     3208.77,
+     5707.32,
+     2780.38,
+     2604.7,
+     2732.11,
+     2513.02,
+     4587.13
+    ],
+    "C002": [
+     3657.0,
+     4027.43,
+     6533.18,
+     1999.88,
+     4074.55,
+     3279.23,
+     2852.5
+    ],
+    "C003": [
+     4153.93,
+     3723.84,
+     4609.49,
+     4531.17,
+     4491.95,
+     4447.08,
+     4334.63
+    ],
+    "C004": [
+     3226.41,
+     3602.38,
+     5428.66,
+     4187.89,
+     2840.5,
+     3553.01,
+     4390.9
+    ]
+   }
+  },
+  {
+   "key": "haptoglobin",
+   "name": "Haptoglobin",
+   "unit": "ng/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, cardiovascular panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     1049100.0,
+     122441.48,
+     1305900.0,
+     853104.4,
+     1864800.0,
+     13593000.0,
+     55113000.0
+    ],
+    "C002": [
+     3204700.0,
+     80330.74,
+     3825900.0,
+     568223.15,
+     3442000.0,
+     17907000.0,
+     6036000.0
+    ],
+    "C003": [
+     17907000.0,
+     203473.61,
+     6263200.0,
+     5442300.0,
+     14476000.0,
+     11995000.0,
+     2571500.0
+    ],
+    "C004": [
+     17907000.0,
+     73870.48,
+     17907000.0,
+     17907000.0,
+     17907000.0,
+     2919100.0,
+     17907000.0
+    ]
+   }
+  },
+  {
+   "key": "agp",
+   "name": "Alpha-1 acid glycoprotein",
+   "unit": "ng/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, cardiovascular panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     1048700.0,
+     1745700.0,
+     1214100.0,
+     1034400.0,
+     1285200.0,
+     2455500.0,
+     2595800.0
+    ],
+    "C002": [
+     2932000.0,
+     1963300.0,
+     3653700.0,
+     942754.34,
+     2479200.0,
+     2968900.0,
+     2220700.0
+    ],
+    "C003": [
+     1850900.0,
+     1068100.0,
+     1616800.0,
+     1559000.0,
+     3046500.0,
+     3249500.0,
+     2912600.0
+    ],
+    "C004": [
+     2918800.0,
+     2165100.0,
+     3606700.0,
+     3338700.0,
+     3484600.0,
+     2651400.0,
+     4564200.0
+    ]
+   }
+  },
+  {
+   "key": "sap",
+   "name": "Serum amyloid P",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, cardiovascular panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     4760000.0,
+     5428000.0,
+     6057300.0,
+     6183500.0,
+     6670900.0,
+     13775000.0,
+     7739400.0
+    ],
+    "C002": [
+     10983000.0,
+     4509000.0,
+     11733000.0,
+     5592700.0,
+     10765000.0,
+     10210000.0,
+     11337000.0
+    ],
+    "C003": [
+     16583000.0,
+     5319800.0,
+     18242000.0,
+     16745000.0,
+     13993000.0,
+     13595000.0,
+     12038000.0
+    ],
+    "C004": [
+     10138000.0,
+     4048000.0,
+     12111000.0,
+     12329000.0,
+     11850000.0,
+     9482000.0,
+     13414000.0
+    ]
+   }
+  },
+  {
+   "key": "il_6",
+   "name": "IL-6",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     2.87,
+     2.58,
+     5.94,
+     6.86,
+     1.65,
+     1.04,
+     4.26
+    ],
+    "C002": [
+     4.49,
+     4.19,
+     4.53,
+     5.76,
+     12.07,
+     5.11,
+     0.75
+    ],
+    "C003": [
+     2.67,
+     2.69,
+     2.51,
+     7.6,
+     1.32,
+     3.64,
+     5.78
+    ],
+    "C004": [
+     4.9,
+     3.09,
+     3.97,
+     6.34,
+     3.59,
+     6.02,
+     4.11
+    ]
+   }
+  },
+  {
+   "key": "il_8",
+   "name": "IL-8",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     73.86,
+     10.3,
+     42.1,
+     44.64,
+     18.35,
+     11.9,
+     30.73
+    ],
+    "C002": [
+     30.98,
+     5.01,
+     19.35,
+     17.73,
+     910.28,
+     12.37,
+     6.2
+    ],
+    "C003": [
+     27.28,
+     5.46,
+     13.27,
+     23.97,
+     31.43,
+     32.45,
+     11.13
+    ],
+    "C004": [
+     46.44,
+     6.73,
+     18.02,
+     22.7,
+     42.49,
+     13.11,
+     32.28
+    ]
+   }
+  },
+  {
+   "key": "il_10",
+   "name": "IL-10",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     6.64,
+     3.44,
+     7.07,
+     11.25,
+     4.2,
+     8.91,
+     7.41
+    ],
+    "C002": [
+     12.04,
+     5.51,
+     11.33,
+     12.86,
+     11.21,
+     13.5,
+     8.18
+    ],
+    "C003": [
+     11.25,
+     12.29,
+     10.61,
+     15.33,
+     10.31,
+     8.83,
+     12.45
+    ],
+    "C004": [
+     15.48,
+     4.36,
+     12.27,
+     16.37,
+     12.75,
+     9.86,
+     21.74
+    ]
+   }
+  },
+  {
+   "key": "tnf\u03b1",
+   "name": "TNF-alpha",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     62.39,
+     60.14,
+     68.71,
+     75.84,
+     44.36,
+     609.32,
+     69.07
+    ],
+    "C002": [
+     109.24,
+     95.43,
+     116.61,
+     116.08,
+     119.25,
+     101.26,
+     197.9
+    ],
+    "C003": [
+     687.17,
+     103.95,
+     557.31,
+     724.24,
+     216.65,
+     72.43,
+     111.45
+    ],
+    "C004": [
+     98.19,
+     76.76,
+     116.45,
+     111.76,
+     114.74,
+     102.71,
+     89.16
+    ]
+   }
+  },
+  {
+   "key": "ifn\u03b3",
+   "name": "Interferon gamma",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     3.19,
+     6.05,
+     3.05,
+     2.76,
+     1.97,
+     44.06,
+     2.63
+    ],
+    "C002": [
+     16.38,
+     38.59,
+     17.14,
+     16.09,
+     18.21,
+     13.53,
+     16.2
+    ],
+    "C003": [
+     94.55,
+     43.47,
+     60.58,
+     66.34,
+     19.81,
+     3.33,
+     20.77
+    ],
+    "C004": [
+     21.32,
+     26.81,
+     23.12,
+     16.64,
+     21.54,
+     16.83,
+     10.7
+    ]
+   }
+  },
+  {
+   "key": "mcp_1",
+   "name": "MCP-1",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     1027.92,
+     334.63,
+     1102.5,
+     1606.51,
+     333.82,
+     590.3,
+     656.82
+    ],
+    "C002": [
+     1302.89,
+     911.98,
+     1496.93,
+     2154.72,
+     2825.58,
+     1399.75,
+     300.07
+    ],
+    "C003": [
+     583.03,
+     513.89,
+     384.32,
+     1456.38,
+     706.25,
+     939.34,
+     1846.41
+    ],
+    "C004": [
+     1072.18,
+     827.42,
+     1064.7,
+     1227.54,
+     1017.56,
+     2809.45,
+     806.89
+    ]
+   }
+  },
+  {
+   "key": "ip_10",
+   "name": "IP-10",
+   "unit": "pg/mL",
+   "rangeMin": null,
+   "rangeMax": null,
+   "panel": "Inflammation, immune panel (Eve Technologies)",
+   "series": {
+    "C001": [
+     47.96,
+     29.09,
+     42.32,
+     66.82,
+     28.56,
+     109.3,
+     34.08
+    ],
+    "C002": [
+     153.92,
+     91.1,
+     186.58,
+     187.23,
+     113.86,
+     97.07,
+     63.92
+    ],
+    "C003": [
+     182.32,
+     249.44,
+     95.36,
+     186.4,
+     109.62,
+     37.33,
+     172.8
+    ],
+    "C004": [
+     215.38,
+     84.71,
+     142.73,
+     322.37,
+     238.16,
+     157.9,
+     221.71
     ]
    }
   }

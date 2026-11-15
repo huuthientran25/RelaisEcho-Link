@@ -3,7 +3,7 @@
 ## Data inside the app
 
 - The user's own measurements come from their camera or video file and stay in their browser.
-- **NASA OSDR OSD-575** (SpaceX Inspiration4, LSDS-8), serum comprehensive metabolic panel, doi 10.26030/mc5d-p710, bundled as `data/osd575-cmp.json` (15 analytes, 4 crew, 7 timepoints, lab reference ranges). Built by `scripts/build_osd575.py` from `LSDS-8_Comprehensive_Metabolic_Panel_CMP_TRANSFORMED.csv`. Race based eGFR columns are excluded. Publication: Overbey et al., Nature 2024, doi 10.1038/s41586-024-07639-y. Terms: NASA open data; exact licence text to be confirmed on the OSDR study page before submission.
+- **NASA OSDR OSD-575** (SpaceX Inspiration4, LSDS-8), serum comprehensive metabolic panel, doi 10.26030/mc5d-p710, bundled as `data/osd575-cmp.json` (15 metabolic analytes with lab reference ranges plus 12 Eve Technologies cardiovascular and immune multiplex markers without ranges; 4 crew, 7 timepoints). Built by `scripts/build_osd575.py` from `LSDS-8_Comprehensive_Metabolic_Panel_CMP_TRANSFORMED.csv`, `LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv` and `LSDS-8_Multiplex_serum_immune_EvePanel_TRANSFORMED.csv`. Race based eGFR columns are excluded. Publication: Overbey et al., Nature 2024, doi 10.1038/s41586-024-07639-y. Terms: NASA open data; exact licence text to be confirmed on the OSDR study page before submission.
 - Published constants used in the Mission board (see references below): NASA-STD-3001 career limit, ISS dose range, two process model constants, PVT-B settings.
 
 ## Validation data

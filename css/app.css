@@ -193,3 +193,10 @@ input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 
 .pvt-cam { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--navy); }
 .pvt-cam video { width: 96px; height: 72px; object-fit: cover; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--dark); transform: scaleX(-1); }
+
+.tile.wide { grid-column: 1 / -1; }
+.today-list { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 8px; }
+.today-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 17px; }
+.today-list .mark-box { flex: 0 0 auto; width: 26px; height: 26px; border: 2px solid var(--navy); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
+.today-list li.done .mark-box { background: var(--navy); }
+.today-list li.done > span:nth-child(2) { color: var(--muted); }

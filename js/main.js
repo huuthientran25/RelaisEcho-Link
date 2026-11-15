@@ -10,12 +10,12 @@ import { DentalCapture, VIEWS } from './dental.js';
 import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal } from './store.js';
 import { buildPacket, packetText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
-import { sleepPressure, issMissionDose, consistency, RADIATION } from './board.js';
+import { sleepPressure, issMissionDose, consistency, RADIATION, todaySteps } from './board.js';
 import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
 import { applyLang } from './i18n.js';
-import { NOISE, changeVsBaseline } from './change.js';
+import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS } from './change.js';
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
-import { summarizeCrew, rangeDisagreements } from './crew.js';
+import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from './crew.js';
 import { eyeAspect, EyeTracker } from './eyes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -463,13 +463,15 @@ async function renderResults() {
       <tbody><tr><th scope="row">Pulse, bpm</th><td>${sess.pulse.bpm ?? '-'}</td><td>${original.pulse?.bpm ?? '-'}</td><td>${range('p', (r) => r.pulse?.bpm)}</td></tr>
       <tr><th scope="row">Breathing, /min</th><td>${sess.resp.rpm ?? '-'}</td><td>${original.resp?.rpm ?? '-'}</td><td>${range('r', (r) => r.resp?.rpm)}</td></tr></tbody></table>
       <p class="fine">The original baseline is kept on purpose, so slow drift never becomes the new normal. No value here is a diagnosis.</p>`;
-    const pc = changeVsBaseline(sess.pulse.bpm, original.pulse?.bpm, NOISE.pulseBpm);
-    const rc = changeVsBaseline(sess.resp.rpm, original.resp?.rpm, NOISE.breathsPerMin);
+    const bench = benchError(await listSessions());
+    const pf = noiseFloor(bench, 'pulse'), rf = noiseFloor(bench, 'resp');
+    const pc = changeVsBaseline(sess.pulse.bpm, original.pulse?.bpm, pf.value);
+    const rc = changeVsBaseline(sess.resp.rpm, original.resp?.rpm, rf.value);
     const line = (label, c) => `<li class="${c.kind === 'up' || c.kind === 'down' ? 'warnline' : ''}">${label}: ${esc(c.text)}</li>`;
     const gapMin = (() => { const a = new Date(sess.createdAt), b = new Date(original.createdAt); const g = Math.abs((a.getHours() * 60 + a.getMinutes()) - (b.getHours() * 60 + b.getMinutes())); return Math.min(g, 1440 - g); })();
     html += `<ul class="change-list">${line('Pulse', pc)}${line('Breathing', rc)}</ul>
       ${gapMin > 120 ? `<p class="fine">This checkup is ${Math.round(gapMin / 60)} hours away from your baseline's time of day; pulse varies over the day, so differences are less certain.</p>` : ''}
-      <p class="fine">Noise bands are modeled from published camera error figures. <button type="button" class="link-btn" data-evidence="change">Evidence</button></p>`;
+      <p class="fine">Noise bands from ${esc(pf.source === rf.source ? pf.source : `${pf.source} for pulse, ${rf.source} for breathing`)}. <button type="button" class="link-btn" data-evidence="change">Evidence</button></p>`;
   }
   $('cmpTable').innerHTML = html;
   ['refPulse', 'refResp', 'refDevice', 'refNotes'].forEach((id) => { $(id).value = ''; });
@@ -702,6 +704,11 @@ function download(name, text, type) {
 /* ---------- history ---------- */
 async function renderHistory() {
   const all = (await listSessions()).reverse();
+  const b = benchError(all);
+  const row = (label, x, unit) => (x.n ? `<li>${label}: ${x.n} pair${x.n === 1 ? '' : 's'}, mean error ${x.mae} ${unit}, bias ${x.bias > 0 ? '+' : ''}${x.bias} ${unit}${x.n < MIN_BENCH_PAIRS ? ` (${MIN_BENCH_PAIRS - x.n} more to replace the published noise band)` : ' (now used as your noise band)'}</li>` : `<li>${label}: no reference values yet</li>`);
+  $('benchSummary').innerHTML = `<div class="card"><h2>Your bench test</h2>
+    <p>Enter a watch, oximeter or counted breaths reference on the results screen. Once there are ${MIN_BENCH_PAIRS} pairs, comparisons use your own measured error instead of published figures.</p>
+    <ul>${row('Pulse', b.pulse, 'bpm')}${row('Breathing', b.resp, '/min')}</ul></div>`;
   const currentOriginal = (await baselineAndRecent()).original?.id;
   const pvtLine = (s) => `<div class="hist-item"><span><strong>alertness</strong> · ${fmtDate(s.createdAt)}</span>
       <span>Median ${s.alertness.medianMs ?? '-'} ms · lapses ${s.alertness.lapses} · false starts ${s.alertness.falseStarts}</span></div>`;
@@ -802,6 +809,8 @@ function updateSleepTile() {
   prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw) });
   const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw === '' ? undefined : Number(usualRaw) });
   const svg = $('sleepChart');
+  state.lastSleep = r;
+  renderToday();
   if (!r) { $('sleepBody').innerHTML = '<p class="warnline">! Check the times: waking must come after sleep, within 16 hours, and not in the future.</p>'; svg.innerHTML = ''; return; }
   const read = r.asleepNow ? 'You are inside the sleep you entered, so the model shows pressure still falling.'
     : r.band === 'below' ? 'Below the model\'s sleep band: sleep pressure is low for now.'
@@ -1099,11 +1108,13 @@ async function renderCrew() {
   const d = await loadCrew();
   const sel = $('crewAnalyte');
   if (!sel.options.length) {
-    sel.innerHTML = d.analytes.map((a, i) => `<option value="${i}">${esc(a.name)} (${esc(a.unit)})</option>`).join('');
+    const panels = [...new Set(d.analytes.map((a) => a.panel || 'Comprehensive metabolic panel'))];
+    sel.innerHTML = panels.map((pn) => `<optgroup label="${esc(pn)}">${d.analytes.map((a, i) => ((a.panel || 'Comprehensive metabolic panel') === pn
+      ? `<option value="${i}">${esc(a.name)} (${esc(a.unit)})</option>` : '')).join('')}</optgroup>`).join('');
     sel.addEventListener('change', drawCrew);
   }
   const r = rangeDisagreements(d);
-  $('crewSummary').innerHTML = `Across ${d.analytes.length} blood tests: <strong>${r.normalButUnusual} of ${r.r1Total}</strong> day-after-landing results were "normal" for the population but outside that person's own pre-flight values, and <strong>${r.preOutsideLab} of ${r.preTotal}</strong> pre-flight results (their usual) would already be flagged by the population range. Three pre-flight values is a small baseline, so some of this is ordinary variation.`;
+  $('crewSummary').innerHTML = `Across the ${d.analytes.filter((x) => x.rangeMin != null).length} standard blood tests with a lab range: <strong>${r.normalButUnusual} of ${r.r1Total}</strong> day-after-landing results were "normal" for the population but outside that person's own pre-flight values, and <strong>${r.preOutsideLab} of ${r.preTotal}</strong> pre-flight results (their usual) would already be flagged by the population range. Three pre-flight values is a small baseline, so some of this is ordinary variation.${(() => { const inf = aboveOwnAfterFlight(d); return inf.total ? ` For the ${d.analytes.filter((a) => a.rangeMin == null).length} inflammation markers, which have no lab range at all, <strong>${inf.above} of ${inf.total}</strong> day-after-landing values rose above that person's highest pre-flight value: their own baseline is the only yardstick there is.` : ''; })()}`;
   drawCrew();
 }
 
@@ -1112,37 +1123,38 @@ function drawCrew() {
   const a = d.analytes[Number($('crewAnalyte').value) || 0];
   const sum = summarizeCrew(a, d.timepoints);
   const all = Object.values(a.series).flat().filter((v) => v != null);
-  const lo = Math.min(a.rangeMin, ...all), hi = Math.max(a.rangeMax, ...all);
+  const hasLab = a.rangeMin != null && a.rangeMax != null;
+  const lo = hasLab ? Math.min(a.rangeMin, ...all) : Math.min(...all), hi = hasLab ? Math.max(a.rangeMax, ...all) : Math.max(...all);
   const pad = (hi - lo) * 0.12 || 1;
   const yMin = lo - pad, yMax = hi + pad;
   const W = 300, H = 190, L = 44, R = 8, T = 26, B = 30;
   const n = d.timepoints.length;
   const x = (i) => L + (i / (n - 1)) * (W - L - R);
   const y = (v) => T + (1 - (v - yMin) / (yMax - yMin)) * (H - T - B);
-  const fmt = (v) => (Math.abs(v) >= 20 ? Math.round(v) : Math.round(v * 10) / 10);
+  const fmt = compact;
   const flightX = (x(2) + x(3)) / 2;
   $('crewCharts').innerHTML = d.crew.map((c) => {
     const vals = a.series[c];
     const s = sum[c];
     const pts = vals.map((v, i) => (v == null ? null : [x(i), y(v)])).filter(Boolean);
     const own = s ? `<rect x="${L}" y="${y(s.preMax).toFixed(1)}" width="${W - L - R}" height="${Math.max(2, y(s.preMin) - y(s.preMax)).toFixed(1)}" class="own"/>` : '';
-    const dots = vals.map((v, i) => (v == null ? '' : `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4.5" class="${v < a.rangeMin || v > a.rangeMax ? 'out' : i >= 3 && s && (v < s.preMin || v > s.preMax) ? 'unusual' : 'pt'}"/>`)).join('');
+    const dots = vals.map((v, i) => (v == null ? '' : `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4.5" class="${hasLab && (v < a.rangeMin || v > a.rangeMax) ? 'out' : i >= 3 && s && (v < s.preMin || v > s.preMax) ? 'unusual' : 'pt'}"/>`)).join('');
     return `<figure class="crew-fig"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c)} ${esc(a.name)} over time">
-      <rect x="${L}" y="${y(a.rangeMax).toFixed(1)}" width="${W - L - R}" height="${(y(a.rangeMin) - y(a.rangeMax)).toFixed(1)}" class="lab"/>
+      ${hasLab ? `<rect x="${L}" y="${y(a.rangeMax).toFixed(1)}" width="${W - L - R}" height="${(y(a.rangeMin) - y(a.rangeMax)).toFixed(1)}" class="lab"/>` : ''}
       ${own}
       <line x1="${flightX}" x2="${flightX}" y1="${T - 6}" y2="${H - B}" class="flight"/>
       <text x="${flightX}" y="${T - 10}" class="ax" text-anchor="middle">flight</text>
       <polyline points="${pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ')}" class="line"/>
       ${dots}
-      <text x="${L - 4}" y="${(y(a.rangeMax) + 4).toFixed(1)}" class="ax" text-anchor="end">${fmt(a.rangeMax)}</text>
-      <text x="${L - 4}" y="${(y(a.rangeMin) + 4).toFixed(1)}" class="ax" text-anchor="end">${fmt(a.rangeMin)}</text>
+      <text x="${L - 4}" y="${(y(hasLab ? a.rangeMax : hi) + 4).toFixed(1)}" class="ax" text-anchor="end">${fmt(hasLab ? a.rangeMax : hi)}</text>
+      <text x="${L - 4}" y="${(y(hasLab ? a.rangeMin : lo) + 4).toFixed(1)}" class="ax" text-anchor="end">${fmt(hasLab ? a.rangeMin : lo)}</text>
       <text x="${x(0)}" y="${H - 8}" class="ax" text-anchor="start">before</text>
       <text x="${x(n - 1)}" y="${H - 8}" class="ax" text-anchor="end">after</text>
-    </svg><figcaption>${esc(c)}${s ? ` · day after landing ${s.r1} (${s.pct > 0 ? '+' : ''}${Math.round(s.pct)}% vs own pre-flight)` : ''}</figcaption></figure>`;
+    </svg><figcaption>${esc(c)}${s ? ` · day after landing ${fmt(s.r1)} (${s.pct > 0 ? '+' : ''}${Math.round(s.pct)}% vs own pre-flight)` : ''}</figcaption></figure>`;
   }).join('');
-  $('crewTable').innerHTML = `<table><caption class="fine" style="text-align:left">${esc(a.name)}, ${esc(a.unit)}. Lab range ${a.rangeMin} to ${a.rangeMax}.</caption>
+  $('crewTable').innerHTML = `<table><caption class="fine" style="text-align:left">${esc(a.name)}, ${esc(a.unit)}. ${hasLab ? `Lab range ${a.rangeMin} to ${a.rangeMax}.` : 'Research assay: no lab reference range exists, so only each person\'s own pre-flight values can be used.'}</caption>
     <thead><tr><th scope="col">Crew</th><th scope="col">Own pre-flight</th><th scope="col">Day after landing</th><th scope="col">Lab range says</th><th scope="col">Own range says</th></tr></thead>
-    <tbody>${d.crew.map((c) => { const s = sum[c]; return s ? `<tr><th scope="row">${esc(c)}</th><td>${s.preMin} to ${s.preMax}</td><td>${s.r1}</td><td>${s.inLab ? 'normal' : '<strong>outside</strong>'}</td><td>${s.inOwn ? 'usual' : '<strong>unusual</strong>'}</td></tr>` : `<tr><th scope="row">${esc(c)}</th><td colspan="4">missing</td></tr>`; }).join('')}</tbody></table>
+    <tbody>${d.crew.map((c) => { const s = sum[c]; return s ? `<tr><th scope="row">${esc(c)}</th><td>${fmt(s.preMin)} to ${fmt(s.preMax)}</td><td>${fmt(s.r1)}</td><td>${s.inLab === null ? 'no lab range' : s.inLab ? 'normal' : '<strong>outside</strong>'}</td><td>${s.inOwn ? 'usual' : '<strong>unusual</strong>'}</td></tr>` : `<tr><th scope="row">${esc(c)}</th><td colspan="4">missing</td></tr>`; }).join('')}</tbody></table>
     <p class="fine">Dots: navy within both ranges, blue outlined unusual for that person after flight, red outside the lab range.</p>`;
 }
 
@@ -1173,3 +1185,12 @@ $('btnInstall').addEventListener('click', async () => {
   if (choice && choice.outcome === 'accepted') $('sampleNote').textContent = 'Installed. It opens like an app and works without internet after the first visit.';
 });
 window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; });
+
+/* ---------- today checklist ---------- */
+async function renderToday() {
+  const all = await listSessions();
+  const t = todaySteps({ sessions: all.filter((x) => x.kind !== 'alertness' && x.kind !== 'demo'), alertTests: all.filter((x) => x.kind === 'alertness'), sleep: state.lastSleep });
+  $('todayMsg').textContent = t.message;
+  $('todayList').innerHTML = t.steps.map((st) => `<li class="${st.done ? 'done' : ''}"><span class="mark-box" aria-hidden="true">${st.done ? '✓' : ''}</span>
+    <span>${esc(st.text)}</span>${!st.done && st.nav ? ` <button type="button" class="link-btn" data-nav="${st.nav}">Go</button>` : ''}</li>`).join('');
+}

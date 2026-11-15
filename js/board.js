@@ -83,3 +83,32 @@ export function consistency(sessions, now = new Date()) {
   const days = new Set(week.map((s) => new Date(s.createdAt).toDateString()));
   return { total: done.length, thisWeek: week.length, daysThisWeek: days.size, original, last, timeGapMin };
 }
+
+// Today's next steps: a short, encouraging checklist built from what is already known. Not a score.
+export function todaySteps({ sessions, alertTests, sleep, now = new Date() }) {
+  const sameDay = (iso) => new Date(iso).toDateString() === now.toDateString();
+  const c = consistency(sessions, now);
+  const steps = [];
+  if (!c.original) {
+    steps.push({ key: 'baseline', done: false, text: 'Take your baseline checkup. Every later checkup is compared with it.', nav: 'setup' });
+  } else {
+    const doneToday = sessions.some((s) => (s.complete || s.pulse || s.resp) && s.kind !== 'baseline' && sameDay(s.createdAt))
+      || sameDay(c.original.createdAt);
+    const at = new Date(c.original.createdAt);
+    const hhmm = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+    steps.push({ key: 'checkup', done: doneToday, nav: 'setup',
+      text: doneToday ? 'Checkup done today.' : `Do today's checkup${c.timeGapMin != null && c.timeGapMin > 120 ? `, ideally near ${hhmm} like your baseline` : ''}.` });
+  }
+  const lastAlert = alertTests.length ? alertTests[alertTests.length - 1] : null;
+  const alertToday = lastAlert && sameDay(lastAlert.createdAt);
+  if (sleep && sleep.sleptH < 6 && !alertToday) {
+    steps.push({ key: 'alert', done: false, nav: 'alertness', text: 'Under 6 hours of sleep: take the 3 minute alertness test before demanding work.' });
+  } else {
+    steps.push({ key: 'alert', done: !!alertToday, nav: 'alertness', text: alertToday ? 'Alertness test done today.' : 'Take the 3 minute alertness test to keep your reference current.' });
+  }
+  if (sleep && !sleep.asleepNow && sleep.band === 'above') {
+    steps.push({ key: 'rest', done: false, nav: null, text: 'The sleep model expects strong sleepiness now. Plan rest before anything safety critical.' });
+  }
+  const allDone = steps.every((s) => s.done);
+  return { steps, allDone, message: allDone ? 'Everything is done for today. Steady habits make real changes easier to spot.' : `${steps.filter((s) => s.done).length} of ${steps.length} done today.` };
+}

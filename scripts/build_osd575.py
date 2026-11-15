@@ -1,7 +1,10 @@
 """Build data/osd575-cmp.json from the NASA OSDR OSD-575 comprehensive metabolic panel.
 
 Input: LSDS-8_Comprehensive_Metabolic_Panel_CMP_TRANSFORMED.csv from https://osdr.nasa.gov (OSD-575, DOI 10.26030/mc5d-p710).
-Usage: python3 scripts/build_osd575.py path/to/LSDS-8_Comprehensive_Metabolic_Panel_CMP_TRANSFORMED.csv data/osd575-cmp.json
+Usage: python3 scripts/build_osd575.py CMP.csv data/osd575-cmp.json [CARDIOVASCULAR_EvePanel.csv IMMUNE_EvePanel.csv]
+The two optional files (LSDS-8_Multiplex_serum_cardiovascular_EvePanel_TRANSFORMED.csv and
+LSDS-8_Multiplex_serum_immune_EvePanel_TRANSFORMED.csv) add inflammation markers. They have no lab
+reference range, so only each person's own pre-flight range is shown for them.
 Race based eGFR columns are left out on purpose: race based kidney equations are no longer recommended.
 """
 import csv, json, re, sys
@@ -60,5 +63,44 @@ def main(src, dst):
     json.dump(out, open(dst, 'w'), indent=1)
     print(f'wrote {dst}: {len(out["analytes"])} analytes')
 
+MULTIPLEX = [
+    # file index (0 cardiovascular, 1 immune), column prefix, display name, unit, column unit suffix
+    (0, 'crp', 'CRP (C-reactive protein)', 'pg/mL'),
+    (0, 'fibrinogen', 'Fibrinogen', 'ng/mL'),
+    (0, 'haptoglobin', 'Haptoglobin', 'ng/mL'),
+    (0, 'agp', 'Alpha-1 acid glycoprotein', 'ng/mL'),
+    (0, 'sap', 'Serum amyloid P', 'pg/mL'),
+    (1, 'il_6', 'IL-6', 'pg/mL'),
+    (1, 'il_8', 'IL-8', 'pg/mL'),
+    (1, 'il_10', 'IL-10', 'pg/mL'),
+    (1, 'tnfα', 'TNF-alpha', 'pg/mL'),
+    (1, 'ifnγ', 'Interferon gamma', 'pg/mL'),
+    (1, 'mcp_1', 'MCP-1', 'pg/mL'),
+    (1, 'ip_10', 'IP-10', 'pg/mL'),
+]
+
+def add_multiplex(out, paths):
+    tables = [list(csv.DictReader(open(p, encoding='utf-8-sig'))) for p in paths]
+    for fi, prefix, name, unit in MULTIPLEX:
+        rows = tables[fi]
+        col = next(c for c in rows[0].keys() if c.startswith(prefix + '_concentration'))
+        series = {c: [None] * len(out['timepoints']) for c in out['crew']}
+        for r in rows:
+            m = re.match(r'(C\d{3})_serum_([LR][+-]\d+)', r.get('Sample Name') or r.get('Sample ID') or '')
+            if not m:
+                continue
+            crew, tp = m.groups()
+            if tp in out['timepoints']:
+                series[crew][out['timepoints'].index(tp)] = num(r[col])
+        panel = 'Inflammation, cardiovascular panel (Eve Technologies)' if fi == 0 else 'Inflammation, immune panel (Eve Technologies)'
+        out['analytes'].append({'key': prefix, 'name': name, 'unit': unit, 'rangeMin': None, 'rangeMax': None, 'panel': panel, 'series': series})
+
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2])
+    if len(sys.argv) >= 5:
+        out = json.load(open(sys.argv[2]))
+        for a in out['analytes']:
+            a.setdefault('panel', 'Comprehensive metabolic panel (Quest Diagnostics)')
+        add_multiplex(out, sys.argv[3:5])
+        json.dump(out, open(sys.argv[2], 'w'), indent=1)
+        print(f'added multiplex: {len(out["analytes"])} analytes total')

@@ -14,7 +14,8 @@ export function summarizeCrew(analyte, timepoints) {
     if (!pre.length || r1 == null) { out[crew] = null; continue; }
     const preMean = pre.reduce((a, b) => a + b, 0) / pre.length;
     const preMin = Math.min(...pre), preMax = Math.max(...pre);
-    const inLab = r1 >= analyte.rangeMin && r1 <= analyte.rangeMax;
+    const hasLab = analyte.rangeMin != null && analyte.rangeMax != null;
+    const inLab = hasLab ? r1 >= analyte.rangeMin && r1 <= analyte.rangeMax : null;   // null: research assay, no lab range
     const inOwn = r1 >= preMin && r1 <= preMax;
     out[crew] = { preMean, preMin, preMax, r1, pct: ((r1 - preMean) / preMean) * 100, inLab, inOwn };
   }
@@ -28,6 +29,7 @@ export function rangeDisagreements(data) {
   let normalButUnusual = 0, r1Total = 0, preOutsideLab = 0, preTotal = 0;
   const idx = (tp) => data.timepoints.indexOf(tp);
   for (const a of data.analytes) {
+    if (a.rangeMin == null || a.rangeMax == null) continue;
     const s = summarizeCrew(a, data.timepoints);
     for (const [crew, v] of Object.entries(s)) {
       if (!v) continue;
@@ -42,4 +44,28 @@ export function rangeDisagreements(data) {
     }
   }
   return { normalButUnusual, r1Total, preOutsideLab, preTotal };
+}
+
+// Research assays without a lab range: how many day-after-landing values rose above the person's own pre-flight maximum.
+export function aboveOwnAfterFlight(data) {
+  let above = 0, total = 0;
+  for (const a of data.analytes) {
+    if (a.rangeMin != null) continue;
+    for (const v of Object.values(summarizeCrew(a, data.timepoints))) {
+      if (!v) continue;
+      total += 1;
+      if (v.r1 > v.preMax) above += 1;
+    }
+  }
+  return { above, total };
+}
+
+// Compact number for labels: 18 385 000 -> 18.4M, 1606.5 -> 1607, 3.19 -> 3.2
+export function compact(v) {
+  if (v == null || !Number.isFinite(v)) return '-';
+  const a = Math.abs(v);
+  if (a >= 1e6) return `${(v / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
+  if (a >= 1e4) return `${Math.round(v / 1e3)}k`;
+  if (a >= 20) return String(Math.round(v));
+  return String(Math.round(v * 10) / 10);
 }

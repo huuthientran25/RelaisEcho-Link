@@ -63,6 +63,12 @@
     <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
     <div class="tiles">
+      <article class="tile wide" aria-labelledby="h-t-today">
+        <header><h2 id="h-t-today">Today</h2><span class="tag live">LIVE</span></header>
+        <p id="todayMsg" class="okline"></p>
+        <ul id="todayList" class="today-list"></ul>
+      </article>
+
       <article class="tile" id="tileCheckups" aria-labelledby="h-t-check">
         <header><h2 data-i18n="board.t.check" id="h-t-check">Checkup rhythm</h2><span class="tag live">LIVE</span></header>
         <div id="checkupBody"></div>
@@ -147,13 +153,13 @@
   <section id="screen-crew" class="screen" hidden aria-labelledby="h-crew">
     <p class="step">NASA open data · Inspiration4</p>
     <h1 id="h-crew">Why your own baseline matters</h1>
-    <p class="lede">Real blood tests from the four Inspiration4 crew members, before and after their 3 day flight in 2021. Grey is the lab's normal range for everyone; blue is each person's own range before flight.</p>
+    <p class="lede">Real blood tests from the four Inspiration4 crew members, before and after their 3 day flight in 2021. Grey is the lab's normal range for everyone (when one exists); blue is each person's own range before flight.</p>
     <p id="crewSummary"></p>
     <label for="crewAnalyte">Blood test</label>
     <select id="crewAnalyte" class="select"></select>
     <div id="crewCharts" class="crew-grid"></div>
     <div id="crewTable"></div>
-    <p class="fine">Source: NASA Open Science Data Repository, OSD-575, Inspiration4 comprehensive metabolic panel. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
+    <p class="fine">Source: NASA Open Science Data Repository, OSD-575, Inspiration4 comprehensive metabolic panel and Eve Technologies inflammation panels. <button type="button" class="link-btn" data-evidence="crew">Evidence</button></p>
   </section>
 
   <!-- SETUP -->
@@ -304,6 +310,7 @@
   <section id="screen-history" class="screen" hidden aria-labelledby="h-history">
     <h1 id="h-history">History</h1>
     <p class="fine">Stored only in this browser. The first baseline is kept as the original reference.</p>
+    <div id="benchSummary"></div>
     <div id="historyList"></div>
     <div class="row">
       <button type="button" class="btn" id="btnBenchCsv">Export bench test CSV</button>

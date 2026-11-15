@@ -18,7 +18,7 @@ test('OSD-575 file has 4 crew, 7 timepoints and lab ranges', () => {
   assert.deepEqual(data.crew, ['C001', 'C002', 'C003', 'C004']);
   assert.equal(data.timepoints.length, 7);
   for (const a of data.analytes) {
-    assert.ok(a.rangeMin < a.rangeMax, a.name);
+    if (a.rangeMin != null) assert.ok(a.rangeMin < a.rangeMax, a.name);
     for (const c of data.crew) assert.equal(a.series[c].length, 7);
   }
   assert.ok(!data.analytes.some((a) => /egfr/i.test(a.key)), 'race based eGFR excluded');

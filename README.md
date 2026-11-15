@@ -24,6 +24,13 @@ NASA Space Apps Challenge 2026, Montreal. Challenge: Create Health Monitoring So
 
 Labels on screen: **LIVE** (camera) or **RECORDED VIDEO** (file), and **EXPERIMENTAL** on every estimate until the bench test says more.
 
+## Changes in v0.7 to v0.9, released together as v0.9 (15 Nov 2026)
+
+- **v0.7, inflammation markers from NASA OSDR OSD-575.** 12 markers from the Eve Technologies cardiovascular and immune panels (CRP, fibrinogen, haptoglobin, alpha-1 acid glycoprotein, serum amyloid P, IL-6, IL-8, IL-10, TNF-alpha, interferon gamma, MCP-1, IP-10) join the 15 metabolic tests, grouped by panel. They have no clinical reference range, so only each person's own pre-flight range is shown. From the data: 20 of 48 day-after-landing values rose above that person's highest pre-flight value; IL-6 rose above it in all four crew members. Built by `scripts/build_osd575.py` with the two extra CSVs.
+- **v0.8, "Today" checklist** at the top of the Mission board: baseline first, then today's checkup (with the baseline time of day), the alertness test (prompted when last night's sleep was under 6 hours), and a rest reminder when the sleep model is above its band. Done items are ticked. A checklist, not a score.
+- **v0.9, your own bench error.** History shows the app's error against the reference values you entered (pairs, mean error, bias). With 5 or more pairs, the change-against-baseline noise band switches from published figures to twice your own mean error (minimum 2, MODELED rule), and results say which source was used.
+- 33 unit tests.
+
 ## Changes in v0.6 (15 Nov 2026)
 
 - **Blinks and eye closure during the alertness check** (optional checkbox). The front camera tracks eyelid landmarks at up to 15 frames a second; eye opening is lid height over eye width (eye aspect ratio, Soukupová and Čech 2016) against the person's own open-eye value. Reports blinks per minute, percent of time eyes closed and closures of half a second or longer, plus how much of the test was tracked (no result under 50%). Thresholds are MODELED. Camera tests are compared only with camera tests, because analysis can add delay. Camera stops when the test ends.
