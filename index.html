@@ -134,11 +134,28 @@
           <div id="ovChart"></div>
           <p class="fine" id="ovChartNote"></p>
             <p id="ovTrend" class="ov-trend" hidden></p>
+            <p id="ovStats" class="fine ov-stats" hidden></p>
           <details class="fine"><summary>Show values</summary><div id="ovValues"></div></details>
         </div>
         <div class="card ov-next" id="ovNext"></div>
         </div>
       </div>
+    </div>
+    <div class="card ov-bodyinfo" id="ovBodyInfo">
+      <div class="row between"><h2>Body measures</h2><button type="button" class="link-btn" data-evidence="body">Evidence</button></div>
+      <p class="fine">Optional context for the person shown. Kept on this device, never put in a packet.</p>
+      <fieldset class="ov-sex"><legend>Biological sex (used only for the averages and notes below)</legend>
+        <label><input type="radio" name="bodySex" value=""> Not set</label>
+        <label><input type="radio" name="bodySex" value="male"> Male</label>
+        <label><input type="radio" name="bodySex" value="female"> Female</label>
+      </fieldset>
+      <div class="row ov-bodyrow">
+        <label>Height (cm) <input type="number" id="bodyHeight" min="100" max="250" step="0.1" inputmode="decimal"></label>
+        <label>Weight (kg) <input type="number" id="bodyWeight" min="25" max="300" step="0.1" inputmode="decimal"></label>
+        <button type="button" class="btn" id="btnBodySave">Save</button>
+      </div>
+      <p class="row ov-bodyavg" id="bodyAvgRow" hidden><span class="fine">Sample person:</span> <button type="button" class="link-btn" data-body-avg="male">Use the US adult male average</button> <button type="button" class="link-btn" data-body-avg="female">Use the US adult female average</button></p>
+      <div id="bodyOut" aria-live="polite"></div>
     </div>
     <div class="card ov-roster" id="ovRoster" hidden></div>
   </section>
@@ -731,7 +748,7 @@
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
   <span>Logo: AI-generated with ChatGPT; marked “AI” wherever it appears.</span>
-  <span>RelaisÉcho Link <span id="appVersion">v1.0</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v1.1</span></span>
 </footer>
 </body>
 </html>

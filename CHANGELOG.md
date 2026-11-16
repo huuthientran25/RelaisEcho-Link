@@ -2,6 +2,14 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## v1.1 (15 Nov 2026): derived metrics and Earth context
+
+- **Your own spread, in standard deviations.** Once a measure has at least 5 earlier good quality values, the Overview shows the person's own mean, standard deviation and coefficient of variation, how many standard deviations the latest value sits from that mean (a z score against themselves, not against other people), and how many earlier values it exceeds. Low quality captures are skipped.
+- **Earth reference ranges** next to the person's own baseline: resting pulse 60 to 100 bpm (American Heart Association) and breathing 12 to 20 per minute (clinical nursing references), with "your own baseline matters more than this range".
+- **Heartbeats per breath**, a new derived measure from the same checkup's pulse and breathing, compared only with the person's own first value (band 20%, a design choice).
+- **Body measures card** on the Overview: biological sex (used only for averages and notes), height, weight and BMI with the WHO adult categories and their limits (muscle, population differences, not a diagnosis). Earth averages from CDC (US adults 20 and over, NHANES 2021 to 2023: men 175.0 cm and 90.3 kg, women 161.3 cm and 77.9 kg). Sample people get the male or female average, with buttons to switch. For women, a note that the app does not take the menstrual cycle into account, that resting pulse is a few beats higher in the fertile window and luteal phase on Earth (Shilaih et al. 2017), and that spaceflight data on the cycle are limited and research is ongoing. Kept on the device, never in a packet. Evidence card in English and French.
+- 127 unit tests.
+
 ## v1.0 (15 Nov 2026): submission release
 
 - Release pass: every button target, Evidence key and in-page link checked; every screen opened in English and French, light and dark, with no console errors or failed requests; offline reload checked (app, sample data and NASA summaries all load without a network).

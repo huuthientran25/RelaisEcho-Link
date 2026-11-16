@@ -32,6 +32,7 @@ Or let it play by itself: Home page > **30 second captioned demo** (also `/?reel
 | Eyes | Blinks and eye closure during the scan and, optionally, the reaction test | EXPERIMENTAL |
 | Dental photos | Front and both sides, levelled and scaled by the mouth corners, baseline against today slider, reviewer marks, colour comparison with a lighting check | EXPERIMENTAL |
 | Change against baseline | A difference counts only when it beats the method's noise band (published figures, or your own bench error after 5 reference pairs). Each trend also says whether it is one odd value, a sustained change (3 good quality values in a row outside the band) or a drift inside the band toward its edge | MODELED |
+| Derived measures | Own mean, standard deviation, variation and z score of the latest value against the person's own earlier values; heartbeats per breath; Earth adult resting ranges for pulse and breathing as context; BMI with WHO categories and CDC averages (Body measures card, menstrual cycle note for women) | MODELED |
 | Bench test | Enter a reference (fingertip oximeter, watch, counted breaths) after a checkup; History shows mean error, bias and a Bland and Altman agreement plot | |
 | Alertness | 3 minute reaction test with the published PVT-B settings, compared with your own first test | EXPERIMENTAL |
 | Overview | One screen: a body chart whose regions open trend graphs against your own first value, four headline numbers, a short "look here first" list and the next step; four sample scenarios to explore, a mission clock (day N of M) and one page printing. A reading order, not a score | LIVE |
@@ -61,7 +62,7 @@ Full list with links: `DATA_SOURCES.md`. Software and font licences: `LICENSES.m
 
 ## What is tested, and what is not
 
-- `npm test`: 126 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
+- `npm test`: 127 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
 - A synthetic video with a known 72 bpm colour pulse and 15 breaths per minute runs through the whole browser pipeline (`tests/e2e_synthetic.mjs`) and returns 72 and 15. This shows the code path works.
 - An automated accessibility audit (axe-core) of eight screens (home, board, history, crew data, reaction test, nurse view, checkup setup, device check) in light and dark mode found no violations at v0.50.
 - **Not shown: accuracy on real people.** Camera pulse error is known to rise on darker skin (a published meta analysis reports about 4 beats per minute for Fitzpatrick types I to V and about 14 for type VI), cold skin is untested, and every threshold in `js/config.js` is a design choice. That is why every estimate is labelled EXPERIMENTAL and the app refuses to give a number when a capture fails its checks.

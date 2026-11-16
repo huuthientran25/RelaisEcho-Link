@@ -1,0 +1,53 @@
+{
+ "source": "NASA Life Sciences Portal, Bed Rest Standard Measures: Plasma Volume (PI Steven Platts), doi 10.83263/4dzb-2267",
+ "method": "Each person's plasma volume against their own mean before bed rest; median of their values in each window.",
+ "people": 48,
+ "campaigns": [
+  "C1",
+  "C3",
+  "CFT70"
+ ],
+ "bins": [
+  {
+   "label": "Days 1 to 7",
+   "n": 31,
+   "median_pct": -10.4,
+   "q1_pct": -20.2,
+   "q3_pct": -4.5,
+   "below_own_pre_min": 24
+  },
+  {
+   "label": "Days 8 to 21",
+   "n": 17,
+   "median_pct": -12.4,
+   "q1_pct": -25.2,
+   "q3_pct": -10.3,
+   "below_own_pre_min": 16
+  },
+  {
+   "label": "Days 22 to 45",
+   "n": 13,
+   "median_pct": -16.3,
+   "q1_pct": -25.0,
+   "q3_pct": -10.2,
+   "below_own_pre_min": 12
+  },
+  {
+   "label": "Days 46 to 90",
+   "n": 10,
+   "median_pct": -15.7,
+   "q1_pct": -23.4,
+   "q3_pct": -12.1,
+   "below_own_pre_min": 9
+  },
+  {
+   "label": "After bed rest (days 0 to 3)",
+   "n": 40,
+   "median_pct": -5.1,
+   "q1_pct": -10.2,
+   "q3_pct": 0.8,
+   "below_own_pre_min": 21
+  }
+ ],
+ "ai_disclosure": "Values are from the cited NASA dataset; this summary file was produced by a script written with Claude (Anthropic), an AI tool, under the team's direction. See AI_DISCLOSURE.md."
+}
