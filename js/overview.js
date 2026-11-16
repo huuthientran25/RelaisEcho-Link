@@ -20,14 +20,53 @@ export const METRIC_DEFS = {
   tremor: { label: 'Right hand rhythmic share', unit: '0 to 1', src: 'exp:tremor', get: (s) => s.exp?.right?.share, band: 0.15 },
   ptt: { label: 'Pulse timing index, palm after face', unit: 'ms', src: 'exp:circ', get: (s) => s.exp?.pttMs, band: 25 },
   ror: { label: 'Colour pulse ratio index', unit: 'index', src: 'exp:circ', get: (s) => s.exp?.rorFace, bandPct: 10 },
+  // Derived: heartbeats per breath, from the same checkup's pulse and breathing. Own first value only; no population claim.
+  hpb: { label: 'Heartbeats per breath', unit: 'ratio', src: 'checkup', get: (s) => (s.pulse?.bpm && s.resp?.rpm ? Math.round((s.pulse.bpm / s.resp.rpm) * 10) / 10 : null),
+    q: (s) => ([s.pulse?.quality, s.resp?.quality].includes('low') ? 'low' : s.pulse?.quality), bandPct: 20 },
 };
+
+// Earth reference ranges for resting adults, for context next to the person's own baseline.
+// Pulse: American Heart Association (60 to 100 bpm). Breathing: clinical nursing references (12 to 20 per minute,
+// OpenStax Clinical Nursing Skills 15.6). Population ranges, not targets: fit people often sit below 60.
+export const EARTH_RANGES = {
+  pulse: { low: 60, high: 100, unit: 'bpm', source: 'American Heart Association' },
+  resp: { low: 12, high: 20, unit: 'per minute', source: 'clinical nursing references' },
+};
+export function earthLine(id, v) {
+  const r = EARTH_RANGES[id];
+  if (!r || !Number.isFinite(v)) return '';
+  const where = v < r.low ? 'below' : v > r.high ? 'above' : 'inside';
+  return `Earth adult resting range ${r.low} to ${r.high} ${r.unit} (${r.source}): the latest value is ${where} it. Your own baseline matters more than this range.`;
+}
+
+// The person's own spread: mean, standard deviation and coefficient of variation of their earlier good quality
+// values, the latest value as standard deviations from their own mean (z), and how many earlier values it exceeds.
+// Needs at least STATS_MIN earlier values; with few values the standard deviation itself is uncertain.
+export const STATS_MIN = 5;
+export function personalStats(points) {
+  const good = (points || []).filter((p) => p.q !== 'low' && Number.isFinite(p.v));
+  if (good.length < STATS_MIN + 1) return null;
+  const last = good[good.length - 1], prev = good.slice(0, -1);
+  const n = prev.length, mean = prev.reduce((a, p) => a + p.v, 0) / n;
+  const sd = Math.sqrt(prev.reduce((a, p) => a + (p.v - mean) ** 2, 0) / (n - 1));
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const above = prev.filter((p) => p.v < last.v).length, below = prev.filter((p) => p.v > last.v).length;
+  return { n, mean: r2(mean), sd: r2(sd), cv: mean ? Math.round((sd / Math.abs(mean)) * 1000) / 10 : null, latest: last.v, z: sd > 0 ? Math.round(((last.v - mean) / sd) * 10) / 10 : null, above, below };
+}
+export function statsLine(st, unit = '') {
+  if (!st) return '';
+  const u = unit && !['index', '0 to 1', 'ratio'].includes(unit) ? ` ${unit}` : '';
+  const z = st.z == null ? 'no spread yet' : `${st.z > 0 ? '+' : ''}${st.z} standard deviations from your own mean`;
+  const rank = st.above === st.n ? `higher than all ${st.n} earlier values` : st.below === st.n ? `lower than all ${st.n} earlier values` : `higher than ${st.above} of ${st.n} earlier values`;
+  return `Your own spread: mean ${Math.round(st.mean * 10) / 10}${u}, standard deviation ${st.sd}${u} (variation ${st.cv}%), from ${st.n} earlier good quality values. The latest is ${z}, ${rank}.`;
+}
 
 export const REGIONS = [
   { id: 'head', label: 'Sleep and alertness', short: 'Sleep', metrics: ['alert'], dot: [150, 28], side: 'left', y: 2 },
   { id: 'eyes', label: 'Eyes', short: 'Eyes', metrics: ['eyegrid', 'acuityR', 'acuityL', 'lidR', 'lidL', 'gaze', 'pupil', 'pallor'], dot: [161, 48], side: 'right', y: 6 },
   { id: 'mouth', label: 'Mouth and jaw', short: 'Mouth and jaw', metrics: ['jaw', 'gum'], dot: [150, 74], side: 'left', y: 15 },
   { id: 'neck', label: 'Neck', short: 'Neck', metrics: [], dot: [150, 97], side: 'right', y: 19 },
-  { id: 'heart', label: 'Heart and circulation', short: 'Heart', metrics: ['pulse', 'ptt', 'ror'], dot: [164, 150], side: 'left', y: 31 },
+  { id: 'heart', label: 'Heart and circulation', short: 'Heart', metrics: ['pulse', 'hpb', 'ptt', 'ror'], dot: [164, 150], side: 'left', y: 31 },
   { id: 'lungs', label: 'Breathing', short: 'Breathing', metrics: ['resp'], dot: [135, 172], side: 'right', y: 36 },
   { id: 'hands', label: 'Hands', short: 'Hands', metrics: ['tremor'], dot: [226, 304], side: 'right', y: 62 },
 ];
@@ -225,4 +264,20 @@ export function blandAltmanSvg(ba, { unit = '', title = '', w = 520, h = 220 } =
     <text class="ba-ax" x="12" y="${(T + h - B) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(T + h - B) / 2})">app minus reference</text>
     <text class="ba-ax" x="${L - 6}" y="${(Y(y1) + 10).toFixed(1)}" text-anchor="end">${Math.round(y1)}</text><text class="ba-ax" x="${L - 6}" y="${Y(y0).toFixed(1)}" text-anchor="end">${Math.round(y0)}</text>
   </svg>`;
+}
+
+// Body measures for context. BMI = weight (kg) / height (m) squared; adult categories from WHO
+// (under 18.5, 18.5 to 24.9, 25 to 29.9, 30 and over). A population screening number, not a diagnosis.
+// US adult averages, ages 20 and over: CDC FastStats, NHANES August 2021 to August 2023
+// (men 68.9 in, 199.0 lb; women 63.5 in, 171.8 lb), converted to cm and kg.
+export const EARTH_AVG = {
+  male: { heightCm: 175.0, weightKg: 90.3 },
+  female: { heightCm: 161.3, weightKg: 77.9 },
+};
+export function bmi(heightCm, weightKg) {
+  const h = +heightCm / 100, w = +weightKg;
+  if (!(h > 0.5 && h < 2.6 && w > 20 && w < 400)) return null;
+  const v = Math.round((w / (h * h)) * 10) / 10;
+  const cat = v < 18.5 ? 'underweight' : v < 25 ? 'healthy weight range' : v < 30 ? 'overweight' : 'obesity';
+  return { value: v, category: cat };
 }

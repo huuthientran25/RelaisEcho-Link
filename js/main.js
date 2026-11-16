@@ -14,7 +14,7 @@ import { buildPacket, packetText, packetSms, SMS_LEGEND, SMS_MAX, decodeSms, sea
 import { EVIDENCE } from './evidence.js';
 import { sleepPressure, missionDose, MISSION_PRESETS, consistency, RADIATION, todaySteps } from './board.js';
 import { loadSpaceWeather, isFresh } from './spaceweather.js';
-import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts } from './symptoms.js';
+import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts, SLEEP_BUCKETS, sleepBucket, bucketFor, shortSleep } from './symptoms.js';
 import { dayLength, fmtHours, PLACES, ISS_SUNRISES_PER_DAY } from './daylight.js';
 import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
 import { applyLang, phrase } from './i18n.js';
@@ -37,7 +37,7 @@ import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
 import { initExp } from './expui.js';
 import { ACUITY, optoMm, snellen, floorLogmar, AcuityRun, compareAcuity, acuityForPacket } from './acuity.js';
 import { expForPacket, checkTitle, CHECKS as EXP_CHECKS } from './exp.js';
-import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay, trendFor, trendLine, trendsForPacket, blandAltmanSvg } from './overview.js';
+import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay, trendFor, trendLine, trendsForPacket, blandAltmanSvg, personalStats, statsLine, earthLine, bmi, EARTH_AVG } from './overview.js';
 import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
 
 const $ = (id) => document.getElementById(id);
@@ -189,13 +189,14 @@ $('setupForm').addEventListener('submit', async (e) => {
   state.session = {
     id: newId(), createdAt: new Date().toISOString(), kind: f.get('kind') || 'baseline',
     source: src === 'file' ? 'file' : 'camera', facing: src === 'file' ? null : src,
-    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim(), checklist: tickedSymptoms() },
+    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim(), checklist: tickedSymptoms(), ...(f.get('sleepH') ? { sleepH: f.get('sleepH') } : {}) },
     complete: false, dental: {},
   };
+  if (f.get('sleepH')) { if (shortSleep(f.get('sleepH'))) state.session.context.checklist.push('sleep'); sleepFromCheckup(f.get('sleepH')); }
   await startScan(src, file);
 });
 // Symptom checklist in the setup form.
-$('symptomTicks').innerHTML = SYMPTOMS.map((x) => `<label><input type="checkbox" name="sym" value="${x.id}"> ${esc(x.label)}</label>`).join('');
+$('symptomTicks').innerHTML = SYMPTOMS.filter((x) => !x.auto).map((x) => `<label><input type="checkbox" name="sym" value="${x.id}"> ${esc(x.label)}</label>`).join('');
 function tickedSymptoms() { return [...document.querySelectorAll('#symptomTicks input:checked')].map((i) => i.value); }
 $('symptomTicks').addEventListener('change', () => {
   const urgent = hasUrgent(tickedSymptoms());
@@ -1032,9 +1033,12 @@ async function renderBoard() {
   // model show many hours awake that never happened.
   const savedEnd = saved?.end ? +new Date(saved.end) : NaN;
   const fresh = Number.isFinite(savedEnd) && savedEnd <= +now + 60000 && +now - savedEnd < 20 * H_MS;
-  $('sleepStart').value = fresh ? saved.start : toLocalInput(bed);
-  $('sleepEnd').value = fresh ? saved.end : toLocalInput(wake);
-  $('usualSleep').value = saved?.usual ?? '';
+  const logged = sleepLog()[dayKey(now)];
+  if (!fresh && logged?.id) { applyBucket(logged.id, 'log'); fillSleepInputs(); } else {
+    $('sleepStart').value = fresh ? saved.start : toLocalInput(bed);
+    $('sleepEnd').value = fresh ? saved.end : toLocalInput(wake);
+    $('usualSleep').value = saved?.usual ?? '';
+  }
   const mission = prefs.get('radMission');
   if (mission) { $('radLeo').value = mission.leoDays ?? 180; $('radTransit').value = mission.transitDays ?? 0; $('radSurface').value = mission.surfaceDays ?? 0; }
   updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile(); expApi?.renderTile();
@@ -1045,11 +1049,83 @@ async function renderBoard() {
   renderInfTile();
 }
 
-function updateSleepTile() {
+/* ---------- sleep: one answer fills the checkup, the Board and the Overview ---------- */
+// Log of nights per person on this device: { 'YYYY-MM-DD' (morning of waking): { id, h, src } }.
+const dayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const sleepLogKey = () => `sleepLog:${getProfile()}`;
+function sleepLog() { const l = prefs.get(sleepLogKey()); return l && typeof l === 'object' ? l : {}; }
+function setNight(key, id, h, src) {
+  const l = sleepLog();
+  if (!id) delete l[key]; else l[key] = { id, h: Number.isFinite(h) ? Math.round(h * 10) / 10 : sleepBucket(id).h, src };
+  prefs.set(sleepLogKey(), l);
+}
+// Usual sleep from the log: mean of logged nights in the last 14 days, last night excluded, when 3 or more.
+function usualFromLog(now = new Date()) {
+  const l = sleepLog(), hs = [];
+  for (let i = 1; i <= 14; i++) { const d = new Date(now); d.setDate(d.getDate() - i); const n = l[dayKey(d)]; if (n && Number.isFinite(n.h)) hs.push(n.h); }
+  return hs.length >= 3 ? { h: Math.round((hs.reduce((a, b) => a + b, 0) / hs.length) * 10) / 10, n: hs.length } : null;
+}
+// Turn a bucket into bed and wake times for the model: wake at the usual wake time (else 07:00), never in the future.
+function applyBucket(id, src) {
+  const b = sleepBucket(id); if (!b) return;
+  const saved = prefs.get('sleep') || {};
+  const now = new Date(), w0 = saved.end ? new Date(saved.end) : null;
+  const wake = new Date(now);
+  if (w0 && !Number.isNaN(+w0)) wake.setHours(w0.getHours(), w0.getMinutes(), 0, 0); else wake.setHours(7, 0, 0, 0);
+  if (wake > now) wake.setTime(+now);
+  prefs.set('sleep', { start: toLocalInput(new Date(+wake - b.h * H_MS)), end: toLocalInput(wake), usual: saved.usual ?? '', src, bucket: id });
+}
+function fillSleepInputs() { const sv = prefs.get('sleep') || {}; $('sleepStart').value = sv.start || ''; $('sleepEnd').value = sv.end || ''; $('usualSleep').value = sv.usual ?? ''; }
+function exactTimesToday() {
+  const sv = prefs.get('sleep');
+  return sv?.src === 'times' && sv.end && Date.now() - +new Date(sv.end) < 20 * H_MS;
+}
+function sleepFromCheckup(id) {
+  setNight(dayKey(new Date()), id, undefined, 'checkup');
+  if (!exactTimesToday()) applyBucket(id, 'checkup');
+}
+function renderSleepLog() {
+  const box = $('sleepLog'); if (!box) return;
+  const l = sleepLog(), now = new Date();
+  const fmt = new Intl.DateTimeFormat(curLang === 'fr' ? 'fr-CA' : 'en-CA', { weekday: 'short', day: 'numeric' });
+  const SHORT = { le3: '≤ 3', '4-5': '4 to 5', '6-7': '6 to 7', '8+': '8 +' };
+  const opts = (sel) => `<option value="">?</option>${SLEEP_BUCKETS.map((b) => `<option value="${b.id}"${sel === b.id ? ' selected' : ''} translate="no">${SHORT[b.id]}</option>`).join('')}`;
+  const cells = [];
+  const hs = [];
+  let shortN = 0;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const k = dayKey(d), n = l[k];
+    if (n && Number.isFinite(n.h)) { hs.push(n.h); if (shortSleep(n.id)) shortN += 1; }
+    const h = n && Number.isFinite(n.h) ? n.h : 0;
+    cells.push(`<label class="night${n && shortSleep(n.id) ? ' short' : ''}"><span class="barbox" aria-hidden="true"><span class="bar" style="height:${Math.round((Math.min(h, 10) / 10) * 34)}px"></span></span><span class="d${i === 0 ? ' now' : ''}" translate="no">${esc(fmt.format(d))}</span><select data-night="${k}" aria-label="Sleep hours, night before ${esc(k)}${i === 0 ? ' (last night)' : ''}">${opts(n?.id)}</select></label>`);
+  }
+  const avg = hs.length ? Math.round((hs.reduce((a, b) => a + b, 0) / hs.length) * 10) / 10 : null;
+  box.innerHTML = `<p class="fine"><strong>Last 7 nights</strong> (fill in earlier nights any time)${avg != null ? `: ${hs.length} logged, average ${avg} h, ${shortN} of 5 h or less` : ''}.</p><div class="nights">${cells.join('')}</div>`;
+}
+$('sleepLog')?.addEventListener('change', (e) => {
+  const k = e.target.dataset?.night; if (!k) return;
+  setNight(k, e.target.value || null, undefined, 'board');
+  if (k === dayKey(new Date()) && e.target.value) { applyBucket(e.target.value, 'board'); fillSleepInputs(); }
+  updateSleepTile(); renderAlertTile();
+});
+document.querySelector('.sleep-quick')?.addEventListener('click', (e) => {
+  const id = e.target.closest('[data-sleep-h]')?.dataset.sleepH; if (!id) return;
+  setNight(dayKey(new Date()), id, undefined, 'board');
+  applyBucket(id, 'board'); fillSleepInputs(); updateSleepTile(); renderAlertTile();
+});
+
+function updateSleepTile(fromUser = false) {
   const start = new Date($('sleepStart').value), end = new Date($('sleepEnd').value);
   const usualRaw = $('usualSleep').value;
-  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw) });
-  const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw === '' ? undefined : Number(usualRaw) });
+  const prev = prefs.get('sleep') || {};
+  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw), src: fromUser ? 'times' : prev.src, bucket: fromUser ? null : prev.bucket });
+  const fromLog = usualRaw === '' ? usualFromLog() : null;
+  const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw !== '' ? Number(usualRaw) : fromLog?.h });
+  if (fromUser && r && !r.asleepNow) setNight(dayKey(end), bucketFor(r.sleptH).id, r.sleptH, 'times');
+  const lastId = sleepLog()[dayKey(new Date())]?.id;
+  document.querySelectorAll('[data-sleep-h]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sleepH === lastId)));
+  renderSleepLog();
   const svg = $('sleepChart');
   state.lastSleep = r;
   renderToday();
@@ -1060,7 +1136,7 @@ function updateSleepTile() {
         : 'Above the model\'s sleep band: the model expects strong sleepiness. Plan rest before demanding tasks.';
   const short = r.sleptH < 6 ? '<p class="warnline">! Under 6 hours last night. In ISS astronauts, nights this short were linked to slower reaction test scores.</p>' : '';
   $('sleepBody').innerHTML = `<p class="big-num">${r.s.toFixed(2)}<span class="unit"> sleep pressure (0 to 1)</span></p>
-    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h · usual ${r.usualH.toFixed(1)} h · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
+    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h${(prefs.get('sleep') || {}).bucket ? ` (answer: ${esc(sleepBucket(prefs.get('sleep').bucket)?.label || '')})` : ''} · usual ${r.usualH.toFixed(1)} h${fromLog ? ` (average of ${fromLog.n} logged nights)` : ''} · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
   // Chart: curve, threshold band, now marker.
   const W = 600, Hh = 180, padL = 8, padR = 8, padT = 28, padB = 30;
   const x = (t) => padL + ((t - r.from) / (r.to - r.from)) * (W - padL - padR);
@@ -1183,7 +1259,7 @@ async function refreshSpaceWeather(force) {
 document.addEventListener('click', (e) => { if (e.target.closest('[data-sw]')) refreshSpaceWeather(true); });
 $('swKey').addEventListener('change', (e) => { prefs.set('swKey', e.target.value.trim()); });
 
-$('sleepForm').addEventListener('input', updateSleepTile);
+$('sleepForm').addEventListener('input', () => updateSleepTile(true));
 
 /* ---------- alertness check (brief PVT) ---------- */
 const pvtTests = async () => (await listSessions()).filter((x) => x.kind === 'alertness' && x.alertness);
@@ -1396,8 +1472,24 @@ async function renderAlertTile() {
       : cmp.verdict === 'slower' ? `${cmp.pct}% slower than your reference test.` : `${Math.abs(cmp.pct)}% faster than your reference test.`;
   body.innerHTML = `<p class="big-num">${last.medianMs ?? '-'}<span class="unit"> ms median</span></p>
     <p>${last.lapses} lapse${last.lapses === 1 ? '' : 's'} · ${last.falseStarts} false start${last.falseStarts === 1 ? '' : 's'} · ${fmtDate(tests[tests.length - 1].createdAt)}</p>
-    <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${msg}</p>
+    <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${msg}</p>${sleepVsReaction(tests)}
     <p><button type="button" class="btn" data-nav="alertness">Test again</button></p>`;
+}
+// Reaction test after short versus longer nights, from the sleep log. Own tests only; medians of medians.
+function sleepVsReaction(tests) {
+  const log = sleepLog();
+  const med = (a) => { const v = [...a].sort((x, y) => x - y); const n = v.length; return n % 2 ? v[(n - 1) / 2] : Math.round((v[n / 2 - 1] + v[n / 2]) / 2); };
+  const short = [], longer = [];
+  for (const t of tests) {
+    const night = log[dayKey(new Date(t.createdAt))];
+    const ms = t.alertness?.medianMs;
+    if (!night || !Number.isFinite(ms)) continue;
+    (shortSleep(night.id) ? short : longer).push(ms);
+  }
+  if (!short.length && !longer.length) return '';
+  if (short.length < 2 || longer.length < 2) return `<p class="fine">Sleep and reaction: ${short.length + longer.length} of your tests fall on nights logged on the Board. With at least 2 after short nights (5 h or less) and 2 after longer nights, this tile compares them.</p>`;
+  const a = med(short), b = med(longer), pct = Math.round(((a - b) / b) * 100);
+  return `<p class="fine">After short nights (5 h or less): median ${a} ms over ${short.length} test${short.length === 1 ? '' : 's'}. After longer nights: median ${b} ms over ${longer.length} test${longer.length === 1 ? '' : 's'}. ${Math.abs(pct)}% ${pct >= 0 ? 'slower' : 'faster'} after short nights. Your own tests, few of them: a pattern to watch, not a finding.</p>`;
 }
 
 /* ---------- spoken coaching ---------- */
@@ -1458,6 +1550,7 @@ function setLang(code) {
   $('langNotice').hidden = !notice;
   $('langNotice').textContent = notice;
   prefs.set('lang', used);
+  try { renderSleepLog(); } catch { /* board not ready yet */ }
 }
 $('langSel').addEventListener('change', (e) => setLang(e.target.value));
 setLang(prefs.get('lang') || 'en');
@@ -1656,9 +1749,19 @@ async function loadDemo(scenario = prefs.get('demoScenario') || 'shortsleep') {
   for (const x of [...makeDemoSessions(now, 42, scenario), ...makeDemoExp(now, scenario)]) await saveSession(x);
   prefs.set('profile', DEMO_PROFILE);
   prefs.set('demoScenario', scenario);
+  if (!prefs.get(`body:${DEMO_PROFILE}`)) prefs.set(`body:${DEMO_PROFILE}`, { sex: 'male', ...EARTH_AVG.male, source: 'US adult male average, sample' });
+  // Invented sample sleep log, 14 nights: short nights on the last three days in the short sleep scenario.
+  const nights = {};
+  for (let ago = 0; ago < 14; ago++) {
+    const d = new Date(now); d.setDate(d.getDate() - ago);
+    const id = scenario === 'shortsleep' && ago <= 2 ? '4-5' : ago % 3 === 0 ? '8+' : '6-7';
+    nights[dayKey(d)] = { id, h: sleepBucket(id).h, src: 'sample' };
+  }
+  prefs.set(`sleepLog:${DEMO_PROFILE}`, nights);
   renderProfileBar();
 }
-$('btnDemo').addEventListener('click', async () => { await loadDemo(); show('board'); });
+async function loadFullSample() { await loadSampleCrew(); await loadDemo('shortsleep'); ovState.region = null; ovState.metric = null; }
+$('btnDemo').addEventListener('click', async () => { await loadFullSample(); show('overview'); });
 
 // A sample crew of four invented people, one per scenario, to show the "Everyone on this device" list.
 async function loadSampleCrew() {
@@ -1670,12 +1773,15 @@ async function loadSampleCrew() {
     await clearAll();
     const recs = [...makeDemoSessions(now, c.seed, c.scenario), ...makeDemoExp(now, c.scenario)];
     for (const x of recs) await saveSession(c.id === DEMO_PROFILE ? x : { ...x, id: `${c.id}-${x.id}`, profileId: c.id });
+    const sex = c.sex || 'male';
+    prefs.set(`body:${c.id}`, { sex, ...EARTH_AVG[sex], source: `US adult ${sex} average, sample` });
   }
   setProfile(DEMO_PROFILE);
   prefs.set('profile', DEMO_PROFILE);
   prefs.set('demoScenario', 'shortsleep');
   renderProfileBar();
 }
+$('btnOvFull').addEventListener('click', async () => { await loadFullSample(); show('overview'); $('restoreMsg').textContent = 'Full sample loaded: one sample person with sleep log and reaction tests, plus a sample crew of four. All invented.'; });
 $('btnOvCrew').addEventListener('click', async () => { await loadSampleCrew(); show('overview'); $('ovRoster').scrollIntoView({ block: 'start' }); });
 
 /* ---------- trends ---------- */
@@ -2528,6 +2634,8 @@ if (state.screen === 'board') expApi.renderTile();
 const ovState = { region: null, metric: null };
 function sleepLastNight() {
   const sv = prefs.get('sleep');
+  const logged = sleepLog()[dayKey(new Date())];
+  if ((!sv?.start || !sv?.end || Date.now() - +new Date(sv.end) > 20 * H_MS) && logged && Number.isFinite(logged.h)) return logged.h;
   if (!sv?.start || !sv?.end) return null;
   const start = +new Date(sv.start), end = +new Date(sv.end), now = Date.now();
   if (!(end > start) || end > now + 60000 || now - end > 20 * H_MS) return null;
@@ -2538,7 +2646,32 @@ const OV_GO = { pulse: ['setup', 'Start a checkup'], resp: ['setup', 'Start a ch
   eyegrid: ['vision', 'Do the eye grid'], gaze: ['exp', 'Open experimental checks'], pupil: ['exp', 'Open experimental checks'], pallor: ['exp', 'Open experimental checks'],
   jaw: ['exp', 'Open experimental checks'], tremor: ['exp', 'Open experimental checks'], ptt: ['exp', 'Open experimental checks'], ror: ['exp', 'Open experimental checks'] };
 let ovCache = null;
+// Universal and local time, and a rest suggestion only when today's data supports one.
+async function renderNow() {
+  const box = $('ovNow'); if (!box) return;
+  const now = new Date();
+  const utc = `${pad2(now.getUTCHours())}:${pad2(now.getUTCMinutes())}`;
+  const local = fmtClock(now);
+  const why = [];
+  const sv = prefs.get('sleep');
+  if (sv?.start && sv?.end) {
+    const r = sleepPressure({ sleepStart: new Date(sv.start), sleepEnd: new Date(sv.end), now, usualSleepH: sv.usual === '' || sv.usual == null ? usualFromLog()?.h : Number(sv.usual) });
+    if (r && !r.asleepNow && now - new Date(sv.end) < 20 * H_MS && r.band === 'above') why.push(`modeled sleep pressure ${r.s.toFixed(2)} is above the sleep band`);
+  }
+  const h = sleepLastNight();
+  const tests = await pvtTests();
+  const last = tests.at(-1);
+  if (h != null && h <= 5 && last && tests.length > 1 && now - new Date(last.createdAt) < 24 * H_MS) {
+    const cmp = comparePvt(last.alertness, tests[0].alertness);
+    if (cmp?.verdict === 'slower') why.push(`last night was ${h} h and today's reaction test was ${cmp.pct}% slower than your reference`);
+  }
+  const advice = why.length ? `<p class="warnline">Rest suggested: ${why.join('; ')}. Plan sleep or a break before demanding tasks if you can.</p>`
+    : `<p class="fine">No rest flag from today's data (sleep pressure and reaction test).</p>`;
+  box.innerHTML = `<p class="ov-times"><span>UTC <strong translate="no">${utc}</strong></span> <span>Local <strong translate="no">${local}</strong></span></p>${advice}`;
+}
+setInterval(() => { if (!$('screen-overview')?.hidden) renderNow().catch(() => {}); }, 30000);
 async function renderOverview() {
+  renderNow().catch(() => {});
   const all = await listSessions();
   const { original } = await baselineAndRecent();
   const bench = benchError(all);
@@ -2549,6 +2682,7 @@ async function renderOverview() {
   const regions = buildRegions(all, { original, floors, sleepHours: sleepH, latestChecklist: lastC?.context?.checklist || [] });
   ovCache = { all, original, floors, regions };
   renderRoster();
+  renderBodyCard();
   if (!ovState.region || !regions.some((r) => r.id === ovState.region)) {
     ovState.region = (regions.find((r) => r.status === 'urgent') || regions.find((r) => r.status === 'review') || regions.find((r) => r.id === 'heart')).id;
     ovState.metric = null;
@@ -2576,7 +2710,9 @@ async function renderOverview() {
   $('ovKpis').innerHTML = kpi('Pulse', lastC?.pulse?.bpm, 'bpm', word(pc), pc && (pc.kind === 'up' || pc.kind === 'down'))
     + kpi('Breathing', lastC?.resp?.rpm, '/min', word(rc), rc && (rc.kind === 'up' || rc.kind === 'down'))
     + kpi('Reaction', lastT?.alertness.medianMs, 'ms', !lastT ? 'No test yet' : tests.length < 2 ? 'First test' : slower ? 'Over 10% slower than first' : 'Within 10% of first', slower)
-    + kpi('Sleep', sleepH, 'h', sleepH == null ? 'Enter last night on the Board' : sleepH < 6 ? 'Under 6 h last night' : 'Last night', sleepH != null && sleepH < 6);
+    + kpi('Sleep', sleepH, 'h', sleepH == null ? 'Enter last night on the Board' : sleepH < 6 ? 'Under 6 h last night' : 'Last night', sleepH != null && sleepH < 6)
+    + (() => { const m = prefs.get('radMission') || { leoDays: 180, transitDays: 0, surfaceDays: 0 }; const d = missionDose(m); const lo = Math.round(d.low), hi = Math.round(d.high);
+      return kpi('Radiation', lo === hi ? lo : `${lo} to ${hi}`, 'mSv', `Mission estimate (MODELED), ${Math.round(d.fracLow * 100)} to ${Math.round(d.fracHigh * 100)}% of NASA's 600 mSv career limit; set on the Board`, d.fracHigh >= 1); })();
   drawOvChart();
   // What to look at, and the next step
   const flagged = regions.filter((r) => r.reasons.length).sort((a, b) => (a.status === 'urgent' ? -1 : 0) - (b.status === 'urgent' ? -1 : 0));
@@ -2589,6 +2725,33 @@ async function renderOverview() {
     ${next ? `<p><strong>Next step:</strong> ${esc(next.text)} ${next.nav ? `<button type="button" class="link-btn" data-nav="${next.nav}">Go</button>` : ''}</p>` : ''}
     <p class="fine">A reading order, not a diagnosis. Bands are design choices.</p>`;
 }
+// Body measures for the person shown: sex (for averages and notes only), height, weight, BMI.
+const bodyKey = () => `body:${getProfile()}`;
+const isSampleProfile = () => getProfile() === DEMO_PROFILE || SAMPLE_CREW.some((c) => c.id === getProfile());
+function renderBodyCard() {
+  const b = prefs.get(bodyKey()) || {};
+  for (const r of document.querySelectorAll('input[name=bodySex]')) r.checked = r.value === (b.sex || '');
+  $('bodyHeight').value = b.heightCm ?? ''; $('bodyWeight').value = b.weightKg ?? '';
+  $('bodyAvgRow').hidden = !isSampleProfile();
+  const res = bmi(b.heightCm, b.weightKg);
+  const avg = (k) => { const a = EARTH_AVG[k], r = bmi(a.heightCm, a.weightKg); return `${k === 'male' ? 'men' : 'women'} ${a.heightCm} cm, ${a.weightKg} kg (BMI ${r.value})`; };
+  $('bodyOut').innerHTML = `${res ? `<p class="big-num">${res.value}<span class="unit"> BMI, ${res.category}${b.source ? ` (${esc(b.source)})` : ''}</span></p>` : '<p class="fine">Enter height and weight to see BMI.</p>'}
+    <p class="fine">Earth averages, US adults 20 and over: ${avg('male')}; ${avg('female')} (CDC, NHANES 2021 to 2023). An average is not a healthy target.</p>
+    <p class="fine">BMI is a population screening number: it does not tell muscle from fat, and some populations (for example many Asian populations) carry more risk at a lower BMI. Not a diagnosis.</p>
+    ${b.sex === 'female' ? '<p class="fine ov-cycle"><strong>Menstrual cycle:</strong> this app does not take the menstrual cycle into account. On Earth, resting pulse during sleep was about 2 bpm higher in the fertile window and about 3 to 4 bpm higher in the mid-luteal phase than during menstruation (Shilaih et al. 2017, wearable study), so a change of a few beats can be the cycle. Data on the menstrual cycle in spaceflight are limited, partly because many astronauts suppress menstruation, and research is ongoing.</p>' : ''}`;
+}
+function saveBody(patch) {
+  const b = { ...(prefs.get(bodyKey()) || {}), ...patch };
+  prefs.set(bodyKey(), b);
+  renderBodyCard();
+}
+$('btnBodySave').addEventListener('click', () => saveBody({ heightCm: $('bodyHeight').value ? +$('bodyHeight').value : null, weightKg: $('bodyWeight').value ? +$('bodyWeight').value : null, source: null }));
+for (const r of document.querySelectorAll('input[name=bodySex]')) r.addEventListener('change', () => saveBody({ sex: r.value || null }));
+$('bodyAvgRow').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-body-avg]')?.dataset.bodyAvg;
+  if (k) saveBody({ sex: k, ...EARTH_AVG[k], source: `US adult ${k} average, sample` });
+});
+
 // Everyone on a shared device (a crew tablet, a health centre laptop): one row per person, so the reviewer
 // sees who needs a look first. Names stay on the device. A reading order, never a ranking of people's health.
 async function renderRoster() {
@@ -2681,7 +2844,7 @@ function drawOvChart() {
   if (!pts.length) {
     const go = OV_GO[ovState.metric];
     $('ovChart').innerHTML = `<div class="ov-empty"><div><p>No values yet.</p>${go ? `<button type="button" class="btn" data-nav="${go[0]}">${go[1]}</button>` : ''}</div></div>`;
-    $('ovChartNote').textContent = ''; $('ovValues').innerHTML = ''; $('ovTrend').hidden = true;
+    $('ovChartNote').textContent = ''; $('ovValues').innerHTML = ''; $('ovTrend').hidden = true; $('ovStats').hidden = true;
     return;
   }
   $('ovChart').innerHTML = lineChart(pts, { unit: def.unit, ref, title: def.label });
@@ -2690,6 +2853,10 @@ function drawOvChart() {
   const trText = [trendLine(tr, def.unit), ageDays >= 14 ? `The latest value is ${ageDays} days old: a new check would say more about today.` : ''].filter(Boolean).join(' ');
   $('ovTrend').hidden = !trText; $('ovTrend').textContent = trText;
   $('ovTrend').className = `ov-trend ${tr.kind}`;
+  const st = personalStats(pts);
+  const extra = [statsLine(st, def.unit), earthLine(ovState.metric, pts[pts.length - 1].v)].filter(Boolean);
+  $('ovStats').hidden = !extra.length;
+  $('ovStats').innerHTML = extra.map((x) => `<span>${esc(x)}</span>`).join(' ');
   const exp = def.src.startsWith('exp:');
   $('ovChartNote').textContent = `${pts.length} value${pts.length === 1 ? '' : 's'}${ref ? ` · line: ${ref.label}${ref.band ? `, shaded band ±${Math.round(ref.band * 100) / 100}` : ''}` : ' · no baseline yet'}${exp ? ' · experimental' : ''}. Red dots sit outside the band; hollow dots were low quality captures.`;
   $('ovValues').innerHTML = `<table><thead><tr><th scope="col">Date</th><th scope="col">${esc(def.label)}</th></tr></thead><tbody>${pts.slice().reverse().map((p) => `<tr><td>${fmtDate(new Date(p.t).toISOString())}</td><td>${p.v}${def.unit && def.unit !== 'index' ? ` ${esc(def.unit)}` : ''}</td></tr>`).join('')}</tbody></table>`;

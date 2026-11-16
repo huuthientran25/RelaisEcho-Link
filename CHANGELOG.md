@@ -2,13 +2,23 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## v1.3 (15 Nov 2026): sample data in one place, clock, suggested order
+
+- One button loads the full sample (sample person with sleep log and reaction tests, plus the crew of four) on the home page and the Overview; the scenario loader and crew list are relabelled ("Load this scenario", "Crew list only").
+- Overview shows UTC and local time and a rest suggestion only when the data supports it: modeled sleep pressure above the sleep band, or last night 5 h or less and a reaction test in the last 24 h slower than the person's reference. Otherwise it says there is no rest flag. Design choice, not medical advice.
+- Overview radiation tile: mission dose estimate in mSv and share of NASA's 600 mSv career limit, from the mission set on the Board (default 180 days on the ISS).
+- Overview "Suggested order" links: checkup, reaction test, mission board, history, nurse packet.
+
 ## v1.2 (15 Nov 2026): one sleep answer fills three places
 
 - **Sleep hours instead of "Slept badly".** The checkup asks "Sleep last night": 3 h or less, 4 to 5 h, 6 to 7 h, 8 h or more (or Skip). The answer goes into the checkup record and the nurse packet ("Sleep last night (self report)"), ticks "Short sleep (5 h or less)" automatically for the two shortest answers (so symptom counts and the SL code in the satellite message keep working), fills Sleep pressure on the Board (unless exact times were entered there today) and the Sleep number on the Overview.
 - **Retroactive sleep log.** The Board's Sleep pressure tile has a 7 night strip: each night can be filled in or changed later. Short nights show red. When usual sleep is left blank, the model uses the average of the logged nights in the last 14 days (3 or more needed), else last night.
 - **Less scrolling.** Quick "Last night" buttons on top; exact bed and wake times fold away under "Exact times and usual sleep"; result and chart sit side by side when the tile is wide; shorter source note.
+- **Reaction test against sleep.** The Alertness tile compares the person's own reaction test medians after short nights (5 h or less) and after longer nights, once there are 2 of each in the sleep log, and says plainly that a few tests are a pattern to watch, not a finding.
+- **Satellite message** carries the sleep answer as `SLP le3`, `SLP 4-5`, `SLP 6-7` or `SLP 8+`, and the decoder reads it back.
+- The sample person has an invented 14 night sleep log (short nights on the last three days in the short sleep scenario).
 - Hours used by the model for each answer: 3, 4.5, 6.5 and 8 h (a design choice). Logged per person, on the device only.
-- 128 unit tests.
+- 129 unit tests.
 
 ## v1.1 (15 Nov 2026): derived metrics and Earth context
 

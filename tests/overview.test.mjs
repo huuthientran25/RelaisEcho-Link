@@ -201,3 +201,23 @@ test('packet fingerprint: intact after a JSON round trip, changed after an edit,
   assert.equal((await checkIntegrity(old)).state, 'none');
   assert.match(packetText(built.packet), /Fingerprint: [0-9A-F-]{19}/);
 });
+
+test('derived metrics: own spread (z score), Earth ranges, BMI, heartbeats per breath', async () => {
+  const { personalStats, statsLine, earthLine, bmi, EARTH_AVG, METRIC_DEFS, STATS_MIN } = await import('../js/overview.js');
+  const pts = [60, 62, 61, 63, 59, 62, 72].map((v, i) => ({ t: i, v, q: 'high' }));
+  const st = personalStats(pts);
+  assert.equal(st.n, 6); assert.equal(st.mean, 61.17); assert.equal(st.sd, 1.47); assert.equal(st.z, 7.4); assert.equal(st.above, 6);
+  assert.match(statsLine(st, 'bpm'), /\+7\.4 standard deviations from your own mean, higher than all 6 earlier values/);
+  assert.equal(personalStats(pts.slice(0, STATS_MIN)), null, 'too few values');
+  assert.equal(personalStats([...pts.slice(0, 6), { t: 9, v: 99, q: 'low' }]).latest, 62, 'low quality is skipped');
+  assert.match(earthLine('pulse', 104), /above it/);
+  assert.match(earthLine('resp', 15), /inside it/);
+  assert.equal(earthLine('alert', 300), '');
+  assert.deepEqual(bmi(175, 70), { value: 22.9, category: 'healthy weight range' });
+  assert.equal(bmi(160, 47).category, 'underweight');
+  assert.equal(bmi(EARTH_AVG.male.heightCm, EARTH_AVG.male.weightKg).value, 29.5);
+  assert.equal(bmi(EARTH_AVG.female.heightCm, EARTH_AVG.female.weightKg).value, 29.9);
+  assert.equal(bmi(0, 70), null);
+  assert.equal(METRIC_DEFS.hpb.get({ pulse: { bpm: 72 }, resp: { rpm: 15 } }), 4.8);
+  assert.equal(METRIC_DEFS.hpb.get({ pulse: { bpm: 72 } }), null);
+});

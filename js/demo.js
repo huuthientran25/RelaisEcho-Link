@@ -7,10 +7,10 @@ export const DEMO_PROFILE = 'demo';
 export const DEMO_NAME = 'Sample crew member (invented data)';
 // A sample crew of four invented people, one per scenario, for the "Everyone on this device" list.
 export const SAMPLE_CREW = [
-  { id: DEMO_PROFILE, name: DEMO_NAME, scenario: 'shortsleep', seed: 42 },
-  { id: 'demo-b', name: 'Sample crew member B (invented data)', scenario: 'steady', seed: 7 },
-  { id: 'demo-c', name: 'Sample crew member C (invented data)', scenario: 'gums', seed: 11 },
-  { id: 'demo-d', name: 'Sample crew member D (invented data)', scenario: 'breath', seed: 23 },
+  { id: DEMO_PROFILE, name: DEMO_NAME, scenario: 'shortsleep', seed: 42, sex: 'male' },
+  { id: 'demo-b', name: 'Sample crew member B (invented data)', scenario: 'steady', seed: 7, sex: 'female' },
+  { id: 'demo-c', name: 'Sample crew member C (invented data)', scenario: 'gums', seed: 11, sex: 'male' },
+  { id: 'demo-d', name: 'Sample crew member D (invented data)', scenario: 'breath', seed: 23, sex: 'female' },
 ];
 
 // Small deterministic generator so the demo looks the same every time.

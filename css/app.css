@@ -505,3 +505,32 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
   .roster td[data-label]::before { content: attr(data-label) ": "; font-weight: 700; }
   .roster td:last-child { white-space: normal; }
 }
+.ov-bodyinfo { margin-top: 14px; }
+.ov-sex { border: 0; padding: 0; margin: 8px 0; display: flex; gap: 16px; flex-wrap: wrap; }
+.ov-sex legend { font-weight: 700; margin-bottom: 4px; }
+.ov-bodyrow { gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.ov-bodyrow input { width: 7em; display: block; }
+.ov-stats { margin: 6px 0 0; }
+.ov-stats span { display: block; }
+/* v1.2 sleep tile: quick answer, side by side result and chart, 7 night log */
+.sleep-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 8px; }
+.sleep-quick [data-sleep-h] { min-height: 40px; padding: 0 8px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; cursor: pointer; }
+.sleep-quick [data-sleep-h][aria-pressed="true"] { background: var(--navy); color: var(--on-solid); font-weight: 700; }
+.sleep-tile { container-type: inline-size; }
+.sleep-main { display: grid; grid-template-columns: 1fr; gap: 4px; align-items: start; }
+@container (min-width: 620px) { .sleep-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; } }
+.sleep-main #sleepBody p { margin: 4px 0; }
+.sleep-main .big-num { margin: 0; }
+.sleep-log .nights { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.sleep-log .night { display: flex; flex-direction: column; align-items: stretch; gap: 2px; font-size: 13px; font-weight: 400; text-align: center; }
+.sleep-log .barbox { height: 36px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
+.sleep-log .night .bar { width: 14px; background: var(--blue); border-radius: 3px 3px 0 0; }
+.sleep-log .night.short .bar { background: var(--alert); }
+.sleep-log .night .d { min-height: 1.2em; white-space: nowrap; }
+.sleep-log .night .d.now { font-weight: 700; }
+.sleep-log select { font-size: 12px; padding: 2px 0; min-height: 36px; width: 100%; }
+.sleep-more summary { cursor: pointer; font-size: 15px; margin: 6px 0; }
+.ov-now { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 8px 0; }
+.ov-now p { margin: 0; }
+.ov-times span { margin-right: 14px; font-size: 18px; }
+.ov-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 4px 0 12px; }

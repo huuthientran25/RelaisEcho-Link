@@ -72,7 +72,7 @@
         <button data-i18n="home.board" type="button" class="btn" data-nav="board">Mission board</button>
         <button data-i18n="home.sample" type="button" class="btn" id="btnSample">Watch sample replay</button>
         <button type="button" class="btn" id="btnInstall" hidden>Install for offline use</button>
-        <button type="button" class="btn" id="btnDemo">Explore with sample data</button>
+        <button type="button" class="btn" id="btnDemo">Explore with the full sample</button>
       </div>
       <p class="fine" id="sampleNote"></p>
       <p data-i18n="home.disclaimer" class="fine">Research prototype built at NASA Space Apps 2026, Montreal. Not a diagnostic device. If something feels wrong, contact a clinician directly.</p>
@@ -112,9 +112,22 @@
         <button type="button" class="btn" id="btnOvClock">Save</button><button type="button" class="link-btn" id="btnOvClockClear">Clear</button></div>
         <p class="fine">For a field rotation, a winter posting or a mission. Shown here only; it changes no result.</p>
       </details>
-      <div class="ov-scen"><label for="ovScenario">Explore a scenario (sample data)</label>
-        <select id="ovScenario" class="ov-select"></select><button type="button" class="btn" id="btnOvScenario">Load</button>
-        <button type="button" class="link-btn" id="btnOvCrew">Load a sample crew of four</button></div>
+      <div class="ov-scen"><span class="fine"><strong>Sample data:</strong></span>
+        <button type="button" class="btn primary" id="btnOvFull">Load the full sample</button>
+        <label for="ovScenario">or one person, one scenario</label>
+        <select id="ovScenario" class="ov-select"></select><button type="button" class="btn" id="btnOvScenario">Load this scenario</button>
+        <button type="button" class="link-btn" id="btnOvCrew">Crew list only (4 people)</button></div>
+    </div>
+    <div class="ov-now" id="ovNow" aria-live="polite"></div>
+    <nav class="ov-steps" aria-label="Suggested order">
+      <span class="fine"><strong>Suggested order:</strong></span>
+      <button type="button" class="link-btn" data-nav="setup">1. Checkup</button>
+      <button type="button" class="link-btn" data-nav="alertness">2. Reaction test</button>
+      <button type="button" class="link-btn" data-nav="board">3. Mission board</button>
+      <button type="button" class="link-btn" data-nav="history">4. History</button>
+      <button type="button" class="link-btn" data-nav="review">5. Nurse packet</button>
+    </nav>
+    <div hidden>
     </div>
     <div class="ov-grid">
       <div class="card ov-bodycard">
@@ -769,7 +782,7 @@
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
   <span>Logo: AI-generated with ChatGPT; marked “AI” wherever it appears.</span>
-  <span>RelaisÉcho Link <span id="appVersion">v1.2</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v1.3</span></span>
 </footer>
 </body>
 </html>
