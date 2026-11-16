@@ -107,7 +107,7 @@ import { readFileSync } from 'node:fs';
   const { makeDemoSessions, DEMO_PROFILE } = await import('../js/demo.js');
   const { validatePacket, safeImage } = await import('../js/review.js');
   const { benchError, noiseFloor } = await import('../js/change.js');
-  const { buildPacket } = await import('../js/packet.js');
+  const { buildPacket, packetText } = await import('../js/packet.js');
 
   test('demo data is deterministic, marked, recent and fills every screen', () => {
     const now = new Date('2026-11-15T12:00');
@@ -212,7 +212,7 @@ import { readFileSync } from 'node:fs';
 
   test('symptom checklist: labels keep the list order, unknown ids are dropped, urgent items are flagged', () => {
     assert.equal(new Set(SYMPTOMS.map((s) => s.id)).size, SYMPTOMS.length);
-    assert.deepEqual(symptomLabels(['sleep', 'nope', 'headache']), ['Headache', 'Slept badly']);
+    assert.deepEqual(symptomLabels(['sleep', 'nope', 'headache']), ['Headache', 'Short sleep (5 h or less)']);
     assert.deepEqual(symptomLabels(undefined), []);
     assert.equal(hasUrgent(['headache']), false);
     assert.equal(hasUrgent(['headache', 'chest']), true);
@@ -232,9 +232,8 @@ import { readFileSync } from 'node:fs';
   test('packet, text summary and CSV carry the ticked symptoms; urgent ticks are called out', () => {
     const base = { id: 'a', kind: 'followup', createdAt: '2026-11-15T10:00:00Z', source: 'camera', dental: {} };
     const calm = buildPacket({ ...base, context: { symptoms: 'tired', checklist: ['sleep', 'headache'] } }, { original: null, recent: [] }).packet;
-    assert.deepEqual(calm.self_report_checklist, ['Headache', 'Slept badly']);
-    assert.equal(calm.self_report_urgent, false);
-    assert.match(packetText(calm), /Symptoms ticked: Headache, Slept badly/);
+    assert.deepEqual(calm.self_report_checklist, ['Headache', 'Short sleep (5 h or less)']);
+    assert.match(packetText(calm), /Symptoms ticked: Headache, Short sleep \(5 h or less\)/);
     assert.doesNotMatch(packetText(calm), /URGENT/);
     const urgent = buildPacket({ ...base, context: { checklist: ['chest'] } }, { original: null, recent: [] }).packet;
     assert.equal(urgent.self_report_urgent, true);
@@ -268,3 +267,17 @@ import { readFileSync } from 'node:fs';
     assert.match(standouts({ results: { pulse_bpm: { value: null }, breathing_per_min: { value: null } } })[0].text, /no pulse or breathing result/);
   });
 }
+
+test('sleep answer: buckets, short sleep flag, packet line', async () => {
+  const { SLEEP_BUCKETS, sleepBucket, bucketFor, shortSleep, SYMPTOMS } = await import('../js/symptoms.js');
+  const { buildPacket, packetText } = await import('../js/packet.js');
+  assert.deepEqual(SLEEP_BUCKETS.map((b) => b.label), ['3 h or less', '4 to 5 h', '6 to 7 h', '8 h or more']);
+  assert.equal(sleepBucket('4-5').h, 4.5);
+  assert.equal(bucketFor(2).id, 'le3'); assert.equal(bucketFor(5.5).id, '4-5'); assert.equal(bucketFor(7).id, '6-7'); assert.equal(bucketFor(9).id, '8+');
+  assert.ok(shortSleep('le3') && shortSleep('4-5') && !shortSleep('6-7'));
+  assert.ok(SYMPTOMS.find((x) => x.id === 'sleep').auto, 'short sleep is ticked from the hours answer, not shown as a box');
+  const base = { id: 'x', kind: 'followup', createdAt: '2026-11-15T12:00:00.000Z', pulse: { bpm: 70, quality: 'high' }, resp: { rpm: 14, quality: 'high' }, dental: {} };
+  const p = buildPacket({ ...base, context: { sleepH: '4-5', checklist: ['sleep'] } }, { original: null, recent: [] });
+  assert.equal(p.packet.self_report_sleep, '4 to 5 h');
+  assert.match(packetText(p.packet), /Sleep last night \(self report\): 4 to 5 h/);
+});

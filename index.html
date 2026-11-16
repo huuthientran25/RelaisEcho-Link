@@ -185,16 +185,26 @@
         <div id="alertBody"></div>
       </article>
 
-      <article class="tile" aria-labelledby="h-t-sleep">
+      <article class="tile sleep-tile" aria-labelledby="h-t-sleep">
         <header><h2 data-i18n="board.t.sleep" id="h-t-sleep">Sleep pressure</h2><span class="tag">MODELED</span></header>
-        <form id="sleepForm" class="grid2 tight">
-          <label>Went to sleep<input type="datetime-local" id="sleepStart" required></label>
-          <label>Woke up<input type="datetime-local" id="sleepEnd" required></label>
-          <label>Usual sleep (hours)<input type="number" id="usualSleep" min="3" max="12" step="0.5" placeholder="e.g. 8"></label>
-        </form>
-        <div id="sleepBody" aria-live="polite"></div>
-        <svg id="sleepChart" class="spark" viewBox="0 0 600 180" role="img" aria-label="Modeled sleep pressure over the last day"></svg>
-        <p class="fine">Process S of the two process model (Daan, Beersma and Borbély 1984). The time of day swing is shown as a band of ±0.12 around the sleep threshold because the phase of your body clock is not measured here. For orientation only. <button type="button" class="link-btn" data-evidence="sleep">Evidence</button></p>
+        <div class="sleep-quick" role="group" aria-labelledby="sleepQuickLbl">
+          <span id="sleepQuickLbl" class="fine">Last night:</span>
+          <button type="button" data-sleep-h="le3" aria-label="3 h or less">≤ 3 h</button><button type="button" data-sleep-h="4-5">4 to 5 h</button><button type="button" data-sleep-h="6-7">6 to 7 h</button><button type="button" data-sleep-h="8+" aria-label="8 h or more">8 h +</button>
+        </div>
+        <div class="sleep-main">
+          <div id="sleepBody" aria-live="polite"></div>
+          <svg id="sleepChart" class="spark" viewBox="0 0 600 180" role="img" aria-label="Modeled sleep pressure over the last day"></svg>
+        </div>
+        <div id="sleepLog" class="sleep-log"></div>
+        <details class="sleep-more">
+          <summary>Exact times and usual sleep</summary>
+          <form id="sleepForm" class="grid2 tight">
+            <label>Went to sleep<input type="datetime-local" id="sleepStart" required></label>
+            <label>Woke up<input type="datetime-local" id="sleepEnd" required></label>
+            <label>Usual sleep (hours)<input type="number" id="usualSleep" min="3" max="12" step="0.5" placeholder="from your log, else last night"></label>
+          </form>
+        </details>
+        <p class="fine">Process S of the two process model (Daan, Beersma and Borbély 1984); band ±0.12 because your body clock is not measured. For orientation only. <button type="button" class="link-btn" data-evidence="sleep">Evidence</button></p>
       </article>
 
       <article class="tile" aria-labelledby="h-t-day">
@@ -392,6 +402,17 @@
           <label><input type="radio" name="glasses" value="no" checked> No</label>
           <label><input type="radio" name="glasses" value="yes"> Yes</label>
         </div>
+      </fieldset>
+      <fieldset>
+        <legend>Sleep last night</legend>
+        <div class="seg ticks" id="sleepTicks">
+          <label><input type="radio" name="sleepH" value="" checked> Skip</label>
+          <label><input type="radio" name="sleepH" value="le3"> 3 h or less</label>
+          <label><input type="radio" name="sleepH" value="4-5"> 4 to 5 h</label>
+          <label><input type="radio" name="sleepH" value="6-7"> 6 to 7 h</label>
+          <label><input type="radio" name="sleepH" value="8+"> 8 h or more</label>
+        </div>
+        <p class="fine">Also fills Sleep pressure on the Board, unless you entered exact times there today.</p>
       </fieldset>
       <fieldset>
         <legend>Any of these today?</legend>
@@ -748,7 +769,7 @@
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
   <span>Logo: AI-generated with ChatGPT; marked “AI” wherever it appears.</span>
-  <span>RelaisÉcho Link <span id="appVersion">v1.1</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v1.2</span></span>
 </footer>
 </body>
 </html>

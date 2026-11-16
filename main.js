@@ -14,7 +14,7 @@ import { buildPacket, packetText, packetSms, SMS_LEGEND, SMS_MAX, decodeSms, sea
 import { EVIDENCE } from './evidence.js';
 import { sleepPressure, missionDose, MISSION_PRESETS, consistency, RADIATION, todaySteps } from './board.js';
 import { loadSpaceWeather, isFresh } from './spaceweather.js';
-import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts } from './symptoms.js';
+import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts, SLEEP_BUCKETS, sleepBucket, bucketFor, shortSleep } from './symptoms.js';
 import { dayLength, fmtHours, PLACES, ISS_SUNRISES_PER_DAY } from './daylight.js';
 import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
 import { applyLang, phrase } from './i18n.js';
@@ -189,13 +189,14 @@ $('setupForm').addEventListener('submit', async (e) => {
   state.session = {
     id: newId(), createdAt: new Date().toISOString(), kind: f.get('kind') || 'baseline',
     source: src === 'file' ? 'file' : 'camera', facing: src === 'file' ? null : src,
-    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim(), checklist: tickedSymptoms() },
+    context: { activity: f.get('activity'), glasses: f.get('glasses'), symptoms: $('symptoms').value.trim(), checklist: tickedSymptoms(), ...(f.get('sleepH') ? { sleepH: f.get('sleepH') } : {}) },
     complete: false, dental: {},
   };
+  if (f.get('sleepH')) { if (shortSleep(f.get('sleepH'))) state.session.context.checklist.push('sleep'); sleepFromCheckup(f.get('sleepH')); }
   await startScan(src, file);
 });
 // Symptom checklist in the setup form.
-$('symptomTicks').innerHTML = SYMPTOMS.map((x) => `<label><input type="checkbox" name="sym" value="${x.id}"> ${esc(x.label)}</label>`).join('');
+$('symptomTicks').innerHTML = SYMPTOMS.filter((x) => !x.auto).map((x) => `<label><input type="checkbox" name="sym" value="${x.id}"> ${esc(x.label)}</label>`).join('');
 function tickedSymptoms() { return [...document.querySelectorAll('#symptomTicks input:checked')].map((i) => i.value); }
 $('symptomTicks').addEventListener('change', () => {
   const urgent = hasUrgent(tickedSymptoms());
@@ -1032,9 +1033,12 @@ async function renderBoard() {
   // model show many hours awake that never happened.
   const savedEnd = saved?.end ? +new Date(saved.end) : NaN;
   const fresh = Number.isFinite(savedEnd) && savedEnd <= +now + 60000 && +now - savedEnd < 20 * H_MS;
-  $('sleepStart').value = fresh ? saved.start : toLocalInput(bed);
-  $('sleepEnd').value = fresh ? saved.end : toLocalInput(wake);
-  $('usualSleep').value = saved?.usual ?? '';
+  const logged = sleepLog()[dayKey(now)];
+  if (!fresh && logged?.id) { applyBucket(logged.id, 'log'); fillSleepInputs(); } else {
+    $('sleepStart').value = fresh ? saved.start : toLocalInput(bed);
+    $('sleepEnd').value = fresh ? saved.end : toLocalInput(wake);
+    $('usualSleep').value = saved?.usual ?? '';
+  }
   const mission = prefs.get('radMission');
   if (mission) { $('radLeo').value = mission.leoDays ?? 180; $('radTransit').value = mission.transitDays ?? 0; $('radSurface').value = mission.surfaceDays ?? 0; }
   updateSleepTile(); updateRadTile(); renderDaylight(); refreshSpaceWeather(false); renderDelay(); renderEyeTile(); expApi?.renderTile();
@@ -1045,11 +1049,83 @@ async function renderBoard() {
   renderInfTile();
 }
 
-function updateSleepTile() {
+/* ---------- sleep: one answer fills the checkup, the Board and the Overview ---------- */
+// Log of nights per person on this device: { 'YYYY-MM-DD' (morning of waking): { id, h, src } }.
+const dayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const sleepLogKey = () => `sleepLog:${getProfile()}`;
+function sleepLog() { const l = prefs.get(sleepLogKey()); return l && typeof l === 'object' ? l : {}; }
+function setNight(key, id, h, src) {
+  const l = sleepLog();
+  if (!id) delete l[key]; else l[key] = { id, h: Number.isFinite(h) ? Math.round(h * 10) / 10 : sleepBucket(id).h, src };
+  prefs.set(sleepLogKey(), l);
+}
+// Usual sleep from the log: mean of logged nights in the last 14 days, last night excluded, when 3 or more.
+function usualFromLog(now = new Date()) {
+  const l = sleepLog(), hs = [];
+  for (let i = 1; i <= 14; i++) { const d = new Date(now); d.setDate(d.getDate() - i); const n = l[dayKey(d)]; if (n && Number.isFinite(n.h)) hs.push(n.h); }
+  return hs.length >= 3 ? { h: Math.round((hs.reduce((a, b) => a + b, 0) / hs.length) * 10) / 10, n: hs.length } : null;
+}
+// Turn a bucket into bed and wake times for the model: wake at the usual wake time (else 07:00), never in the future.
+function applyBucket(id, src) {
+  const b = sleepBucket(id); if (!b) return;
+  const saved = prefs.get('sleep') || {};
+  const now = new Date(), w0 = saved.end ? new Date(saved.end) : null;
+  const wake = new Date(now);
+  if (w0 && !Number.isNaN(+w0)) wake.setHours(w0.getHours(), w0.getMinutes(), 0, 0); else wake.setHours(7, 0, 0, 0);
+  if (wake > now) wake.setTime(+now);
+  prefs.set('sleep', { start: toLocalInput(new Date(+wake - b.h * H_MS)), end: toLocalInput(wake), usual: saved.usual ?? '', src, bucket: id });
+}
+function fillSleepInputs() { const sv = prefs.get('sleep') || {}; $('sleepStart').value = sv.start || ''; $('sleepEnd').value = sv.end || ''; $('usualSleep').value = sv.usual ?? ''; }
+function exactTimesToday() {
+  const sv = prefs.get('sleep');
+  return sv?.src === 'times' && sv.end && Date.now() - +new Date(sv.end) < 20 * H_MS;
+}
+function sleepFromCheckup(id) {
+  setNight(dayKey(new Date()), id, undefined, 'checkup');
+  if (!exactTimesToday()) applyBucket(id, 'checkup');
+}
+function renderSleepLog() {
+  const box = $('sleepLog'); if (!box) return;
+  const l = sleepLog(), now = new Date();
+  const fmt = new Intl.DateTimeFormat(curLang === 'fr' ? 'fr-CA' : 'en-CA', { weekday: 'short', day: 'numeric' });
+  const SHORT = { le3: '≤ 3', '4-5': '4 to 5', '6-7': '6 to 7', '8+': '8 +' };
+  const opts = (sel) => `<option value="">?</option>${SLEEP_BUCKETS.map((b) => `<option value="${b.id}"${sel === b.id ? ' selected' : ''} translate="no">${SHORT[b.id]}</option>`).join('')}`;
+  const cells = [];
+  const hs = [];
+  let shortN = 0;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const k = dayKey(d), n = l[k];
+    if (n && Number.isFinite(n.h)) { hs.push(n.h); if (shortSleep(n.id)) shortN += 1; }
+    const h = n && Number.isFinite(n.h) ? n.h : 0;
+    cells.push(`<label class="night${n && shortSleep(n.id) ? ' short' : ''}"><span class="barbox" aria-hidden="true"><span class="bar" style="height:${Math.round((Math.min(h, 10) / 10) * 34)}px"></span></span><span class="d${i === 0 ? ' now' : ''}" translate="no">${esc(fmt.format(d))}</span><select data-night="${k}" aria-label="Sleep hours, night before ${esc(k)}${i === 0 ? ' (last night)' : ''}">${opts(n?.id)}</select></label>`);
+  }
+  const avg = hs.length ? Math.round((hs.reduce((a, b) => a + b, 0) / hs.length) * 10) / 10 : null;
+  box.innerHTML = `<p class="fine"><strong>Last 7 nights</strong> (fill in earlier nights any time)${avg != null ? `: ${hs.length} logged, average ${avg} h, ${shortN} of 5 h or less` : ''}.</p><div class="nights">${cells.join('')}</div>`;
+}
+$('sleepLog')?.addEventListener('change', (e) => {
+  const k = e.target.dataset?.night; if (!k) return;
+  setNight(k, e.target.value || null, undefined, 'board');
+  if (k === dayKey(new Date()) && e.target.value) { applyBucket(e.target.value, 'board'); fillSleepInputs(); }
+  updateSleepTile();
+});
+document.querySelector('.sleep-quick')?.addEventListener('click', (e) => {
+  const id = e.target.closest('[data-sleep-h]')?.dataset.sleepH; if (!id) return;
+  setNight(dayKey(new Date()), id, undefined, 'board');
+  applyBucket(id, 'board'); fillSleepInputs(); updateSleepTile();
+});
+
+function updateSleepTile(fromUser = false) {
   const start = new Date($('sleepStart').value), end = new Date($('sleepEnd').value);
   const usualRaw = $('usualSleep').value;
-  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw) });
-  const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw === '' ? undefined : Number(usualRaw) });
+  const prev = prefs.get('sleep') || {};
+  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw), src: fromUser ? 'times' : prev.src, bucket: fromUser ? null : prev.bucket });
+  const fromLog = usualRaw === '' ? usualFromLog() : null;
+  const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw !== '' ? Number(usualRaw) : fromLog?.h });
+  if (fromUser && r && !r.asleepNow) setNight(dayKey(end), bucketFor(r.sleptH).id, r.sleptH, 'times');
+  const lastId = sleepLog()[dayKey(new Date())]?.id;
+  document.querySelectorAll('[data-sleep-h]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.sleepH === lastId)));
+  renderSleepLog();
   const svg = $('sleepChart');
   state.lastSleep = r;
   renderToday();
@@ -1060,7 +1136,7 @@ function updateSleepTile() {
         : 'Above the model\'s sleep band: the model expects strong sleepiness. Plan rest before demanding tasks.';
   const short = r.sleptH < 6 ? '<p class="warnline">! Under 6 hours last night. In ISS astronauts, nights this short were linked to slower reaction test scores.</p>' : '';
   $('sleepBody').innerHTML = `<p class="big-num">${r.s.toFixed(2)}<span class="unit"> sleep pressure (0 to 1)</span></p>
-    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h · usual ${r.usualH.toFixed(1)} h · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
+    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h${(prefs.get('sleep') || {}).bucket ? ` (answer: ${esc(sleepBucket(prefs.get('sleep').bucket)?.label || '')})` : ''} · usual ${r.usualH.toFixed(1)} h${fromLog ? ` (average of ${fromLog.n} logged nights)` : ''} · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
   // Chart: curve, threshold band, now marker.
   const W = 600, Hh = 180, padL = 8, padR = 8, padT = 28, padB = 30;
   const x = (t) => padL + ((t - r.from) / (r.to - r.from)) * (W - padL - padR);
@@ -1183,7 +1259,7 @@ async function refreshSpaceWeather(force) {
 document.addEventListener('click', (e) => { if (e.target.closest('[data-sw]')) refreshSpaceWeather(true); });
 $('swKey').addEventListener('change', (e) => { prefs.set('swKey', e.target.value.trim()); });
 
-$('sleepForm').addEventListener('input', updateSleepTile);
+$('sleepForm').addEventListener('input', () => updateSleepTile(true));
 
 /* ---------- alertness check (brief PVT) ---------- */
 const pvtTests = async () => (await listSessions()).filter((x) => x.kind === 'alertness' && x.alertness);
@@ -1458,6 +1534,7 @@ function setLang(code) {
   $('langNotice').hidden = !notice;
   $('langNotice').textContent = notice;
   prefs.set('lang', used);
+  try { renderSleepLog(); } catch { /* board not ready yet */ }
 }
 $('langSel').addEventListener('change', (e) => setLang(e.target.value));
 setLang(prefs.get('lang') || 'en');
@@ -2531,6 +2608,8 @@ if (state.screen === 'board') expApi.renderTile();
 const ovState = { region: null, metric: null };
 function sleepLastNight() {
   const sv = prefs.get('sleep');
+  const logged = sleepLog()[dayKey(new Date())];
+  if ((!sv?.start || !sv?.end || Date.now() - +new Date(sv.end) > 20 * H_MS) && logged && Number.isFinite(logged.h)) return logged.h;
   if (!sv?.start || !sv?.end) return null;
   const start = +new Date(sv.start), end = +new Date(sv.end), now = Date.now();
   if (!(end > start) || end > now + 60000 || now - end > 20 * H_MS) return null;

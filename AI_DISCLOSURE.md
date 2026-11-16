@@ -4,8 +4,8 @@ Edit this file so it describes what the team actually did.
 
 - **Tool:** Claude (Anthropic), Claude Opus 5.5 and Claude Sonnet 5.5, used through claude.ai on 14 and 15 November 2026, after the hackathon started.
 - **What it produced:**
-  - The app code in `js/`, `index.html`, `css/` and `sw.js` (versions v0.1 to v1.1), under the team's direction and feature requests
-  - The unit tests (`tests/`, 127 tests), browser test scripts and the synthetic test video script
+  - The app code in `js/`, `index.html`, `css/` and `sw.js` (versions v0.1 to v1.2), under the team's direction and feature requests
+  - The unit tests (`tests/`, 128 tests), browser test scripts and the synthetic test video script
   - `scripts/build_osd575.py`, which converts the NASA OSDR OSD-575 files into `data/osd575-cmp.json`
   - A research brief on rules, accuracy, open data and northern health context (Claude research mode)
   - The README and the licence and data source notes

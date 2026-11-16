@@ -2,7 +2,7 @@
 // Review packet: a small, honest summary a remote nurse or flight surgeon can read.
 // States what was measured, how good the capture was, and what was NOT assessed.
 
-import { symptomLabels, hasUrgent } from './symptoms.js';
+import { sleepBucket, symptomLabels, hasUrgent } from './symptoms.js';
 
 export const LIMITS = [
   'Camera estimates of pulse and breathing are experimental and not validated for clinical use.',
@@ -44,6 +44,7 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     trends: trends || [],
     self_report_checklist: symptomLabels(session.context?.checklist),
     self_report_urgent: hasUrgent(session.context?.checklist),
+    self_report_sleep: sleepBucket(session.context?.sleepH)?.label || null,
     self_report: session.context?.symptoms || '',
     reference_values: session.reference || null,
     not_assessed: LIMITS,
@@ -73,6 +74,7 @@ export function packetText(p) {
   if (p.integrity?.fingerprint) lines.push(`Fingerprint: ${p.integrity.fingerprint}`);
   if (p.self_report_urgent) lines.push('URGENT ITEM TICKED: chest pain or shortness of breath. Contact the person directly.');
   if (p.self_report_checklist?.length) lines.push(`Symptoms ticked: ${p.self_report_checklist.join(', ')}`);
+  if (p.self_report_sleep) lines.push(`Sleep last night (self report): ${p.self_report_sleep}`);
   if (p.self_report) lines.push(`Self report: ${p.self_report}`);
   lines.push('Not assessed: back tooth surfaces, below gum line; no diagnosis made. Estimates are experimental.');
   return lines.join('\n');
@@ -81,10 +83,10 @@ export function packetText(p) {
 // A 160 character version for a satellite text messenger or SMS, when a file or QR code cannot be sent.
 // Most important first; whatever does not fit is dropped and the message ends with "+MORE".
 // The legend (SMS_LEGEND) is shown next to it and must travel with the first message to a new reviewer.
-const SYM_CODE = { Headache: 'HA', 'Stuffy nose or puffy face': 'NF', 'Blurry or changed vision': 'VI', 'Nausea or dizziness': 'ND', 'Back pain': 'BK', 'Slept badly': 'SL', 'Tooth or gum pain': 'TG', 'Feverish or chills': 'FV', 'Short of breath': 'SB', 'Chest pain': 'CP' };
+const SYM_CODE = { Headache: 'HA', 'Stuffy nose or puffy face': 'NF', 'Blurry or changed vision': 'VI', 'Nausea or dizziness': 'ND', 'Back pain': 'BK', 'Short sleep (5 h or less)': 'SL', 'Slept badly': 'SL', 'Tooth or gum pain': 'TG', 'Feverish or chills': 'FV', 'Short of breath': 'SB', 'Chest pain': 'CP' };
 const TREND_CODE = { Pulse: 'P', Breathing: 'R', 'Reaction time, median': 'RT', 'Gum redness change, front photo': 'GUM', 'Mouth opening (lips)': 'JAW' };
 export const SMS_MAX = 160;
-export const SMS_LEGEND = 'RE = RelaisÉcho checkup, BL baseline / FU follow up, time UTC. URGENT = chest pain (CP) or short of breath (SB) ticked: contact the person now. P pulse bpm, R breaths/min: "ok" inside own band, +N or -N beyond it, ~ low quality, xN = N checks in a row outside. RT reaction ms. SYM ticked: HA headache, NF nose or face, VI vision, ND nausea, BK back, SL slept badly, TG tooth or gum, FV fever, SB short of breath, CP chest pain. DENT gum a* / teeth b* change. EXP checks that differ. EYE new grid squares, ACU eye chart worse. NOTE = person wrote a note.';
+export const SMS_LEGEND = 'RE = RelaisÉcho checkup, BL baseline / FU follow up, time UTC. URGENT = chest pain (CP) or short of breath (SB) ticked: contact the person now. P pulse bpm, R breaths/min: "ok" inside own band, +N or -N beyond it, ~ low quality, xN = N checks in a row outside. RT reaction ms. SYM ticked: HA headache, NF nose or face, VI vision, ND nausea, BK back, SL short sleep (5 h or less), TG tooth or gum, FV fever, SB short of breath, CP chest pain. DENT gum a* / teeth b* change. EXP checks that differ. EYE new grid squares, ACU eye chart worse. NOTE = person wrote a note.';
 export function packetSms(p) {
   const r = p.results || {};
   const ch = p.comparison?.change_vs_original || {};

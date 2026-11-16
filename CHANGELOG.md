@@ -2,6 +2,14 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## v1.2 (15 Nov 2026): one sleep answer fills three places
+
+- **Sleep hours instead of "Slept badly".** The checkup asks "Sleep last night": 3 h or less, 4 to 5 h, 6 to 7 h, 8 h or more (or Skip). The answer goes into the checkup record and the nurse packet ("Sleep last night (self report)"), ticks "Short sleep (5 h or less)" automatically for the two shortest answers (so symptom counts and the SL code in the satellite message keep working), fills Sleep pressure on the Board (unless exact times were entered there today) and the Sleep number on the Overview.
+- **Retroactive sleep log.** The Board's Sleep pressure tile has a 7 night strip: each night can be filled in or changed later. Short nights show red. When usual sleep is left blank, the model uses the average of the logged nights in the last 14 days (3 or more needed), else last night.
+- **Less scrolling.** Quick "Last night" buttons on top; exact bed and wake times fold away under "Exact times and usual sleep"; result and chart sit side by side when the tile is wide; shorter source note.
+- Hours used by the model for each answer: 3, 4.5, 6.5 and 8 h (a design choice). Logged per person, on the device only.
+- 128 unit tests.
+
 ## v1.1 (15 Nov 2026): derived metrics and Earth context
 
 - **Your own spread, in standard deviations.** Once a measure has at least 5 earlier good quality values, the Overview shows the person's own mean, standard deviation and coefficient of variation, how many standard deviations the latest value sits from that mean (a z score against themselves, not against other people), and how many earlier values it exceeds. Low quality captures are skipped.
