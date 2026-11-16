@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Guided dental photos: three views, each cropped to a standard frame around the mouth,
 // levelled and scaled by the mouth corners so baseline and follow up photos line up.
 // The app never labels decay or disease; a person reviews and marks the photos.

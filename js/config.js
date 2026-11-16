@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Every threshold here is MODELED: a design choice for the prototype, not a clinical cut off.
 // Tune them from the bench test, and record any change in the README.
 

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Local storage of checkups in IndexedDB. Nothing leaves the device unless the user exports it.
 
 const DB = 'relaisecho-link';

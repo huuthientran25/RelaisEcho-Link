@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // v0.58: dental face distance against the baseline.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,4 +74,18 @@ test('bed rest summary ships aggregates only, with a falling first week', async 
   assert.ok(d.people >= 40 && d.bins.length === 5);
   assert.ok(d.bins[0].median_pct < -5 && d.bins.at(-1).median_pct > d.bins[1].median_pct, 'drop in bed rest, partial recovery after');
   for (const b of d.bins) assert.deepEqual(Object.keys(b).sort(), ['below_own_pre_min', 'label', 'median_pct', 'n', 'q1_pct', 'q3_pct']);
+});
+
+test('Inspiration4 NULISAseq summary matches the team analysis (serum IL-6 4 of 4 at 1.6x, urine 3 of 3 at 2.59x)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const d = JSON.parse(readFileSync(new URL('../data/osd575-cmp.json', import.meta.url), 'utf8'));
+  const [serum, urine] = d.nulisa.panels;
+  const r1 = (p, id) => p.markers.find((m) => m.id === id).by_time.find((b) => b.time === 'R+1');
+  assert.deepEqual([r1(serum, 'il6').up, r1(serum, 'il6').n, r1(serum, 'il6').median_fold], [4, 4, 1.6]);
+  assert.equal(serum.markers.find((m) => m.id === 'il6').rank_r1_rise, 3);
+  assert.deepEqual([r1(serum, 'bdnf').down, r1(serum, 'bdnf').median_fold], [4, 0.79]);
+  assert.deepEqual([r1(urine, 'il6').up, r1(urine, 'il6').n, r1(urine, 'il6').median_fold], [3, 3, 2.59]);
+  assert.equal(r1(urine, 'mmp8').median_fold, 44.19);
+  assert.ok(urine.markers.find((m) => m.id === 'bdnf').zeros > 11, 'urine BDNF mostly undetected');
+  assert.equal(serum.targets_on_panel, 203);
 });

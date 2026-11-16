@@ -1,3 +1,4 @@
+# AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 """Summarize NASA bed rest plasma volume for the app (data/bedrest-pv.json).
 
 Source: NASA Life Sciences Portal, "Bed Rest Standard Measures: Plasma Volume" (PI Steven Platts),
@@ -71,6 +72,7 @@ def main(folder, out):
         'bins': [b for b in bins if b] + ([post] if post else []),
     }
     with open(out, 'w') as fh:
+        res['ai_disclosure'] = "Values are from the cited NASA dataset; this summary file was produced by a script written with Claude (Anthropic), an AI tool, under the team's direction. See AI_DISCLOSURE.md."
         json.dump(res, fh, indent=1)
     print(json.dumps(res, indent=1))
 

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Small helpers: calendar reminder file, photo clean-up.
 
 // iCalendar file with a repeating checkup reminder at the baseline's time of day.

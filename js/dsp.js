@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Signal processing helpers. Pure functions, no DOM, so they run in Node tests too.
 // All filters are written here (no third party DSP code).
 

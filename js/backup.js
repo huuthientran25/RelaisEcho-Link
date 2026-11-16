@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Restore checkups from an exported backup (History > Export all). Nothing is overwritten:
 // checkups already on this device are kept, and the device's own original baseline stays the original.
 const KINDS = new Set(['baseline', 'followup', 'symptom', 'demo', 'alertness', 'vision', 'exp', 'acuity']);

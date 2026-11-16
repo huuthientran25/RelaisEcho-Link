@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Symptom checklist: a short fixed list ticked before a checkup, so a reviewer reads the same
 // words every time and the History screen can count them. Free text stays available next to it.
 // The list is a design choice for the prototype (common in-flight complaints plus the items a

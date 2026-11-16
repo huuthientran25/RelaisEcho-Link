@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Interface language. English is read from the page itself, so the HTML stays the single English source.
 // French: draft by the team, to be checked by a fluent reviewer. Inuktitut: slots exist for every string,
 // but no text is shipped until a certified translator provides it. Machine translation is not used,
@@ -62,7 +63,7 @@ export const STRINGS = {
 };
 
 export const NOTICE = {
-  fr: 'Version française partielle, à faire vérifier. Certains écrans restent en anglais.',
+  fr: 'Brouillon en français rédigé avec l’aide de l’IA, à faire vérifier par une personne qui parle couramment. Le fichier du dossier de révision reste en anglais (seul son affichage est traduit), comme le rapport d’appareil et quelques lignes techniques.',
   iu: 'ᐃᓄᒃᑎᑐᑦ · Inuktitut text is awaiting a certified translator. English is shown until then. Machine translation is not used.',
 };
 

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Eye chart: a tumbling E letter chart, one eye at a time, scored in logMAR the way ETDRS charts are
 // (five letters a line, 0.1 logMAR between lines, 0.02 per letter). EXPERIMENTAL self check, compared only
 // with the person's own first check on the same screen and distance. Pure functions; the screen is in main.js.

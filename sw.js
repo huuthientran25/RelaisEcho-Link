@@ -1,9 +1,11 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Offline cache for the app shell, the MediaPipe runtime and (if bundled) the face model.
-const CACHE = 'relaisecho-0.61.0-32986e6c99';
+const CACHE = 'relaisecho-1.0.0-6cf84c5aec';
 const SHELL = [
   './',
   'index.html',
   'manifest.webmanifest',
+  'audio/relaisecho-theme-ai-generated.mp3',
   'css/app.css',
   'data/bedrest-pv.json',
   'data/bedrest-vo2.json',
@@ -33,6 +35,7 @@ const SHELL = [
   'js/dentalcmp.js',
   'js/devicecheck.js',
   'js/dsp.js',
+  'js/evidence-fr.js',
   'js/evidence.js',
   'js/exp.js',
   'js/expui.js',
@@ -40,6 +43,7 @@ const SHELL = [
   'js/eyes.js',
   'js/frame.js',
   'js/geometry.js',
+  'js/i18n-fr.js',
   'js/i18n.js',
   'js/main.js',
   'js/mock.js',

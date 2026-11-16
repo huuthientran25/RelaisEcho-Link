@@ -1,9 +1,17 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Sample data for a demo profile, so judges and new users can see every screen filled in
 // without a camera. Every record is marked demo: true and lives in its own profile.
 // The numbers are invented, deterministic and plausible; they are not anyone's health data.
 
 export const DEMO_PROFILE = 'demo';
 export const DEMO_NAME = 'Sample crew member (invented data)';
+// A sample crew of four invented people, one per scenario, for the "Everyone on this device" list.
+export const SAMPLE_CREW = [
+  { id: DEMO_PROFILE, name: DEMO_NAME, scenario: 'shortsleep', seed: 42 },
+  { id: 'demo-b', name: 'Sample crew member B (invented data)', scenario: 'steady', seed: 7 },
+  { id: 'demo-c', name: 'Sample crew member C (invented data)', scenario: 'gums', seed: 11 },
+  { id: 'demo-d', name: 'Sample crew member D (invented data)', scenario: 'breath', seed: 23 },
+];
 
 // Small deterministic generator so the demo looks the same every time.
 function rng(seed) {

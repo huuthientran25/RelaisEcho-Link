@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // One screen overview: a body chart whose regions open a trend graph. Pure functions only; the screen is
 // drawn in main.js. A region's status is a reading order ("look here"), never a score or a diagnosis:
 // "review" means something there sits outside its band against the person's own first value.
@@ -63,11 +64,76 @@ export function referenceFor(metricId, points, { original = null, floors = {} } 
 
 const outside = (v, ref) => ref && ref.band != null && Math.abs(v - ref.base) > ref.band + 1e-9;
 
+// One blip or a real shift? (MODELED rules, design choices, not validated.)
+// - sustained: the last SUSTAIN_RUN good quality values all sit outside the band on the same side.
+// - single: the latest value is outside, but the run is shorter than that (often light, distance or a bad day).
+// - drift: still inside the band, but the last DRIFT_MIN values move the same way and the fitted line
+//   would cross the band edge within about two weeks at that pace.
+// - steady: none of these. Low quality captures are skipped, never counted.
+export const TREND = { SUSTAIN_RUN: 3, DRIFT_MIN: 4, DRIFT_HORIZON_DAYS: 14, WINDOW_DAYS: 21 };
+const DAY = 86400000;
+export function trendFor(points, ref) {
+  const good = (points || []).filter((p) => p.q !== 'low' && Number.isFinite(p.v));
+  if (!ref || ref.band == null || !good.length) return { kind: 'none' };
+  const sideOf = (v) => (v > ref.base + ref.band + 1e-9 ? 'above' : v < ref.base - ref.band - 1e-9 ? 'below' : null);
+  const lastSide = sideOf(good[good.length - 1].v);
+  if (lastSide) {
+    let run = 0;
+    for (let i = good.length - 1; i >= 0 && sideOf(good[i].v) === lastSide; i -= 1) run += 1;
+    return { kind: run >= TREND.SUSTAIN_RUN ? 'sustained' : 'single', side: lastSide, run };
+  }
+  const t1 = good[good.length - 1].t;
+  const recent = good.filter((p) => p.t >= t1 - TREND.WINDOW_DAYS * DAY).slice(-6);
+  if (recent.length >= TREND.DRIFT_MIN && ref.band > 0) {
+    const tail = recent.slice(-TREND.DRIFT_MIN);
+    const steps = tail.slice(1).map((p, i) => Math.sign(p.v - tail[i].v));
+    const dir = steps.every((d) => d > 0) ? 1 : steps.every((d) => d < 0) ? -1 : 0;
+    if (dir) {
+      const n = recent.length, mt = recent.reduce((a, p) => a + p.t, 0) / n, mv = recent.reduce((a, p) => a + p.v, 0) / n;
+      const sxx = recent.reduce((a, p) => a + (p.t - mt) ** 2, 0);
+      const slopePerDay = sxx > 0 ? (recent.reduce((a, p) => a + (p.t - mt) * (p.v - mv), 0) / sxx) * DAY : 0;
+      const edge = ref.base + dir * ref.band, last = good[good.length - 1].v;
+      const daysToEdge = slopePerDay * dir > 0 ? (edge - last) / slopePerDay : Infinity;
+      if (Math.sign(slopePerDay) === dir && daysToEdge <= TREND.DRIFT_HORIZON_DAYS) {
+        return { kind: 'drift', side: dir > 0 ? 'above' : 'below', perWeek: Math.round(slopePerDay * 7 * 10) / 10, daysToEdge: Math.max(0, Math.round(daysToEdge)) };
+      }
+    }
+  }
+  return { kind: 'steady' };
+}
+
+// Sustained changes and drifts for the review packet: only measures that are not steady, only data up to `upTo`.
+export function trendsForPacket(sessions, { original = null, floors = {}, upTo = null } = {}) {
+  const cut = upTo ? +new Date(upTo) : Infinity;
+  const list = (sessions || []).filter((x) => +new Date(x.createdAt) <= cut);
+  const out = [];
+  for (const id of Object.keys(METRIC_DEFS)) {
+    const pts = seriesFor(id, list);
+    if (pts.length < 2 && id !== 'pulse' && id !== 'resp') continue;
+    const ref = referenceFor(id, pts, { original, floors });
+    const tr = trendFor(pts, ref);
+    if (tr.kind !== 'sustained' && tr.kind !== 'drift') continue;
+    out.push({ measure: METRIC_DEFS[id].label, unit: METRIC_DEFS[id].unit, kind: tr.kind, side: tr.side, run: tr.run ?? null,
+      per_week: tr.perWeek ?? null, days_to_band_edge: tr.daysToEdge ?? null, experimental: METRIC_DEFS[id].src.startsWith('exp:'),
+      rule: 'MODELED: sustained = 3 good quality values in a row outside the band; drift = 4 values moving one way, reaching the band edge within 14 days' });
+  }
+  return out;
+}
+
+// One line about the trend, for the chart note and the reasons list.
+export function trendLine(tr, unit = '') {
+  const u = unit && !['index', '0 to 1'].includes(unit) ? ` ${unit}` : '';
+  if (tr.kind === 'sustained') return `${tr.side === 'above' ? 'Above' : 'Below'} the band ${tr.run} times in a row: a sustained change, worth a recheck and a note to the reviewer.`;
+  if (tr.kind === 'single') return tr.run === 1 ? `Only the latest value is outside the band. One value can be light, distance or a bad day: repeat the check before reading much into it.` : `${tr.side === 'above' ? 'Above' : 'Below'} the band ${tr.run} times in a row. One more outside would count as sustained.`;
+  if (tr.kind === 'drift') return `Still inside the band, but moving ${tr.side === 'above' ? 'up' : 'down'} about ${Math.abs(tr.perWeek)}${u} a week; at that pace it reaches the band edge ${tr.daysToEdge < 1 ? 'within a day' : `in about ${tr.daysToEdge} day${tr.daysToEdge === 1 ? '' : 's'}`}.`;
+  return '';
+}
+
 // Region status from facts already computed by the app. Returns [{ ...region, status, reasons }].
 export function buildRegions(sessions, { original = null, floors = {}, sleepHours = null, latestChecklist = [] } = {}) {
   const ticks = new Set(latestChecklist || []);
   return REGIONS.map((r) => {
-    const reasons = [];
+    const reasons = [], notes = [];
     let any = false;
     for (const id of r.metrics) {
       const pts = seriesFor(id, sessions);
@@ -77,7 +143,9 @@ export function buildRegions(sessions, { original = null, floors = {}, sleepHour
       const last = pts[pts.length - 1];
       if (pts.length > 1 || id === 'pulse' || id === 'resp' || id === 'gum') {
         const u = ['index', '0 to 1'].includes(METRIC_DEFS[id].unit) ? '' : ` ${METRIC_DEFS[id].unit}`;
-        if (outside(last.v, ref)) reasons.push(`${METRIC_DEFS[id].label} ${last.v}${u} (${ref.label === 'original baseline' ? 'baseline' : ref.label === 'no change' ? 'expected' : 'first'} ${Math.round(ref.base * 100) / 100})`);
+        const tr = trendFor(pts, ref);
+        if (outside(last.v, ref)) reasons.push(`${METRIC_DEFS[id].label} ${last.v}${u} (${ref.label === 'original baseline' ? 'baseline' : ref.label === 'no change' ? 'expected' : 'first'} ${Math.round(ref.base * 100) / 100})${tr.kind === 'sustained' ? `, ${tr.run} in a row` : ''}`);
+        else if (tr.kind === 'drift') notes.push(`${METRIC_DEFS[id].label} drifting ${tr.side === 'above' ? 'up' : 'down'}, still inside the band`);
       }
     }
     if (r.id === 'neck' && (sessions || []).some((s) => s.kind === 'exp' && s.exp?.check === 'neck' && s.exp.ok)) any = true;
@@ -88,7 +156,7 @@ export function buildRegions(sessions, { original = null, floors = {}, sleepHour
     if (r.id === 'head' && (ticks.has('headache') || ticks.has('sleep'))) reasons.push('Headache or poor sleep ticked');
     const urgent = (r.id === 'heart' && ticks.has('chest')) || (r.id === 'lungs' && ticks.has('breath'));
     const status = urgent ? 'urgent' : reasons.length ? 'review' : any ? 'logged' : 'none';
-    return { ...r, status, reasons };
+    return { ...r, status, reasons, notes };
   });
 }
 
@@ -137,4 +205,24 @@ export function missionDay(startIso, lengthDays, now = new Date()) {
   if (day < 1) return { phase: 'before', day, length: len, daysToGo: 1 - day, pct: 0 };
   if (day > len) return { phase: 'after', day, length: len, daysSince: day - len, pct: 1 };
   return { phase: 'during', day, length: len, pct: day / len };
+}
+
+// Bland and Altman plot as an SVG string: difference (app minus reference) against the mean of the two.
+export function blandAltmanSvg(ba, { unit = '', title = '', w = 520, h = 220 } = {}) {
+  if (!ba || ba.n < 2) return '';
+  const L = 52, R = 70, T = 14, B = 36;
+  const xs = ba.points.map((p) => p.mean), ys = ba.points.map((p) => p.diff).concat([ba.low, ba.high, 0]);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs); if (x1 - x0 < 1) { x0 -= 1; x1 += 1; } const xp = (x1 - x0) * 0.08; x0 -= xp; x1 += xp;
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const pad = (y1 - y0) * 0.15 || 1; y0 -= pad; y1 += pad;
+  const X = (v) => L + ((v - x0) / (x1 - x0)) * (w - L - R), Y = (v) => T + (1 - (v - y0) / (y1 - y0)) * (h - T - B);
+  const line = (v, cls, label) => `<line class="${cls}" x1="${L}" x2="${w - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="ba-lab" x="${w - R + 4}" y="${(Y(v) + 4).toFixed(1)}">${label}</text>`;
+  return `<svg class="ba-plot" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}: ${ba.n} pairs, bias ${ba.bias} ${esc(unit)}, limits of agreement ${ba.low} to ${ba.high} ${esc(unit)}">
+    <line class="ba-axis" x1="${L}" x2="${L}" y1="${T}" y2="${h - B}"/><line class="ba-axis" x1="${L}" x2="${w - R}" y1="${h - B}" y2="${h - B}"/>
+    ${line(0, 'ba-zero', Math.abs(Y(0) - Y(ba.bias)) < 14 ? '' : '0')}${line(ba.bias, 'ba-bias', `bias ${ba.bias}`)}${line(ba.high, 'ba-loa', `+${ba.high}`.replace('+-', '-'))}${line(ba.low, 'ba-loa', `${ba.low}`)}
+    ${ba.points.map((p) => `<circle class="ba-pt" cx="${X(p.mean).toFixed(1)}" cy="${Y(p.diff).toFixed(1)}" r="4.5"/>`).join('')}
+    <text class="ba-ax" x="${(L + w - R) / 2}" y="${h - 8}" text-anchor="middle">mean of app and reference (${esc(unit)})</text>
+    <text class="ba-ax" x="${L}" y="${h - B + 14}" text-anchor="start">${Math.round(x0)}</text><text class="ba-ax" x="${w - R}" y="${h - B + 14}" text-anchor="end">${Math.round(x1)}</text>
+    <text class="ba-ax" x="12" y="${(T + h - B) / 2}" text-anchor="middle" transform="rotate(-90 12 ${(T + h - B) / 2})">app minus reference</text>
+    <text class="ba-ax" x="${L - 6}" y="${(Y(y1) + 10).toFixed(1)}" text-anchor="end">${Math.round(y1)}</text><text class="ba-ax" x="${L - 6}" y="${Y(y0).toFixed(1)}" text-anchor="end">${Math.round(y0)}</text>
+  </svg>`;
 }

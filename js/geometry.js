@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Face geometry from MediaPipe Face Landmarker (478 points, normalized image coordinates).
 // Index lists follow MediaPipe's face mesh topology.
 

@@ -2,6 +2,60 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## v1.0 (15 Nov 2026): submission release
+
+- Release pass: every button target, Evidence key and in-page link checked; every screen opened in English and French, light and dark, with no console errors or failed requests; offline reload checked (app, sample data and NASA summaries all load without a network).
+- French for the last remaining screens and messages (about 60 more strings: dental capture prompts, device check advice, eye test and nurse view lines, empty states).
+- The "Everyone on this device" list turns into one block per person on phones and tablets (it was wider than the screen).
+- README: one minute tour updated for the Overview, the sample crew, inflammation tile, fingerprint and short message decoder.
+- Not in this release, by design or out of reach: the face model file (download `face_landmarker.task` into `models/` for full offline use from the first visit), real device validation, a fluent review of the French, Inuktitut.
+
+## Changes in v0.67 (15 Nov 2026)
+
+- **New NASA data built in: Inflammation after landing.** The Inspiration4 NULISAseq panels from serum (OSD-575, 203 proteins) and urine (OSD-656, doi 10.26030/7cax-yj10) are now inside the app, summarised for 8 markers as change against each crew member's own preflight values. The day after landing, IL-6 was above its own preflight level in 4 of 4 crew in serum (median 1.6×, the 3rd largest rise of 203) and 3 of 3 in urine (2.59×); urine neutrophil signals rose in all 3 (MMP-8 44×, MPO 23×, IL-8 8.5×); BDNF fell in serum in 4 of 4 (0.79×) and GFAP did not move. A dot chart shows every crew member. The summary is rebuilt by `scripts/build_osd575.py` (plain Python, no extra libraries), and a unit test checks it against the team's earlier analysis.
+- **Packet fingerprint.** Every packet carries a short SHA-256 fingerprint; the nurse view recomputes it and says "matches: the file arrived as it was made" or warns that it was damaged or edited on the way. A check against accidents, stated as not a security signature.
+- **Bench agreement in the packet.** When there are 3 or more reference pairs, the packet and nurse view state the device's bias and limits of agreement against the person's own reference device.
+- **Old data flagged.** The Overview trend says when the latest value is 2 weeks old or more.
+- 126 unit tests.
+
+## Changes in v0.66 (15 Nov 2026)
+
+- **One odd value or a real change?** Every Overview trend now says which: "Above the band 3 times in a row: a sustained change", "Only the latest value is outside the band... repeat the check", or "Still inside the band, but moving up about N a week". Rules (MODELED, design choices): sustained = the last 3 good quality values outside the band on the same side; drift = 4 values in a row moving one way that would reach the band edge within 14 days. Low quality captures are skipped. The "Look here first" list marks sustained changes ("3 in a row") and lists drifts separately, without raising a region's status.
+- **Trends travel in the review packet** (`trends`, with the rule written into each entry) and show in the nurse view's "Read first" list. In the short sleep sample, pulse is above the band 3 checkups in a row.
+- **Everyone on this device.** When a device holds more than one person (a crew tablet, a health centre laptop), the Overview lists them all: last checkup and how long ago, urgent ticks, sustained changes and regions to look at again, sorted as a reading order (urgent, then sustained, then look again), never as a ranking of health. "Load a sample crew of four" fills it with four invented people, one per scenario.
+- **Nurse view in French** when the app is in French. The packet file itself stays English, and the person's own words (their note, their marks on photos) are never translated.
+- **160 character message.** The packet screen has "Short message (160 characters)" for a satellite text messenger or SMS when a file or QR code cannot get through, for example `RE FU 11-14 13:33 | P72 +10x3 | R15~ ok | SYM HA,SL,TG | RT299 | DENT gum+18.3,teeth+11.2 | EXP JAW | NOTE`. Urgent ticks come first; whatever does not fit is dropped and the message ends with +MORE. A legend to send once to a new reviewer sits next to it, and the nurse view has "Got a short text message instead? Decode it", which turns the message back into plain sentences (in French too).
+- **Bench test agreement plot.** With 3 or more reference pairs, History draws a Bland and Altman plot for pulse and breathing (app minus reference against their mean, bias and 95% limits of agreement), with a note that under about 20 pairs the limits are rough and describe this device, face and light only. This is where the real bench test results will show.
+- Fixed a double full stop in the nurse view's pulse line.
+- 124 unit tests, 137 browser checks.
+
+## Changes in v0.65 (15 Nov 2026)
+
+- **Evidence cards in French.** All 27 cards (method, source, what it cannot tell you) have a French version in `js/evidence-fr.js`. Paper titles, journals, authors and DOIs stay as published. A unit test checks that every card exists in both languages and that every number in the French text matches the English one.
+- **Dialogs in French.** Confirmations, alerts and the new person prompt (delete, erase, restore, set as baseline, file errors) follow the chosen language.
+- **French demo reel.** With Français selected, the 30 second demo shows French captions, cards and watermark, and "Captions file (.srt)" saves French subtitles, so a French demo video can be recorded from the app. The English reel is unchanged.
+- Still English on purpose: the review packet and nurse view, the device report.
+- 119 unit tests.
+
+## Changes in v0.64 (15 Nov 2026)
+
+- **French for the whole interface (draft).** Before, French covered about 40 strings (tabs, home, a few headings) and the newer screens stayed English. Now `js/i18n-fr.js` holds about 700 French entries plus 90 patterns for text with numbers, keyed by the exact English text, so English stays the single source. Text the app draws later (Overview reasons, Board tiles, History rows, scan results, experimental check prompts and results, eye chart and eye grid) is translated as it appears. Numbers, dates, units and people's names are never changed. Switching back to English restores every screen exactly (browser checked).
+- **Stays English on purpose:** the review packet and nurse view (a clinical record should not change language between sender and reader), the Evidence cards with their citations, the device report, the demo reel captions and a few technical lines.
+- **SI-generated text:** the French was drafted with Claude and is marked as a draft for a fluent reviewer, on screen and in `AI_DISCLOSURE.md`. Inuktitut still ships empty until a certified translator provides it.
+- 118 unit tests (3 new for the French table: no empty or duplicate entries, numbers kept, unknown text left alone).
+
+## Changes in v0.63 (15 Nov 2026)
+
+- **Phones with large text.** A sweep of 8 screens at 360 px (phone) and 768 px (tablet) wide, at normal and the largest text size, found content wider than the screen in 4 places: the top bar at 768 px with large text, the Overview headline numbers, the board's sleep time inputs and the Experimental list on a phone with large text. Grids now shrink to the screen, the top bar wraps, and body chart labels get smaller instead of breaking inside a word ("Sle ep"). After the fix the same sweep finds nothing wider than the screen. Desktop layout unchanged (checked by screenshot).
+
+## Changes in v0.62 (15 Nov 2026)
+
+- **The in-app demo reel plays music.** The same 30 second track as the demo video (`audio/relaisecho-theme-ai-generated.mp3`, 0.4 MB, about 4 dB quieter than the first mix), synthesized by `scripts/make_music.py`, a program written with Claude: no samples or outside audio. A "Music (AI-generated)" box on the home page turns it off. If the browser blocks sound without a click (for example `/?reel=1`), the reel runs silent.
+- **"Record it as a video file" now records the music too** (WebM with VP9 video and Opus audio, checked in headless Chrome: 30 s file with both tracks). Only the reel's music is recorded, not other tab sounds.
+- **SI watermark in the reel.** "SI-generated demo (AI-assisted) · Sample data · Music: AI-generated" sits in the top right for the whole reel. The bottom left "Sample data" tag moved into it, and the Stop button is hidden while the app records itself (Esc still stops), so recorded files have clean corners.
+- The music file carries the AI disclosure in its ID3 title and comment.
+- 115 unit tests.
+
 ## Changes in v0.61 (15 Nov 2026)
 
 - **AI watermark on the logo.** The Space Apps submission form requires a visible watermark on SI-generated images, and the logo was made with ChatGPT. The logo now carries a visible "AI" mark in the top bar and on the home page, a caption "Logo: AI-generated (ChatGPT)", an "AI-generated logo" mark on the demo reel's title and end cards, and a footer note.

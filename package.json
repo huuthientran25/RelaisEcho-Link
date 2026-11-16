@@ -1,6 +1,6 @@
 {
   "name": "relaisecho-link",
-  "version": "0.61.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
@@ -9,5 +9,6 @@
     "test": "node --test tests/*.test.mjs",
     "stamp": "node scripts/stamp_sw.mjs",
     "serve": "python3 -m http.server 8080"
-  }
+  },
+  "ai_disclosure": "AI-assisted (SI-generated): code, tests, data summaries and documentation written with Claude (Anthropic) under the team's direction; logo generated with ChatGPT; demo music synthesized by code written with Claude. See AI_DISCLOSURE.md."
 }

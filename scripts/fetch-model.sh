@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 # Downloads the MediaPipe Face Landmarker model (Apache 2.0) so the app works fully offline.
 set -e
 cd "$(dirname "$0")/.."

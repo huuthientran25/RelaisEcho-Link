@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Test only: a fake face landmarker used when the page is opened with ?mock=1.
 // Lets the full flow run without the model file (for example in CI). Never used otherwise.
 import { FACE_OVAL, LIPS_OUTER } from './geometry.js';

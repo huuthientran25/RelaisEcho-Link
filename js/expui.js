@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Experimental checks: menu, guided capture loops and result screens. The measurements live in js/exp.js.
 // Every check: camera frames are analysed in this browser and discarded. Only the numbers are kept,
 // plus small photos for the neck and eyelid checks (shown to the person before anything is saved).

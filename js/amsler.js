@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Eye self check with an Amsler grid: a square grid with a centre dot. The person covers one eye,
 // looks at the dot and marks squares where lines look wavy, blurred, dim or missing.
 // The standard chart is 10 cm wide with 5 mm squares, read at about 30 cm, so one square spans

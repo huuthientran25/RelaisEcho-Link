@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Keeps the offline cache honest. Run after any change:  node scripts/stamp_sw.mjs  (or: npm run stamp)
 // 1. Writes the version from package.json into the page footer.
 // 2. Rebuilds the list of files the service worker saves for offline use from what is really in the repo.
@@ -10,7 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const SHELL_DIRS = ['css', 'data', 'fonts', 'icons', 'js', 'vendor'];
+const SHELL_DIRS = ['audio', 'css', 'data', 'fonts', 'icons', 'js', 'vendor'];
 const SHELL_FILES = ['index.html', 'manifest.webmanifest'];
 const skip = (p) => p.endsWith('.txt') || p.endsWith('.md'); // licence texts are not needed at run time
 

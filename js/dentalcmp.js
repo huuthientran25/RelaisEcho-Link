@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Automatic dental photo comparison against the baseline. EXPERIMENTAL, no diagnosis.
 // Both photos were already levelled and scaled by the mouth corners at capture, so the same
 // pixel roughly shows the same place. Inside the mouth outline, pixels are sorted into

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Repository checks: deploy safety and GitHub web upload limits.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

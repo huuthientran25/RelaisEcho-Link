@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Spoken coaching: reads coach messages aloud with the device's own speech engine (works offline on most phones).
 // Speaks only when the message changes, at most once every 2 s, always the latest message.
 export function makeSpeaker({ synth, Utterance, minGapMs = 2000, now = () => performance.now(), setTimer = setTimeout, clearTimer = clearTimeout } = {}) {

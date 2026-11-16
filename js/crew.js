@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Inspiration4 crew blood data (NASA OSDR OSD-575): shows why a personal baseline matters.
 // Published data, shown for context. Nothing here is about the user.
 

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Experimental camera checks: jaw opening, eye following, pupil light response, inner eyelid colour,
 // neck (thyroid area) swallow photos, hand steadiness, and pulse timing plus colour ratio.
 // EXPERIMENTAL. None of these is validated. Each result is compared only with the same person's first

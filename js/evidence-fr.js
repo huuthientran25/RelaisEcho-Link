@@ -1,0 +1,174 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
+// French text for the evidence drawer, same keys and fields as js/evidence.js.
+// SI-generated draft (written with Claude), to be checked by a fluent reviewer. Paper titles, journals, authors and DOIs stay as published.
+
+export const EVIDENCE_FR = {
+  pulse: {
+    title: 'Estimation du pouls',
+    method: 'De minuscules changements de couleur de la peau du front et des joues suivent chaque battement du cœur. La méthode POS sépare ce signal des changements d’éclairage, puis le rythme le plus fort entre 42 et 180 battements par minute est pris dans des fenêtres de 10 secondes. Neuf zones de peau sont suivies (centre et côtés du front, entre les sourcils, haut et bas des joues, menton); après le balayage, chacune est évaluée séparément, et les plus claires, jusqu’à cinq, sont regroupées si cela fait mieux que l’estimation standard front et joues. Les fenêtres de mauvaise capture ou au rythme faible sont rejetées, pas incluses dans la moyenne.',
+    source: 'Wang, den Brinker, Stuijk et de Haan, Algorithmic Principles of Remote PPG, IEEE Transactions on Biomedical Engineering, 2017.',
+    limits: 'Notre mise en œuvre n’est pas validée cliniquement. La précision baisse avec le mouvement et une lumière faible ou qui scintille. Des travaux publiés la trouvent nettement moins bonne sur les peaux les plus foncées : une méta-analyse rapporte une erreur moyenne qui passe d’environ 4 battements par minute (types de Fitzpatrick I à V) à environ 14 (type VI). La peau froide n’a pas été testée. Elle ne peut donner ni la pression artérielle, ni la saturation en oxygène, ni le rythme cardiaque.',
+  },
+  resp: {
+    title: 'Estimation de la respiration',
+    method: 'La respiration fait bouger légèrement le cou, les épaules et la tête. L’application suit quatre canaux séparément (une bande sous le menton, le haut du torse, le mouvement de la tête et son inclinaison), trouve le rythme dominant entre 6 et 42 respirations par minute dans chacun, et rapporte le plus net avec le nombre d’autres canaux qui concordent. Un compte des cycles sert de vérification croisée.',
+    source: 'Des travaux publiés sur la vidéo rapportent des erreurs moyennes d’environ 1,3 respiration par minute à partir du mouvement du thorax et d’environ 2,0 à partir du seul mouvement de la tête (IEEE EMBC 2022). Ces résultats ne valident pas ce code.',
+    limits: 'Demande une respiration naturelle, sans parler, avec le haut du torse visible. Elle ne mesure ni l’oxygène ni la fonction pulmonaire.',
+  },
+  dental: {
+    title: 'Photos dentaires',
+    method: 'Chaque vue n’est acceptée que si l’angle de la tête, l’ouverture des lèvres, la lumière, les reflets et la netteté passent les contrôles. L’image la plus nette est gardée, puis redressée et mise à l’échelle par les coins de la bouche pour que les photos de jours différents s’alignent.',
+    source: 'La NASA classe la capacité dentaire limitée en vol comme une lacune de recherche (Human Research Roadmap). L’examen par un dentiste de photos prises à distance a été étudié; aucun diagnostic automatique n’est revendiqué ici.',
+    limits: 'Surfaces avant seulement. La couleur dépend de la lumière, donc comparer la rougeur demande un éclairage semblable. L’application ne détecte ni carie ni maladie des gencives.',
+  },
+  quality: {
+    title: 'Pourquoi l’application refuse parfois',
+    method: 'Chaque image est vérifiée pour la position et la taille du visage, la luminosité, les zones surexposées et le mouvement. Seules les images qui passent comptent pour les 30 secondes utilisables.',
+    source: 'Les seuils sont des choix de conception de ce prototype (voir js/config.js), ajustés sur notre propre banc d’essai.',
+    limits: 'Un contrôle réussi veut dire que la capture est utilisable, pas que le résultat est exact.',
+  },
+  sleep: {
+    title: 'Pression de sommeil (modélisée)',
+    method: 'La pression de sommeil (processus S) monte pendant l’éveil et baisse pendant le sommeil. La courbe utilise les constantes de temps publiées (18,2 heures en montée, 4,2 heures en descente) et suppose que les jours avant la nuit dernière ressemblaient à votre sommeil habituel.',
+    source: 'Daan, Beersma et Borbély 1984, tel que tabulé par Achermann 1999. Contexte : les équipages de l’ISS dormaient en moyenne environ 6 heures par nuit pour 8,5 heures prévues (Barger et al., Lancet Neurology 2014). Chez les astronautes de l’ISS, les nuits de 6 heures ou moins étaient liées à de moins bons résultats au test de réaction (Jones et al. 2022).',
+    limits: 'Un modèle de la personne moyenne, pas une mesure de vous. La partie horloge biologique (circadienne) n’est montrée que comme une bande, car son horaire n’est pas mesuré. Il ne détecte aucun trouble du sommeil.',
+  },
+  radiation: {
+    title: 'Budget de radiation',
+    method: 'Les jours en orbite terrestre basse sont multipliés par une dose quotidienne publiée basse et haute de l’ISS. Les jours de transit en espace lointain et à la surface de Mars sont multipliés par les débits de dose mesurés par la mission Curiosity. Le total est comparé à la limite de carrière.',
+    source: 'Limite de carrière sous 600 mSv pour tous les âges et les deux sexes : NASA-STD-3001 volume 1, norme 4030. Bas de la fourchette ISS : 19 membres d’équipage ont reçu en moyenne 72 mSv en environ 6 mois (Cucinotta et al., Radiation Research 2008). Haut de la fourchette ISS : environ 310 mSv par an (Chancellor et al. 2017, cité dans des revues ultérieures). Transit en espace lointain : environ 1,8 mSv par jour dans le véhicule de croisière de Mars Science Laboratory, environ 0,66 Sv pour un aller-retour de 180 jours dans chaque sens (Zeitlin et al., Science 2013). Surface de Mars : 0,64 à 0,67 mSv par jour (Hassler et al., Science 2014). Une mission de 180 jours à l’aller, 500 en surface et 180 au retour donne environ 1 Sv.',
+    limits: 'La dose réelle dépend du cycle solaire, du blindage, des sorties extravéhiculaires et de l’orbite. Les chiffres d’espace lointain viennent d’un seul véhicule pendant une activité solaire faible à modérée, et un grand événement de particules solaires s’y ajouterait. C’est un contexte pour la planification, pas une lecture de dosimètre.',
+  },
+  spaceweather: {
+    title: 'Météo spatiale',
+    method: 'Quand vous appuyez sur le bouton, l’application demande à la base DONKI de la NASA les éruptions solaires des 7 derniers jours et les événements de particules solaires énergétiques des 30 derniers jours. Elle affiche la classe d’éruption la plus forte, le nombre d’éruptions de chaque classe, et le nombre et la date la plus récente des événements de particules. La réponse est gardée sur cet appareil pendant 3 heures.',
+    source: 'NASA DONKI (Space Weather Database Of Notifications, Knowledge, Information), Community Coordinated Modeling Center, NASA Goddard, par api.nasa.gov. Les classes d’éruption sont dix fois plus fortes à chaque palier, de C à M à X. La norme 4031 du volume 1 de NASA-STD-3001 exige qu’un événement de particules solaires de référence pour la conception (la somme des événements d’octobre 1989) donne moins de 250 mSv à un membre d’équipage, et les études d’habitats de la NASA dimensionnent un abri blindé contre les tempêtes pour de tels événements.',
+    limits: 'Un catalogue d’événements, ni une prévision ni une dose. Pour les prévisions officielles, consultez le Space Weather Prediction Center de la NOAA. La liste peut avoir des heures de retard sur le Soleil, et la clé de démonstration partagée peut être refusée quand beaucoup de gens l’utilisent.',
+  },
+  daylight: {
+    title: 'Lumière du jour',
+    method: 'La durée du jour est calculée à partir de la date et de la latitude avec les équations générales de position du Soleil de la NOAA, en prenant le lever et le coucher au moment où le haut du Soleil touche l’horizon, avec la réfraction standard.',
+    source: 'NOAA Global Monitoring Laboratory, détails du calcul solaire. Chiffre de l’ISS : en 24 heures, la station fait 16 orbites de la Terre et traverse 16 levers et couchers de soleil (NASA, International Space Station Facts and Figures). Les équipages de l’ISS dormaient en moyenne environ 6 heures par nuit pour 8,5 heures prévues (Barger et al., Lancet Neurology 2014).',
+    limits: 'Le crépuscule n’est pas compté, et dans l’Arctique il ajoute des heures de lumière utile autour de la nuit polaire. Le relief, les nuages et l’éclairage intérieur sont ignorés. La tuile décrit la lumière à l’extérieur; elle ne mesure pas votre horloge biologique et ne conseille aucun traitement.',
+  },
+  delay: {
+    title: 'Délai du signal',
+    method: 'Les positions de la Terre et de Mars autour du Soleil sont calculées pour aujourd’hui à partir des éléments orbitaux képlériens. La distance en ligne droite entre elles, divisée par la vitesse de la lumière, donne le délai dans un sens. Les délais le plus court et le plus long sont trouvés en répétant le calcul pour chacun des 780 prochains jours, environ un cycle complet des deux planètes.',
+    source: 'JPL Solar System Dynamics, Keplerian Elements for Approximate Positions of the Major Planets (tableau 1, valide de 1800 à 2050). Vérifié avec les rapprochements publiés : environ 55,8 millions de km le 27 août 2003 et environ 62,1 millions de km le 6 octobre 2020. Conjonction solaire : la NASA suspend les commandes de ses engins martiens pendant environ deux semaines à peu près tous les deux ans, quand Mars est à environ 2 degrés du Soleil dans le ciel (par exemple du 11 au 25 novembre 2023).',
+    limits: 'Géométrie seulement. Les vraies liaisons ajoutent des relais, des horaires d’antennes et des limites de débit, et les éléments approximatifs sont justes à quelques dizaines de milliers de kilomètres près. « La Terre » est le barycentre Terre-Lune.',
+  },
+  amsler: {
+    title: 'Grille visuelle',
+    method: 'Une grille d’Amsler : 20 sur 20 carrés avec un point central. Un œil est couvert, l’autre regarde le point, et la personne marque les carrés où les lignes semblent ondulées, floues, pâles ou absentes. La grille standard mesure 10 cm de large et se lit à environ 30 cm, donc un carré couvre environ un degré. Les marques sont comparées au premier contrôle de la personne sur cet appareil; une marque juste à côté d’une ancienne compte comme le même endroit.',
+    source: 'Les contrôles de la vue prévus sur l’ISS sont l’acuité visuelle statique, une grille d’Amsler et un questionnaire (« The case for expanding visual assessments during spaceflight », Prehospital and Disaster Medicine, 2023; les présentations de surveillance oculaire de la NASA mentionnent « Amsler grid (ISS: Laptop) »). Le syndrome neuro-oculaire associé au vol spatial (SANS) est la raison de cette surveillance.',
+    limits: 'Ce n’est pas le logiciel de vol et il ne peut pas détecter le SANS : l’œdème du disque optique se voit par tomographie par cohérence optique et fond d’œil, pas avec une grille. Les résultats dépendent de la distance, de l’éclairage, des lunettes et de l’attention. La taille à l’écran n’est exacte qu’après la calibration facultative avec une carte. Affiché, non jugé.',
+  },
+  alertness: {
+    title: 'Contrôle de vigilance',
+    method: 'Un court test de vigilance psychomotrice : un compteur apparaît après une attente aléatoire de 1 à 4 secondes, pendant 3 minutes. L’application rapporte le temps de réaction médian, les inattentions (réponses de 355 ms ou plus, le seuil publié pour la version de 3 minutes, plus les compteurs manqués) et les faux départs (appuis trop tôt).',
+    source: 'PVT court de 3 minutes (PVT-B) : Basner, Mollicone et Dinges, Acta Astronautica 2011. Chez les astronautes de l’ISS, les nuits de 6 heures de sommeil ou moins étaient liées à de moins bons résultats au PVT-B (Jones et al. 2022).',
+    limits: 'La durée du test, les attentes de 1 à 4 secondes, le seuil d’inattention de 355 ms et la règle de faux départ de 100 ms suivent le PVT-B publié; le test publié attend 30 secondes avant de compter un compteur manqué, cette application en attend 10. Les écrans, claviers et navigateurs ajoutent leur propre délai, donc les chiffres sont comparés seulement à vos propres tests antérieurs sur le même appareil, jamais à des normes publiées. L’entraînement rend les premiers tests plus lents. Il ne diagnostique ni la fatigue ni aucun trouble.',
+  },
+  eyes: {
+    title: 'Clignements et fermeture des yeux',
+    method: 'Pendant le test de réaction (facultatif) et le balayage au repos, la caméra trouve des repères des paupières, jusqu’à environ 15 fois par seconde pendant le test. L’ouverture de l’œil est mesurée comme la hauteur des paupières sur la largeur de l’œil (eye aspect ratio). Votre propre valeur yeux ouverts est apprise dans les premières secondes; l’œil compte comme fermé sous 60 % de cette valeur. Les fermetures de moins d’une demi-seconde comptent comme des clignements, les plus longues sont comptées à part.',
+    source: 'Eye aspect ratio : Soukupová et Čech, Real-time eye blink detection using facial landmarks, 2016. Des fermetures des yeux longues et fréquentes sont un signe reconnu de somnolence dans la recherche sur la fatigue; cette application n’utilise aucun seuil publié.',
+    limits: 'Non validé. Les lunettes, les reflets, une lumière faible, le regard vers le bas et une faible fréquence d’images l’influencent tous, et 15 images par seconde peuvent manquer des clignements très rapides. Les seuils sont des choix de conception. Il ne diagnostique ni la somnolence ni aucun trouble des yeux.',
+  },
+  dentalAuto: {
+    title: 'Comparaison dentaire automatique',
+    method: 'Les deux photos sont déjà redressées et mises à l’échelle par les coins de la bouche. Dans le contour de la bouche, les pixels clairs et peu colorés sont traités comme des dents et les pixels rougeâtres comme des gencives, et leur couleur moyenne est comparée en CIELAB : L* est la clarté, a* va du vert au rouge, b* du bleu au jaune. Un contrôle de l’éclairage passe d’abord; si la luminosité globale diffère de plus de 8 unités L*, les couleurs ne sont pas comparées. La carte des changements marque les pixels dont la couleur a bougé de plus de 15 unités.',
+    source: 'La différence de couleur CIELAB est la façon standard de décrire le changement de couleur des dents en recherche dentaire; les règles de pixels et les limites de cette application sont des choix de conception, pas des seuils validés.',
+    limits: 'Non validé. L’éclairage, la balance des blancs, la caméra, la position des lèvres et la salive changent tous le résultat. Les pixels de type gencive peuvent inclure l’intérieur des lèvres. Surfaces avant seulement. Elle ne peut détecter ni carie, ni maladie des gencives, ni aucun trouble.',
+  },
+  change: {
+    title: 'Changement par rapport à votre référence',
+    method: 'Une différence ne compte comme un changement que si elle dépasse l’erreur typique de la méthode : 8 battements par minute pour le pouls et 3 respirations par minute pour la respiration.',
+    source: 'Pouls : au repos, POS avait une erreur moyenne de 3,8 et une erreur quadratique moyenne de 7,6 battements par minute sur le jeu de données UBFC-Phys (peau claire, analyse publiée). Respiration : environ 1,3 respiration par minute à partir du mouvement du thorax et 2,0 à partir du mouvement de la tête (IEEE EMBC 2022). Ces chiffres décrivent d’autres mises en œuvre, ils sont donc provisoires : dès que vous avez entré 5 valeurs de référence à l’écran des résultats, la marge devient deux fois votre propre erreur moyenne (affichée dans l’Historique).',
+    limits: 'L’erreur est plus grande sur les peaux plus foncées, en mauvaise lumière et avec le mouvement. Un changement peut être réel et rester plus petit que la marge, et un changement hors de la marge peut encore être du bruit.',
+  },
+  crew: {
+    title: 'Analyses sanguines de l’équipage d’Inspiration4',
+    method: 'Bilan métabolique complet du sérum des quatre membres d’équipage d’Inspiration4, trois fois avant le vol (92, 44 et 3 jours avant le lancement) et quatre fois après (1, 45, 82 et 194 jours après le retour). Le graphique montre les valeurs de chaque personne par rapport à la plage de population du laboratoire et à sa propre plage d’avant le vol.',
+    source: 'NASA Open Science Data Repository, OSD-575 (LSDS-8), doi 10.26030/mc5d-p710; Overbey et al., Nature 2024 (Space Omics and Medical Atlas). Valeurs copiées des fichiers TRANSFORMED publiés (bilan métabolique, panels multiplex cardiovasculaire et immunitaire d’Eve) par scripts/build_osd575.py. Les colonnes de DFGe basées sur la race sont exclues. Les marqueurs d’inflammation multiplex sont des dosages de recherche sans plage de référence clinique.',
+    limits: 'Quatre personnes, prélèvements uniques, jeûne et heure de la journée non montrés ici. Trois valeurs d’avant le vol forment une petite référence et les analyses de laboratoire varient d’un jour à l’autre. Montré pour expliquer les références personnelles, pas pour juger la santé de quiconque.',
+  },
+  glymphatic: {
+    title: 'Nettoyage du cerveau et sommeil',
+    method: 'Tuile éducative seulement. Rien n’est mesuré ni évalué.',
+    source: 'Barisano et al., PNAS 2022 : espaces périvasculaires agrandis après de longs vols sur l’ISS. Miao et al., Nature Neuroscience 2024 : chez la souris, l’élimination a baissé pendant le sommeil et l’anesthésie. Plá, Kroesbergen, Nedergaard et al., Nature Neuroscience 2025 : ont contesté cette conclusion; les auteurs ont répondu.',
+    limits: 'La fonction glymphatique humaine en vol spatial est une hypothèse. La plupart des travaux sur les mécanismes portent sur des animaux.',
+  },
+  exp_jaw: {
+    title: 'Ouverture de la mâchoire (expérimental)',
+    method: 'L’écart entre les bords intérieurs des lèvres et la position latérale du menton sont lus à partir des repères du visage à chaque image, puis convertis en millimètres en supposant que chaque iris mesure 11,7 mm de large. L’ouverture la plus grande (97e centile des images) et la déviation latérale du menton entre bouche fermée et ouverte sont gardées.',
+    source: 'La largeur de l’iris des mêmes yeux adultes mesurait environ 11,8 mm sur un appareil et 12,2 à 12,4 mm sur trois autres (Buckenham Boyle et al., PLoS ONE 2021), donc l’échelle peut être décalée d’environ 5 pour cent. L’ouverture maximale entre les dents était en moyenne d’environ 51 mm chez les hommes et 44 mm chez les femmes dans un échantillon de 894 adultes indiens (PMC3428458); les valeurs normales diffèrent selon les populations.',
+    limits: 'Les lèvres, pas les dents : l’écart est plus petit que la règle d’un dentiste. L’inclinaison de la tête et la distance le changent. Il ne peut diagnostiquer aucun problème de l’articulation de la mâchoire. Comparez seulement avec votre premier contrôle.',
+  },
+  exp_gaze: {
+    title: 'Poursuite oculaire (expérimental)',
+    method: 'Un point se déplace de gauche à droite à 0,25 cycle par seconde pendant 20 secondes, puis s’arrête. La position de chaque iris entre les coins de l’œil est suivie; l’application trouve le délai qui aligne le mieux l’œil sur le point, leur degré de concordance (corrélation, 0 à 1), les sauts de rattrapage soudains et la stabilité des yeux sur le point immobile.',
+    source: 'Un oculomètre commercial par webcam a atteint une précision d’environ 1,4 degré, et son regard brut concordait avec un oculomètre de laboratoire à environ 80 pour cent de corrélation pendant la poursuite lisse (Behavior Research Methods 2024, PMC11289017). Les travaux cliniques rapportent habituellement le gain de poursuite, la vitesse de l’œil sur la vitesse de la cible (McIlreavy et al., TVST 2019). Cette application n’estime aucun angle du regard.',
+    limits: 'Regard non calibré. Le délai comprend celui de la caméra, donc comparez seulement sur le même appareil. Les lunettes, l’éclairage et le mouvement de la tête le changent. Elle ne peut détecter ni commotion, ni nystagmus, ni aucune maladie neurologique.',
+  },
+  exp_pupil: {
+    title: 'Réaction des pupilles à la lumière (expérimental)',
+    method: 'L’écran reste sombre 3 secondes, devient blanc 2 secondes, puis redevient sombre. Dans chaque image, la zone sombre reliée au centre de chaque iris est mesurée par rapport à la largeur de l’iris. L’application rapporte de combien chaque pupille s’est resserrée, à quelle vitesse elle a atteint la moitié de ce resserrement, et la différence de taille entre les yeux avant le flash.',
+    source: 'Séparer la pupille de l’iris en lumière visible est difficile, surtout pour les iris foncés (Scientific Reports 2023, s41598-023-40796-0). Un pupillomètre sur téléphone a trouvé la pupille et l’iris dans 77 pour cent des examens dans une étude (Neice et al., Journal of Clinical Monitoring and Computing 2021).',
+    limits: 'Ce n’est pas un pupillomètre. La caméra peut changer son exposition pendant le flash, ce qui cache une partie du resserrement. Un écran est une lumière faible. Beaucoup d’yeux foncés seront refusés. Ne le faites pas si une lumière clignotante peut vous causer des crises d’épilepsie. Une pupille soudainement inégale avec mal de tête ou faiblesse est une urgence, pas un contrôle.',
+  },
+  exp_pallor: {
+    title: 'Couleur de l’intérieur de la paupière (expérimental)',
+    method: 'Pendant que vous tirez une paupière inférieure vers le bas, l’application mesure un indice de rougeur, 100 x log10(rouge / vert), sur l’intérieur de la paupière et sur le blanc du même œil, et garde la différence. L’œil qui montre le plus de rose est utilisé. Vous confirmez l’image avant qu’elle soit enregistrée.',
+    source: 'Un indice de rougeur de la conjonctive tiré de photos prises avec une carte de couleur était corrélé à l’hémoglobine et se comparait favorablement au jugement des cliniciens (Collings et al., PLoS ONE 2016). Une application sur téléphone estimant l’hémoglobine à partir de photos de l’intérieur de la paupière avait une exactitude de 75 pour cent selon les catégories d’anémie, avec des limites d’accord d’environ plus ou moins 4,8 g/dL (Zhao et al., PLoS ONE 2024).',
+    limits: 'Pas de carte de couleur ici, donc l’éclairage de la pièce change le chiffre. Il n’estime pas l’hémoglobine et ce n’est pas un test d’anémie. Une irritation de l’œil rend la paupière plus rouge.',
+  },
+  exp_neck: {
+    title: 'Contrôle du cou, région de la thyroïde (expérimental)',
+    method: 'La tête un peu penchée vers l’arrière, l’application enregistre une photo du bas de l’avant du cou pendant que vous gardez une gorgée d’eau en bouche, et une autre au plus grand mouvement pendant que vous avalez. Elle compte les mouvements de déglutition à partir du changement d’une image à l’autre dans la case.',
+    source: 'L’examen clinique du cou inspecte le bas du cou et palpe la thyroïde pendant que la personne avale une gorgée d’eau (University of Washington clinical skills text, Head and Neck Exam).',
+    limits: 'L’application ne cherche rien dans les photos. Un cou d’apparence normale n’exclut pas une maladie de la thyroïde, et la fonction thyroïdienne demande une prise de sang. Une bosse qui grossit vite, ou de la difficulté à avaler ou à respirer, demande des soins rapides.',
+  },
+  exp_tremor: {
+    title: 'Stabilité de la main (expérimental)',
+    method: 'Chaque main est tendue pendant 15 secondes. Le mode téléphone lit le capteur de mouvement; le mode caméra suit le déplacement de l’image dans une case. L’application trouve le rythme le plus fort entre 3 et 12 Hz et la part de tout le mouvement qui tombe dans cette bande.',
+    source: 'Les accéléromètres de téléphones et de montres ont mesuré la fréquence maximale du tremblement de façon comparable à un accéléromètre de laboratoire chez 20 personnes atteintes de tremblement essentiel ou de maladie de Parkinson (Journal of Clinical Movement Disorders, 2020).',
+    limits: 'Tout le monde a un petit tremblement physiologique rapide; la caféine, le froid, la fatigue et le stress l’augmentent. Le mode caméra dépend de la fréquence d’images et de la distance. Aucun type de tremblement ni aucune maladie n’est nommé.',
+  },
+  exp_circ: {
+    title: 'Délai du pouls et rapport de couleurs (expérimental)',
+    method: 'Le pouls est pris sur le visage et sur une paume ouverte tenue à côté de la joue dans la même image, avec la méthode POS. Indice de délai : combien de millisecondes plus tard arrive le pouls de la paume, par corrélation croisée sur des fenêtres de 10 secondes. Indice de couleur : l’amplitude du pouls par rapport à la moyenne en rouge, divisée par la même chose en bleu, sur le visage. Les deux sont comparés seulement à votre premier contrôle.',
+    source: 'Les pouls du visage et de la paume pris par caméra ont donné un temps de transit du pouls qui suivait la pression artérielle dans de petites études, dont une avec une caméra à 420 images par seconde (cité dans Sensors 2017, PMC5539707); une revue de 2021 a trouvé peu de preuves que les caméras peuvent mesurer directement la pression artérielle (McDuff, arXiv 2111.11547). La saturation en oxygène par caméra RGB demandait une calibration dans un laboratoire d’hypoxie (van Gastel et Verkruijsse, Biomedical Optics Express 2022), et une caméra de téléphone non modifiée, le doigt sur l’objectif, a détecté 79 pour cent des cas d’oxygène bas (Hoffman et al., npj Digital Medicine 2022).',
+    limits: 'Ni la pression artérielle ni la saturation en oxygène; l’application n’affiche jamais de mmHg ni de pourcentage. Une caméra ordinaire prend une image environ toutes les 33 ms et n’a pas de canal infrarouge. La lumière, le teint, la position de la main et les réglages de la caméra font bouger les deux indices. Ne vous en servez jamais pour changer un médicament.',
+  },
+  acuity: {
+    title: 'Tableau de lettres (expérimental)',
+    method: 'Des lettres en forme de E pointent dans l’une de quatre directions, cinq par ligne, chaque ligne plus petite de 0,1 logMAR (environ 26 pour cent). Les tailles viennent de votre distance et de la calibration de l’écran : à logMAR 0 (20/20), la lettre couvre 5 minutes d’arc. Le test commence à 20/80, remonte si cette ligne est manquée, puis descend jusqu’à ce qu’une ligne ait 2 bonnes réponses ou moins. Le score suit les tableaux de lettres utilisés en recherche : 0,02 logMAR par lettre. Chaque œil est comparé à votre premier contrôle à la même distance; 2 lignes ou plus comptent comme différent (un choix de conception).',
+    source: 'Tableaux de lettres logarithmiques et leur score : Ferris FL et al., New visual acuity charts for clinical research, American Journal of Ophthalmology, 1982. Les contrôles de la vue prévus sur l’ISS comprennent l’acuité visuelle (Prehospital and Disaster Medicine 2023, PMC10445111). L’acuité avec E basculant sur téléphone a été comparée aux tableaux dans des études de terrain, par exemple Peek Acuity (Bastawrous et al., JAMA Ophthalmology, 2015); ces résultats ne valident pas ce code.',
+    limits: 'Ce n’est pas un test d’acuité clinique. La taille de l’écran, la taille des pixels et la distance limitent la plus petite lettre; un résultat parfait à la limite de l’écran veut dire « au moins aussi bon ». Sans calibration avec une carte, les tailles sont approximatives. La lumière, les reflets et les lunettes le changent. Il ne peut détecter ni le SANS ni aucune maladie des yeux.',
+  },
+  lids: {
+    title: 'Ouverture des yeux (expérimental)',
+    method: 'Pendant le balayage au repos, l’écart entre la paupière supérieure et inférieure est mesuré en deux points sur chaque œil, à chaque image utilisable, et converti en millimètres en supposant un iris de 11,7 mm. La valeur yeux ouverts est le 75e centile, pour que les clignements ne la fassent pas baisser. Elle est comparée seulement à votre référence d’origine; plus de 1 mm vers le haut ou le bas est dit différent (un choix de conception).',
+    source: 'La position de la paupière inférieure a été étudiée chez les astronautes (Ax et al., 2026, listé dans DATA_SOURCES.md). Repères : MediaPipe Face Mesh. L’échelle de l’iris est la même que pour les contrôles expérimentaux (Buckenham Boyle et al., PLoS ONE 2021).',
+    limits: 'Plisser les yeux, sourire, la lumière, la fatigue et l’inclinaison de la tête la changent. L’échelle de l’iris peut être décalée d’environ 5 pour cent. Ce n’est pas une mesure du ptosis ni d’aucune maladie des yeux.',
+  },
+  bedrest: {
+    title: 'Déplacement des liquides en alitement (données NASA)',
+    method: 'Pour chaque personne, le volume plasmatique (une méthode de volume sanguin) pendant et après l’alitement tête vers le bas est comparé à sa propre moyenne avant l’alitement, en pourcentage. Les valeurs de chaque personne dans une fenêtre sont réduites à leur médiane, puis la tuile montre la médiane et la moitié centrale entre les personnes, et combien étaient sous leur plus basse valeur d’avant l’alitement. Produit par scripts/build_bedrest.py; seuls ces résumés sont inclus dans l’application.',
+    source: 'NASA Life Sciences Portal, Bed Rest Standard Measures: Plasma Volume (chercheur principal Steven Platts), doi 10.83263/4dzb-2267 : campagne 1, campagne 3 et l’étude CFT70 de 70 jours.',
+    limits: 'L’alitement est un analogue, pas un vol spatial. Les groupes avec et sans contre-mesures d’exercice sont réunis. Volontaires surtout masculins. Les jours d’alitement et les fenêtres diffèrent entre les campagnes. Les conditions de redistribution des fichiers bruts ne sont pas confirmées, donc les données brutes ne sont pas dans ce dépôt.',
+  },
+  vo2: {
+    title: 'Exercice pendant l’alitement (données NASA)',
+    method: 'Consommation maximale d’oxygène (L/min) au premier test sur tapis roulant ou vélo après 70 jours d’alitement tête vers le bas, par rapport au propre test de chaque personne avant l’alitement, en pourcentage. La tuile montre la médiane et la moitié centrale de chaque groupe et combien ont perdu plus de 5 pour cent. Produit par scripts/build_vo2.py; seuls ces résumés sont inclus dans l’application.',
+    source: 'NASA Life Sciences Portal, Aerobic Capacity, Flight Analog (chercheur principal Alan D. Moore Jr.), doi 10.83263/w056-8t76, fichiers de l’étude CFT70 MR080G_CFT70_PRE_ALL et MR080G_CFT70_POST1_ALL. Trois lignes des fichiers bruts étaient décalées d’une colonne et ont été corrigées avant le résumé.',
+    limits: 'L’alitement est un analogue, pas un vol spatial. Petits groupes, presque tous des hommes. Les sous-groupes d’exercice sont réunis; le groupe volant d’inertie est montré à part. Les conditions de redistribution des fichiers bruts ne sont pas confirmées, donc ils ne sont pas dans ce dépôt.',
+  },
+  nulisa: {
+    title: 'Inflammation après l’atterrissage (données NASA)',
+    method: 'Panels NULISAseq (environ 200 protéines chacun) dans le sérum (OSD-575) et l’urine (OSD-656) des quatre membres d’équipage d’Inspiration4. Les valeurs sont des NPQ en log2. Chaque personne est comparée à sa propre moyenne avant le vol (92, 44 et 3 jours avant le lancement), et le changement médian de tout le panel pour cet échantillon est soustrait, car la plupart des protéines ont baissé ensemble dans certains échantillons. Le graphique montre le lendemain de l’atterrissage; facteur = 2 à la puissance de ce changement. Produit par scripts/build_osd575.py; seuls ces résumés sont inclus dans l’application.',
+    source: 'NASA Open Science Data Repository : OSD-575 (doi 10.26030/mc5d-p710), panel Alamar sérique LSDS-8; OSD-656 (doi 10.26030/7cax-yj10), panel Alamar urinaire LSDS-64. La hausse de l’IL-6 après ce vol concorde avec Kim et al., Nature Communications 2024 (10.1038/s41467-024-49211-2).',
+    limits: 'Quatre personnes (trois dans l’urine : un membre d’équipage n’a pas d’échantillon d’urine le lendemain de l’atterrissage), un seul vol de 3 jours, aucune valeur p. L’urine n’est pas corrigée pour sa dilution (pas de créatinine dans les fichiers). La correction du décalage du panel est un choix; les valeurs non corrigées vont dans le même sens pour l’IL-6. Pas un diagnostic, et pas ce qui arrive à tous les équipages.',
+  },
+};

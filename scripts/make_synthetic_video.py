@@ -1,3 +1,4 @@
+# AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 # Synthetic test video for the browser pipeline: a skin patch with a 72 bpm colour pulse and torso stripes moving at 15 breaths/min.
 # Usage: python3 scripts/make_synthetic_video.py synth.y4m   (needs numpy). Not human data; it checks the code path, not accuracy on people.
 import numpy as np, sys

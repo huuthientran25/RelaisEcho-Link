@@ -1,9 +1,11 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Unit tests: device check and demo reel.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CONFIG } from '../js/config.js';
 import { fpsFromTimes, median, featureList, verdicts, overall, reportText } from '../js/devicecheck.js';
-import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType } from '../js/reel.js';
+import { REEL, reelTotal, sceneAt, reelSrt, pickRecordingType, REEL_MUSIC } from '../js/reel.js';
+import { existsSync, statSync } from 'node:fs';
 
 const ALL = { secure: true, getUserMedia: true, wasm: true, indexedDb: true, webgl2: true, rvfc: true, serviceWorker: true, compression: true, speech: true };
 
@@ -211,3 +213,16 @@ test('caption file and recording format choice', () => {
     assert.equal(exact.facingMode, undefined);
   });
 }
+
+test('reel music: AI label, file present and small, recording format carries audio', () => {
+  assert.match(REEL_MUSIC.label, /AI-generated/);
+  const f = new URL(`../${REEL_MUSIC.src}`, import.meta.url);
+  assert.ok(existsSync(f));
+  assert.ok(statSync(f).size < 1_000_000);
+  assert.ok(REEL_MUSIC.volume > 0 && REEL_MUSIC.volume <= 1);
+  const all = () => true;
+  assert.equal(pickRecordingType(all, true).mimeType, 'video/webm;codecs=vp9,opus');
+  assert.equal(pickRecordingType(all).mimeType, 'video/webm;codecs=vp9');
+  const noOpus = (t) => !/opus|mp4a/.test(t);
+  assert.equal(pickRecordingType(noOpus, true).mimeType, 'video/webm;codecs=vp9');
+});

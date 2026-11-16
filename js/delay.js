@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Signal delay between Earth and Mars: why a checkup far from a clinic has to work without a live call.
 // Positions: JPL "Keplerian Elements for Approximate Positions of the Major Planets", Table 1
 // (valid 1800 to 2050), https://ssd.jpl.nasa.gov/planets/approx_pos.html . Each row is the six

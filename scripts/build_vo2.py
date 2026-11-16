@@ -1,3 +1,4 @@
+# AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 """Summarize NASA CFT70 bed rest aerobic capacity for the app (data/bedrest-vo2.json).
 
 Source: NASA Life Sciences Portal, "Aerobic Capacity, Flight Analog" (PI Alan D. Moore Jr.),
@@ -35,6 +36,7 @@ def main(src, out):
                               'q1_pct': round(q(v, 0.25), 1), 'q3_pct': round(q(v, 0.75), 1), 'lost_over_5pct': sum(x < -5 for x in v)})
     res['people'] = sum(x['n'] for x in res['groups'])
     with open(out, 'w') as fh:
+        res['ai_disclosure'] = "Values are from the cited NASA dataset; this summary file was produced by a script written with Claude (Anthropic), an AI tool, under the team's direction. See AI_DISCLOSURE.md."
         json.dump(res, fh, indent=1)
     print(json.dumps(res, indent=1))
 

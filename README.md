@@ -6,15 +6,19 @@ A phone or laptop camera coaches you into the same position as your own baseline
 
 NASA Space Apps Challenge 2026, Montreal. Challenge: *Create Health Monitoring Software for Astronauts on Space Missions.*
 
+> **AI use (SI-generated content).** Code, tests, data summaries and documentation were written with Claude (Anthropic) under the team's direction; all creative decisions were the team's. The logo was generated with ChatGPT and carries a visible "AI" watermark. The demo video's music was synthesized by a program written with Claude. ChatGPT Astra was also used. Every source file starts with a line saying so, data files carry an `ai_disclosure` field, and `AI_DISCLOSURE.md` has the details.
+
 > Research prototype. Not a diagnostic device. Not affiliated with or endorsed by NASA or the Canadian Space Agency. The northern use case is a hypothesis to develop with communities; no partnership is claimed.
 
 ## Try it in one minute (no camera needed)
 
-1. Open the app (GitHub Pages link in the repository's About box, or run it locally, see below).
+1. Open the app: https://huuthientran25.github.io/RelaisEcho-Link/ (or run it locally, see below).
 2. Home page > **Explore with sample data**: two weeks of invented checkups, clearly labelled.
-3. **Mission board**: today's checklist, alertness, sleep pressure, daylight, radiation budget for an ISS or Mars mission, live NASA space weather, NASA crew blood data.
-4. **History**: trends against the baseline with a measurement noise band.
-5. Home page > **Open a review packet** > **Show a sample packet**: what the nurse sees, and the reply that closes the loop.
+3. **Overview**: the body chart. Click Heart: pulse sits above its band 3 times in a row, a sustained change. **Load a sample crew of four** shows the list a nurse would read first on a shared tablet.
+4. **Board**: radiation budget for an ISS or Mars mission, live NASA space weather, Inspiration4 crew blood and inflammation after landing (serum and urine), NASA bed rest studies.
+5. **History**: trends against the baseline, and the bench test agreement plot.
+6. Home page > **Open a review packet** > **Show a sample packet**: what the nurse sees, its fingerprint check, and the reply that closes the loop. **Got a short text message instead?** decodes the 160 character satellite version.
+7. **Language**: switch to Français; the whole interface follows (draft).
 
 Or let it play by itself: Home page > **30 second captioned demo** (also `/?reel=1`). **Record it as a video file** saves the same 30 seconds as a video, and **Captions file (.srt)** gives the subtitles as a separate track.
 
@@ -27,19 +31,20 @@ Or let it play by itself: Home page > **30 second captioned demo** (also `/?reel
 | Breathing | Four channels (neck band, upper torso, head bob, head tilt), best one reported with how many agree | EXPERIMENTAL |
 | Eyes | Blinks and eye closure during the scan and, optionally, the reaction test | EXPERIMENTAL |
 | Dental photos | Front and both sides, levelled and scaled by the mouth corners, baseline against today slider, reviewer marks, colour comparison with a lighting check | EXPERIMENTAL |
-| Change against baseline | A difference counts only when it beats the method's noise band (published figures, or your own bench error after 5 reference pairs) | MODELED |
+| Change against baseline | A difference counts only when it beats the method's noise band (published figures, or your own bench error after 5 reference pairs). Each trend also says whether it is one odd value, a sustained change (3 good quality values in a row outside the band) or a drift inside the band toward its edge | MODELED |
+| Bench test | Enter a reference (fingertip oximeter, watch, counted breaths) after a checkup; History shows mean error, bias and a Bland and Altman agreement plot | |
 | Alertness | 3 minute reaction test with the published PVT-B settings, compared with your own first test | EXPERIMENTAL |
 | Overview | One screen: a body chart whose regions open trend graphs against your own first value, four headline numbers, a short "look here first" list and the next step; four sample scenarios to explore, a mission clock (day N of M) and one page printing. A reading order, not a score | LIVE |
-| Mission board | Today checklist, checkup rhythm, sleep pressure (two process model), daylight by latitude next to the station's 16 sunrises a day, radiation budget for ISS and Mars missions (NASA-STD-3001, Curiosity RAD), live space weather (NASA DONKI), signal delay to Mars today (JPL orbital elements), Inspiration4 crew blood data (NASA OSDR OSD-575), brain clearance explainer | LIVE, MODELED, PUBLISHED or NASA DATA per tile |
+| Mission board | Today checklist, checkup rhythm, sleep pressure (two process model), daylight by latitude next to the station's 16 sunrises a day, radiation budget for ISS and Mars missions (NASA-STD-3001, Curiosity RAD), live space weather (NASA DONKI), signal delay to Mars today (JPL orbital elements), Inspiration4 crew blood data (NASA OSDR OSD-575), inflammation after landing in serum and urine (OSD-575 and OSD-656 NULISAseq), NASA bed rest fluid shift and exercise (NLSP), brain clearance explainer | LIVE, MODELED, PUBLISHED or NASA DATA per tile |
 | Eye grid and eye chart | Amsler grid self check and a tumbling E acuity chart (logMAR, per letter scoring, screen limit stated), one eye at a time, each compared with your own first check; eye opening in mm during the scan | EXPERIMENTAL |
 | Experimental checks | Seven short camera checks, each compared only with your own first result: jaw opening (mm, iris scaled), eye following a moving dot (match and delay), pupil light response (screen flash), inner eyelid colour (redness against the white of the eye, confirmed before saving), neck photos before and during a swallow, hand steadiness (phone motion sensor or camera, 3 to 12 Hz), and a pulse timing index plus a colour ratio index (face against an open palm). The last two are indexes, never mmHg or a saturation percentage | EXPERIMENTAL |
 | Symptoms | Ten fixed items ticked before a checkup (plus free text), carried in the packet and counted over 14 days in History; chest pain or shortness of breath shows an urgent care message | |
-| Review loop | Nurse view opens with a "Read first" list built from the packet (urgent ticks, changes outside the noise band, low quality captures); a reading order, not a score. Packet as text, JSON, compressed file, QR code or print; nurse view opens it with no upload; reply file marks it acknowledged | |
-| Shared devices | Several people on one device, each with their own baseline and history | |
+| Review loop | Nurse view opens with a "Read first" list built from the packet (urgent ticks, changes outside the noise band, sustained changes, low quality captures); a reading order, not a score. Packet as text, JSON, compressed file, QR code, print or a 160 character message for a satellite text messenger; nurse view opens it with no upload; reply file marks it acknowledged | |
+| Shared devices | Several people on one device, each with their own baseline and history; "Everyone on this device" on the Overview lists them in reading order (urgent ticks, sustained changes, look again) for a crew tablet or a health centre laptop | |
 | Device check | One screen that tests the browser, the real camera frame rate, brightness, face model load and tracking speed, and gives a report to copy (no personal data in it) | |
 | Demo reel | A 30 second captioned walk through on the sample data, with built in tab recording | |
 | Your data | One screen listing what is stored, what can leave, the three places the app fetches from, and an erase everything button | |
-| Access | Works offline after the first visit, installable, English and French (draft), Inuktitut slots awaiting a certified translator, five text sizes (Aa−, Aa, Aa+), light and dark, spoken coaching, screen reader checks | |
+| Access | Works offline after the first visit, installable, English and French (whole interface, Evidence cards, nurse view and demo reel; SI-generated draft awaiting a fluent reviewer; packet files stay English), Inuktitut slots awaiting a certified translator, five text sizes (Aa−, Aa, Aa+), light and dark, spoken coaching, screen reader checks | |
 
 There is no combined health score on purpose: one number would hide which part changed.
 
@@ -56,7 +61,7 @@ Full list with links: `DATA_SOURCES.md`. Software and font licences: `LICENSES.m
 
 ## What is tested, and what is not
 
-- `npm test`: 114 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
+- `npm test`: 126 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
 - A synthetic video with a known 72 bpm colour pulse and 15 breaths per minute runs through the whole browser pipeline (`tests/e2e_synthetic.mjs`) and returns 72 and 15. This shows the code path works.
 - An automated accessibility audit (axe-core) of eight screens (home, board, history, crew data, reaction test, nurse view, checkup setup, device check) in light and dark mode found no violations at v0.50.
 - **Not shown: accuracy on real people.** Camera pulse error is known to rise on darker skin (a published meta analysis reports about 4 beats per minute for Fitzpatrick types I to V and about 14 for type VI), cold skin is untested, and every threshold in `js/config.js` is a design choice. That is why every estimate is labelled EXPERIMENTAL and the app refuses to give a number when a capture fails its checks.

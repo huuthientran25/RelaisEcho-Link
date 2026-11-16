@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Demo reel: a 30 second, captioned walk through the app on the invented sample data, made to be
 // screen recorded for the Space Apps demo video (30 seconds, English subtitles).
 // Scene lengths are in seconds and must add up to 30. Captions stay short enough to read in the time shown.
@@ -36,8 +37,19 @@ export function reelSrt(reel = REEL) {
 }
 
 // First recording format this browser supports, with its file extension; null when it cannot record at all.
-export function pickRecordingType(isSupported) {
-  const types = [['video/webm;codecs=vp9', 'webm'], ['video/webm;codecs=vp8', 'webm'], ['video/webm', 'webm'], ['video/mp4', 'mp4']];
+// withAudio: prefer formats that name an audio codec too, so the music goes into the file.
+export function pickRecordingType(isSupported, withAudio = false) {
+  const video = [['video/webm;codecs=vp9', 'webm'], ['video/webm;codecs=vp8', 'webm'], ['video/webm', 'webm'], ['video/mp4', 'mp4']];
+  const audio = [['video/webm;codecs=vp9,opus', 'webm'], ['video/webm;codecs=vp8,opus', 'webm'], ['video/mp4;codecs=avc1,mp4a', 'mp4']];
+  const types = withAudio ? [...audio, ...video] : video;
   const hit = types.find(([t]) => { try { return isSupported(t); } catch { return false; } });
   return hit ? { mimeType: hit[0], ext: hit[1] } : null;
 }
+
+// Background music for the reel. SI-generated: synthesized by code written with Claude (scripts/make_music.py),
+// no samples. The label is shown on screen while it plays and is written into the file's metadata.
+export const REEL_MUSIC = {
+  src: 'audio/relaisecho-theme-ai-generated.mp3',
+  volume: 0.8,
+  label: 'Music: AI-generated',
+};

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Text for the evidence drawer. Keep each entry to: method, source, what it cannot tell you.
 
 export const EVIDENCE = {
@@ -162,5 +163,11 @@ export const EVIDENCE = {
     method: "Peak oxygen uptake (L/min) on the first treadmill or cycle test after 70 days of head down bed rest, against each person's own test before bed rest, in percent. The tile shows the median and middle half for each group and how many lost more than 5 percent. Built by scripts/build_vo2.py; only these summaries ship with the app.",
     source: 'NASA Life Sciences Portal, Aerobic Capacity, Flight Analog (PI Alan D. Moore Jr.), doi 10.83263/w056-8t76, CFT70 study files MR080G_CFT70_PRE_ALL and MR080G_CFT70_POST1_ALL. Three rows in the raw files are shifted one column and were corrected before summarizing.',
     limits: 'Bed rest is an analog, not spaceflight. Small groups, nearly all men. Exercise sub-arms are pooled; the flywheel group is shown on its own. Redistribution terms of the raw files are not confirmed, so they are not in this repository.',
+  },
+  nulisa: {
+    title: 'Inflammation after landing (NASA data)',
+    method: 'NULISAseq panels (about 200 proteins each) in serum (OSD-575) and urine (OSD-656) from the four Inspiration4 crew members. Values are log2 NPQ. Each person is compared with their own mean before flight (92, 44 and 3 days before launch), and the median change of the whole panel for that sample is subtracted, because most proteins moved down together in some samples. The chart shows the day after landing; fold = 2 to the power of that change. Built by scripts/build_osd575.py; only these summaries ship with the app.',
+    source: 'NASA Open Science Data Repository: OSD-575 (doi 10.26030/mc5d-p710), LSDS-8 serum Alamar panel; OSD-656 (doi 10.26030/7cax-yj10), LSDS-64 urine Alamar panel. IL-6 rising after this flight agrees with Kim et al., Nature Communications 2024 (10.1038/s41467-024-49211-2).',
+    limits: 'Four people (three in urine: one crew member has no urine sample the day after landing), one 3 day flight, no p values. Urine is not corrected for how diluted it was (no creatinine in the files). The panel shift correction is a choice; uncorrected values point the same way for IL-6. Not a diagnosis, and not what happens to every crew.',
   },
 };

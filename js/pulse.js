@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Camera pulse estimate with the POS method (plane orthogonal to skin).
 // Method: Wang, den Brinker, Stuijk, de Haan, "Algorithmic Principles of Remote PPG",
 // IEEE Trans Biomed Eng 2017. Implementation written for this project (Apache 2.0).

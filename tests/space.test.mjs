@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Unit tests: radiation missions, space weather parsing, daylight.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

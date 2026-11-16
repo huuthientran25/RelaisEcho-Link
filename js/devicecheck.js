@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Device check: can this browser, camera and connection run a checkup? Run before demo day,
 // or when a scan refuses to start. Pure functions here; the camera work is in main.js.
 // The report holds technical lines only: no names, no measurements, no pictures.

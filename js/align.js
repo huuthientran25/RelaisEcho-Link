@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Positioning ghost: compare the live face with the saved baseline pose and say what to fix.
 // Matches apparent size and angle, never centimetres.
 

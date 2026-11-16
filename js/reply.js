@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Closing the loop: the reviewer sends back a small reply file; the person loads it and the
 // packet shows as acknowledged. No server: the file travels by whatever channel sent the packet.
 export const REPLY_STATUSES = {

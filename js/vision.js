@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Loads the MediaPipe Face Landmarker (library and model are Apache 2.0, see LICENSES.md).
 // Model file: served from ./models/ when present (offline), otherwise from Google's model bucket.
 

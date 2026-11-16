@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Pixel measurements on a downscaled copy of each video frame.
 // Raw colour is kept on purpose: no white balance or normalization, because that can remove the pulse.
 

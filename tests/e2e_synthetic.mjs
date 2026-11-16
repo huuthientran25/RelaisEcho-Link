@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Optional browser test: runs a full scan on the synthetic video with mock landmarks.
 // Setup: npm i -D puppeteer-core ; python3 scripts/make_synthetic_video.py /tmp/synth.y4m ; npm run serve (other terminal)
 // Run:   CHROME=/path/to/chrome node tests/e2e_synthetic.mjs   -> expect 72 bpm and 15 /min

@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Space weather from NASA DONKI (Space Weather Database Of Notifications, Knowledge, Information),
 // run by the Community Coordinated Modeling Center at NASA Goddard and served by api.nasa.gov.
 // Live data: needs internet, and is loaded only after the person asks for it. No user data is sent.

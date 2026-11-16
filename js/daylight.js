@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Daylight: how long the Sun is up today at a given latitude, next to the 16 sunrises a day on the ISS.
 // Formulas: NOAA's general solar position equations (fractional year, declination), sunrise and
 // sunset at a zenith of 90.833 degrees (refraction and the Sun's radius included).

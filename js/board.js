@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Mission board: separate labelled tiles, never one combined health score.
 // LIVE = measured on this device. MODELED = calculated from a published model. PUBLISHED = a published figure for context.
 // Every constant below has its source next to it. Change nothing here without updating the source note.

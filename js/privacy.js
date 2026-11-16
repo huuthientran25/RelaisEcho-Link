@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // "Your data": a plain inventory of what this device holds and what the app can send or fetch.
 // Pure functions; the screen itself is drawn in main.js. Keep NETWORK and EXPORTS true to the code:
 // tests/repo.test.mjs fails if a new outside address appears in the app without being listed here.

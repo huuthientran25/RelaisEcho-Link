@@ -1,7 +1,10 @@
 <!doctype html>
+<!-- AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="ai-disclosure" content="AI-assisted (SI-generated): code written with Claude (Anthropic); logo generated with ChatGPT (OpenAI); ChatGPT Astra also used; all creative decisions by the team. See AI_DISCLOSURE.md.">
+<meta name="generator" content="Hand directed by the team; code written with Claude (Anthropic)">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RelaisÉcho Link: guided camera checkup</title>
 <meta name="description" content="A camera coaches you into the same position as last time, measures only when the capture is good, and shows a remote practitioner what changed. Research prototype, not a diagnostic device.">
@@ -90,7 +93,7 @@
         <li><button type="button" class="link-btn" data-nav="history">History</button>: trends against the baseline and the noise band.</li>
         <li><button type="button" class="link-btn" data-tour="packet">Nurse view</button>: a sample review packet.</li>
       </ol>
-      <p class="fine">Or watch it play by itself: <button type="button" class="link-btn" data-reel="play">30 second captioned demo</button> · <button type="button" class="link-btn" data-reel="record" id="btnReelRecord">Record it as a video file</button> · <button type="button" class="link-btn" data-reel="srt">Captions file (.srt)</button></p>
+      <p class="fine">Or watch it play by itself: <button type="button" class="link-btn" data-reel="play">30 second captioned demo</button> · <button type="button" class="link-btn" data-reel="record" id="btnReelRecord">Record it as a video file</button> · <button type="button" class="link-btn" data-reel="srt">Captions file (.srt)</button> · <label class="inline-check"><input type="checkbox" id="reelMusic" checked> Music (AI-generated)</label></p>
       <p class="fine" id="reelNote" role="status"></p>
     </div>
   </section>
@@ -110,7 +113,8 @@
         <p class="fine">For a field rotation, a winter posting or a mission. Shown here only; it changes no result.</p>
       </details>
       <div class="ov-scen"><label for="ovScenario">Explore a scenario (sample data)</label>
-        <select id="ovScenario" class="ov-select"></select><button type="button" class="btn" id="btnOvScenario">Load</button></div>
+        <select id="ovScenario" class="ov-select"></select><button type="button" class="btn" id="btnOvScenario">Load</button>
+        <button type="button" class="link-btn" id="btnOvCrew">Load a sample crew of four</button></div>
     </div>
     <div class="ov-grid">
       <div class="card ov-bodycard">
@@ -129,12 +133,14 @@
           </div>
           <div id="ovChart"></div>
           <p class="fine" id="ovChartNote"></p>
+            <p id="ovTrend" class="ov-trend" hidden></p>
           <details class="fine"><summary>Show values</summary><div id="ovValues"></div></details>
         </div>
         <div class="card ov-next" id="ovNext"></div>
         </div>
       </div>
     </div>
+    <div class="card ov-roster" id="ovRoster" hidden></div>
   </section>
 
   <section id="screen-board" class="screen" hidden aria-labelledby="h-board">
@@ -143,7 +149,7 @@
     <p data-i18n="board.lede" class="lede">Separate tiles, each labelled with where its number comes from. There is no combined health score: a single number would hide which part changed.</p>
     <p class="fine legend-row"><span class="item"><span class="tag live">LIVE</span> measured on this device</span><span class="item"><span class="tag">MODELED</span> calculated from a published model</span><span class="item"><span class="tag pub">PUBLISHED</span> a published figure for context</span></p>
     <nav class="jump" aria-label="Jump to a tile">
-      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-exp">Experimental</a><a href="#h-t-crew">Crew data</a><a href="#h-t-bed">Bed rest</a><a href="#h-t-vo2">Exercise</a>
+      <a href="#h-t-today">Today</a><a href="#h-t-alert">Alertness</a><a href="#h-t-sleep">Sleep</a><a href="#h-t-day">Daylight</a><a href="#h-t-rad">Radiation</a><a href="#h-t-sw">Space weather</a><a href="#h-t-delay">Signal delay</a><a href="#h-t-eye">Eye grid</a><a href="#h-t-exp">Experimental</a><a href="#h-t-crew">Crew data</a><a href="#h-t-inf">Inflammation</a><a href="#h-t-bed">Bed rest</a><a href="#h-t-vo2">Exercise</a>
     </nav>
     <div class="tiles">
       <article class="tile wide" aria-labelledby="h-t-today">
@@ -243,6 +249,12 @@
         <p><button type="button" class="btn" data-nav="crew">Explore the crew data</button></p>
       </article>
 
+      <article class="tile wide" aria-labelledby="h-t-inf">
+        <header><h2 id="h-t-inf">Inflammation after landing</h2><span class="tag pub">NASA DATA</span></header>
+        <div id="infBody"><p>Loading…</p></div>
+        <p class="fine">Inspiration4 serum (OSD-575) and urine (OSD-656), each crew member against their own values before flight. Exploratory: 4 people, 3 in urine. <button type="button" class="link-btn" data-evidence="nulisa">Evidence</button></p>
+      </article>
+
       <article class="tile" aria-labelledby="h-t-gly">
         <header><h2 data-i18n="board.t.gly" id="h-t-gly">Brain clearance and sleep</h2><span class="tag">EDUCATIONAL</span></header>
         <p>After about six months on the ISS, MRI showed larger fluid spaces around brain blood vessels (perivascular spaces) in astronauts, larger in NASA crew than in cosmonauts.</p>
@@ -309,6 +321,12 @@
       <input type="file" id="reviewFile" accept="application/json,.json,.gz,application/gzip" class="sr-only">
       <button type="button" class="btn" id="btnSamplePacket">Show a sample packet</button>
       <button type="button" class="btn" data-print>Print</button></p>
+    <details class="sms-decode"><summary>Got a short text message instead? Decode it</summary>
+      <label for="smsIn">Paste the message (it starts with "RE BL" or "RE FU")</label>
+      <textarea id="smsIn" rows="3" translate="no"></textarea>
+      <p><button type="button" class="btn" id="btnSmsDecode">Decode</button></p>
+      <ul id="smsOut" aria-live="polite"></ul>
+    </details>
     <div id="reviewOut" aria-live="polite"></div>
   </section>
 
@@ -456,7 +474,7 @@
       <li id="stAck">Not acknowledged</li>
     </ol>
     <div id="replyBox"></div>
-    <pre id="packetText" class="packet-text"></pre>
+    <pre id="packetText" class="packet-text" translate="no"></pre>
     <label class="check"><input type="checkbox" id="includeImages"> Include dental photos in the file</label>
     <p class="row between"><span>Packet size</span><strong id="packetSize"></strong></p>
     <div class="row">
@@ -466,10 +484,18 @@
       <input type="file" id="replyFile" accept="application/json,.json" class="sr-only">
       <button type="button" class="btn" id="btnCopy">Copy text summary</button>
       <button type="button" class="btn" id="btnQr">Show QR code</button>
+      <button type="button" class="btn" id="btnSms">Short message (160 characters)</button>
       <button type="button" class="btn" data-print>Print</button>
       <button type="button" class="btn" data-nav="home">Done</button>
     </div>
     <div id="qrBox" class="qr-box" hidden></div>
+    <div id="smsBox" class="card sms-box" hidden>
+      <h3>For a satellite text messenger or SMS</h3>
+      <p class="fine">When a file or QR code cannot get through. Most important first; anything that does not fit is dropped and the message ends with +MORE. Send the legend once to a new reviewer.</p>
+      <pre id="smsText" class="packet-text" translate="no"></pre>
+      <p class="fine"><span id="smsCount"></span> · <button type="button" class="link-btn" id="btnSmsCopy">Copy message</button> · <button type="button" class="link-btn" id="btnSmsLegend">Copy legend</button></p>
+      <details class="fine"><summary>Legend</summary><p id="smsLegend" translate="no"></p></details>
+    </div>
     <p class="fine" id="gzNote"></p>
     <p class="fine">Send the file through an approved channel (clinic email, secure messaging). The reviewer can open it in this app and send back a small reply file, which you load here to mark the packet acknowledged.</p>
   </section>
@@ -636,7 +662,7 @@
     <div class="card">
       <h2>Report to share</h2>
       <p class="fine">Technical lines only: no names, no measurements, no pictures. Paste it to whoever is helping you.</p>
-      <pre id="devReport" class="dev-report" tabindex="0"></pre>
+      <pre id="devReport" class="dev-report" tabindex="0" translate="no"></pre>
       <div class="row">
         <button type="button" class="btn" id="btnDevCopy">Copy report</button>
         <button type="button" class="btn" id="btnDevSave">Save as text</button>
@@ -686,7 +712,7 @@
 
 <div id="reelLayer" hidden>
   <div id="reelCard" class="reel-card" hidden></div>
-  <span class="reel-tag" aria-hidden="true">SAMPLE DATA</span>
+  <span class="reel-si" id="reelWm">SI-generated demo (AI-assisted) · Sample data</span>
   <div class="reel-bar">
     <div class="reel-progress" aria-hidden="true"><div id="reelProg"></div></div>
     <p id="reelCaption" aria-live="polite"></p>
@@ -705,7 +731,7 @@
   <span id="modelNote"></span>
   <span><button type="button" class="link-btn" data-nav="privacy">Your data</button> · <button type="button" class="link-btn" data-nav="device">Check this device</button> · <button type="button" class="link-btn" data-nav="exp">Experimental checks</button></span>
   <span>Logo: AI-generated with ChatGPT; marked “AI” wherever it appears.</span>
-  <span>RelaisÉcho Link <span id="appVersion">v0.61</span></span>
+  <span>RelaisÉcho Link <span id="appVersion">v1.0</span></span>
 </footer>
 </body>
 </html>

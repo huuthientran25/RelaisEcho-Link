@@ -1,3 +1,4 @@
+/* AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md. */
 /* RelaisÉcho Link, "Northern Navy": white ground, dark grey text, navy structure, one blue for action,
    one red for things to fix. Colour is never the only signal: every state also has an icon or a word.
    Palette idea follows the familiar Canada.ca look (white, #333 text, navy) without its identity. */
@@ -46,7 +47,8 @@ a { color: var(--blue); text-underline-offset: 3px; }
 
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 20px 6px; background: var(--bar); color: var(--bar-ink); }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--bar-ink); text-decoration: none; font-weight: 700; font-size: 20px; letter-spacing: 0.02em; }
-.topbar-right { display: flex; align-items: center; gap: 14px; }
+.topbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; min-width: 0; }
+.topbar { flex-wrap: wrap; }
 .topbar .link-btn { color: var(--bar-ink); }
 .topbar :focus-visible { outline-color: var(--accent); }
 main { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
@@ -89,7 +91,7 @@ legend, label { font-weight: 700; font-size: 17px; }
 .seg label { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); font-weight: 400; cursor: pointer; transition: background-color 120ms, border-color 120ms; }
 .seg label:has(input:checked) { background: var(--navy); color: var(--on-solid); border-color: var(--navy); font-weight: 700; }
 textarea, input[type=text], input[type=number] { width: 100%; font: inherit; padding: 10px 12px; border-radius: var(--radius); border: 2px solid var(--navy); background: var(--panel); color: var(--ink); margin-top: 4px; }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 14px; }
 .check { display: flex; align-items: center; gap: 10px; font-weight: 400; min-height: 48px; }
 input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-color: var(--navy); }
 
@@ -141,7 +143,7 @@ details.card summary { cursor: pointer; font-weight: 700; color: var(--navy); }
 .btn, .link-btn, .seg label, input, select, summary { touch-action: manipulation; }
 
 /* Mission board */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; margin-top: 18px; }
 .tile { background: var(--panel); border: 2px solid var(--navy); border-radius: var(--radius); padding: 16px 18px; contain: layout paint; }
 .tile > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
 .tile > header h2 { margin: 0; }
@@ -157,7 +159,7 @@ details.card summary { cursor: pointer; font-weight: 700; color: var(--navy); }
 .grid2.tight { gap: 10px; grid-template-columns: 1fr; }
 .legend-row { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
 .legend-row span.item { display: inline-flex; align-items: center; gap: 6px; }
-input[type=datetime-local] { width: 100%; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: var(--radius); border: 2px solid var(--navy); background: var(--panel); color: var(--ink); margin-top: 4px; min-height: 44px; }
+input[type=datetime-local] { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: var(--radius); border: 2px solid var(--navy); background: var(--panel); color: var(--ink); margin-top: 4px; min-height: 44px; }
 input[type=range] { width: 100%; min-height: 44px; accent-color: var(--navy); }
 .spark { width: 100%; height: auto; display: block; margin: 8px 0; background: var(--soft); border: 2px solid var(--line); border-radius: var(--radius); }
 .spark .band { fill: var(--blue-tint); stroke: var(--blue); stroke-width: 1; stroke-dasharray: 4 3; }
@@ -283,7 +285,10 @@ details.fine summary { cursor: pointer; min-height: 32px; }
 #reelCaption { margin: 0 auto; max-width: 1100px; font-size: clamp(19px, 2.5vw, 30px); font-weight: 700; line-height: 1.25; min-height: 2.5em; display: flex; align-items: center; justify-content: center; text-wrap: balance; }
 .reel-stop { position: absolute; right: 10px; bottom: 6px; font: inherit; font-size: 13px; color: #fff; background: transparent; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 4px; padding: 2px 8px; opacity: 0.55; cursor: pointer; }
 .reel-stop:hover, .reel-stop:focus-visible { opacity: 1; }
-.reel-tag { position: fixed; left: 10px; bottom: 8px; z-index: 61; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.6); }
+.reel-si { position: fixed; right: 12px; top: 10px; z-index: 61; font-size: 14px; padding: 3px 8px; border-radius: 4px; background: rgba(4, 18, 26, 0.82); color: #fff; }
+/* While the app records itself the Stop button is hidden (Esc still stops), so the file has clean corners. */
+body.reel-rec .reel-stop { display: none; }
+.inline-check { display: inline-flex; gap: 6px; align-items: center; }
 .reel-card { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; text-align: center; padding: 24px 24px 130px; background: #041d2b; color: #fff; }
 .reel-card img { width: 112px; height: 112px; }
 .reel-card h2 { font-size: clamp(34px, 6vw, 64px); margin: 14px 0 6px; color: #fff; }
@@ -327,7 +332,7 @@ body.reel-on { padding-bottom: 130px; }
 @media print { .jump { display: none !important; } }
 
 /* Experimental checks */
-.exp-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 12px 0; }
+.exp-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); margin: 12px 0; }
 .exp-item { background: var(--panel); border: 2px solid var(--navy); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
 .exp-item h2 { font-size: 20px; margin: 0; }
 .exp-item p { margin: 0; }
@@ -379,7 +384,7 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .ov-bodycard { padding: 14px 16px; }
 .ov-bodycard h2, .ov-chartcard h2 { margin: 0; font-size: 20px; }
 .ov-body { position: relative; height: 480px; margin: 6px 0; }
-.ov-body .ov-body-fig { position: absolute; left: 50%; top: 0; height: 100%; transform: translateX(-50%); }
+.ov-body .ov-body-fig { position: absolute; left: 50%; top: 0; height: 100%; max-width: 100%; transform: translateX(-50%); }
 .ov-leaders { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
 .ov-leaders line { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .ov-leaders line.on { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: none; }
@@ -391,7 +396,7 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .ov-pt.none { fill: var(--panel); stroke: var(--muted) !important; stroke-dasharray: 3 2; }
 .ov-dot.none { background: transparent; border: 2px dashed var(--muted); }
 .ov-pt-ring { fill: none; stroke: var(--accent); stroke-width: 3; }
-.ov-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; box-sizing: border-box; }
+.ov-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; box-sizing: border-box; flex-shrink: 0; }
 .ov-reg { position: absolute; z-index: 1; display: flex; align-items: center; gap: 6px; max-width: 34%; font: inherit; font-size: 15px; font-weight: 700; line-height: 1.2; text-align: left; padding: 6px 9px; min-height: 36px; background: var(--panel); color: var(--ink); border: 2px solid var(--line); border-radius: var(--radius); cursor: pointer; }
 .ov-reg.left { left: 0; } .ov-reg.right { right: 0; flex-direction: row-reverse; text-align: right; }
 .ov-reg[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
@@ -451,3 +456,52 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .hero-fig .wm-badge { font-size: 12px; padding: 2px 4px; right: -4px; bottom: -2px; }
 .wm-cap { font-size: 13px; color: var(--muted); }
 .reel-wm { font-size: 13px; padding: 3px 6px; right: -10px; bottom: -6px; }
+
+/* Large text on a narrow phone: the page is zoomed, so keep grids and headline numbers inside the screen. */
+.ov-kpi, .tile, .exp-item, .card { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .ov-kpis { grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); } }
+.grid2 > * { min-width: 0; }
+/* Body chart labels never break inside a word; on narrow screens they get smaller instead. */
+.ov-body .ov-reg { overflow-wrap: normal; word-break: keep-all; hyphens: none; }
+@media (max-width: 480px) { .ov-body .ov-reg { font-size: 12px; padding: 3px 5px; max-width: 46%; } }
+/* Trend under the Overview chart: sustained change, one value only, or drifting inside the band */
+.ov-trend { margin: 6px 0 0; padding: 6px 10px; border-left: 4px solid var(--line); font-size: 0.95em; }
+.ov-trend.sustained { border-left-color: var(--alert); font-weight: 700; }
+.ov-trend.single { border-left-color: #E8A33D; }
+.ov-trend.drift { border-left-color: #E8A33D; }
+/* Everyone on this device */
+.ov-roster { margin-top: 14px; }
+.table-wrap { overflow-x: auto; }
+.roster { width: 100%; border-collapse: collapse; }
+.roster th, .roster td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.roster thead th { font-size: 0.85em; }
+.roster th, .roster td, .roster button { overflow-wrap: normal; }
+.roster td:last-child { white-space: nowrap; }
+.roster tr.roster-urgent th[scope=row] { border-left: 4px solid var(--alert); }
+/* Bench test agreement plot */
+.ba { margin: 10px 0; }
+.ba-plot { width: 100%; max-width: 560px; height: auto; display: block; }
+.ba-axis { stroke: var(--ink); stroke-width: 1; }
+.ba-zero { stroke: var(--line); stroke-width: 1; }
+.ba-bias { stroke: var(--navy); stroke-width: 2; }
+.ba-loa { stroke: var(--navy); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.ba-pt { fill: var(--accent); stroke: var(--navy); stroke-width: 1.5; }
+.ba-lab, .ba-ax { font-size: 12px; fill: var(--ink); }
+.sms-decode { margin: 12px 0; }
+.sms-decode textarea { width: 100%; font: inherit; font-family: ui-monospace, monospace; padding: 8px; border: 2px solid var(--navy); border-radius: var(--radius); background: var(--panel); color: var(--ink); box-sizing: border-box; }
+/* Inflammation after landing */
+.inf-chart { width: 100%; height: auto; }
+.inf-chart .grid { stroke: var(--line); stroke-width: 1; }
+.inf-serum { fill: var(--navy); fill-opacity: 0.85; }
+.inf-urine { fill: #C25B12; fill-opacity: 0.85; }
+.inf-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+/* Roster on a phone or tablet: one block per person instead of a wide table */
+.ov-roster { min-width: 0; }
+@media (max-width: 900px) {
+  .roster thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .roster, .roster tbody, .roster tr, .roster th, .roster td { display: block; width: auto; }
+  .roster tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .roster th, .roster td { border: 0; padding: 2px 0; }
+  .roster td[data-label]::before { content: attr(data-label) ": "; font-weight: 700; }
+  .roster td:last-child { white-space: normal; }
+}

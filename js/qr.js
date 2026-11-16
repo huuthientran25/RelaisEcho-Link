@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // QR code of the text summary, so a nurse can take it off the screen with any phone camera, no network needed.
 // Encoder: qrcode-generator by Kazuhiko Arase (MIT), vendored in vendor/qrcode/.
 import { qrcode } from '../vendor/qrcode/qrcode.mjs';

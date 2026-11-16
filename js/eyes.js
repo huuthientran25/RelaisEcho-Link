@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Eye closure during the alertness check. EXPERIMENTAL.
 // Eye aspect ratio (EAR): eyelid opening divided by eye width (Soukupová and Čech 2016),
 // computed on MediaPipe Face Mesh landmarks. Thresholds are MODELED and relative to the

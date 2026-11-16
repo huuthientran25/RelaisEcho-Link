@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Practitioner side: check a packet before showing it. Packets are plain JSON written by buildPacket().
 export function validatePacket(p) {
   if (!p || typeof p !== 'object') return 'This file is not a review packet.';
@@ -20,7 +21,7 @@ export function standouts(p) {
   if (p.self_report_urgent) add('urgent', 'Chest pain or shortness of breath was ticked. Contact the person directly.');
   const ch = p.comparison?.change_vs_original;
   for (const [label, x] of [['Pulse', ch?.pulse], ['Breathing', ch?.breathing]]) {
-    if (x && (x.kind === 'up' || x.kind === 'down')) add('change', `${label} is outside the noise band against the original baseline: ${x.text}.`);
+    if (x && (x.kind === 'up' || x.kind === 'down')) add('change', `${label} is outside the noise band against the original baseline: ${String(x.text).replace(/\.$/, '')}.`);
   }
   const q = (label, r) => { if (r && r.value != null && r.quality && r.quality !== 'high') add('caution', `${label} estimate came from a ${r.quality} quality capture, so read it loosely.`); };
   q('Pulse', p.results?.pulse_bpm); q('Breathing', p.results?.breathing_per_min);
@@ -34,6 +35,10 @@ export function standouts(p) {
   const ac = p.acuity_self_check;
   for (const k of ['right_eye', 'left_eye']) if (ac?.[k]?.vs_first === 'worse') add('change', `Eye chart: ${k === 'right_eye' ? 'right' : 'left'} eye ${ac[k].snellen}, 2 or more lines worse than the person's first check at ${ac.distance_m} m.`);
   for (const x of p.experimental_checks || []) if (x.differs?.length) add('note', `Experimental ${x.title.toLowerCase()}: differs from the person's own first check (${x.differs.join(', ')}). Experimental, often explained by light or distance.`);
+  for (const t of p.trends || []) {
+    if (t.kind === 'sustained') add(t.experimental ? 'note' : 'change', `${t.measure}: ${t.side} the band ${t.run} checks in a row, a sustained change rather than one odd value${t.experimental ? ' (experimental measure)' : ''}.`);
+    else if (t.kind === 'drift') add('note', `${t.measure}: drifting ${t.side === 'above' ? 'up' : 'down'} about ${Math.abs(t.per_week)} ${t.unit} a week, still inside the band.`);
+  }
   if (p.self_report_checklist?.length) add('note', `Symptoms ticked: ${p.self_report_checklist.join(', ')}.`);
   if (p.self_report) add('note', 'The person wrote a note (see Self report).');
   const order = { urgent: 0, change: 1, caution: 2, note: 3 };

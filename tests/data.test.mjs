@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Unit tests (Node's built in runner): npm test
 // Each block below keeps its own imports and helpers, so names cannot collide.
 import { test } from 'node:test';

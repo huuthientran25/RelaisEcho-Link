@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Alertness check: a brief psychomotor vigilance test in the style of the 3 minute PVT-B.
 // Source: Basner, Mollicone and Dinges, "Validity and sensitivity of a brief psychomotor vigilance test
 // (PVT-B) to total and partial sleep deprivation", Acta Astronautica 69:949-959, 2011 (open copy: PMC3197786).

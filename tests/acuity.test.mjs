@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Eye chart: sizes, screen limit, the run and ETDRS style scoring.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

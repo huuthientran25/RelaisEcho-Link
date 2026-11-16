@@ -1,3 +1,4 @@
+// AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Breathing rate from vertical movement of the upper torso.
 // Each frame gives a row profile (mean brightness of each row in a box under the chin).
 // Breathing lifts the shoulders and chest, which shifts horizontal edges up and down,
