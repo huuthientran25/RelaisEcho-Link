@@ -2,6 +2,13 @@
 
 Newest first. Every version was built during NASA Space Apps 2026 (14 and 15 Nov 2026).
 
+## Changes in v0.61 (15 Nov 2026)
+
+- **AI watermark on the logo.** The Space Apps submission form requires a visible watermark on SI-generated images, and the logo was made with ChatGPT. The logo now carries a visible "AI" mark in the top bar and on the home page, a caption "Logo: AI-generated (ChatGPT)", an "AI-generated logo" mark on the demo reel's title and end cards, and a footer note.
+- **Third NASA dataset: Exercise during bed rest tile.** NASA Life Sciences Portal "Aerobic Capacity, Flight Analog" (PI Alan D. Moore Jr., doi 10.83263/w056-8t76), CFT70 70 day bed rest, 37 people: peak oxygen uptake fell a median 22.6% with bed rest only (9 of 10 lost more than 5%), against medians of 3.2% and 3.0% in the exercise and flywheel groups. Only medians and counts ship (`data/bedrest-vo2.json`, `scripts/build_vo2.py`).
+- **Demo reel** now shows the Overview body chart and the bed rest tile.
+- 114 unit tests.
+
 ## Changes in v0.60 (15 Nov 2026)
 
 - **Eye chart (visual acuity), one eye at a time.** Tumbling E letters, five a line, 0.1 logMAR between lines, scored per letter the way research letter charts are (0.02 logMAR per letter). Letter sizes come from the chosen distance (0.4, 1 or 2 m) and the bank card screen calibration; the app works out the smallest line the screen can draw and says when a result sits at that limit. Each eye is compared with the first check at the same distance; 2 lines or more reads "different". Arrow buttons, arrow keys or a helper. Results go to the Board eye tile, Overview (eyes), History, CSV, the packet, the nurse view and "Read first". ISS vision checks include acuity; this completes that pair with the eye grid.

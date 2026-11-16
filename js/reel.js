@@ -6,8 +6,8 @@ export const REEL = [
   { id: 'title', sec: 4, caption: 'RelaisÉcho Link: a guided camera checkup for people far from a clinic.' },
   { id: 'setup', sec: 4, caption: 'The camera estimates pulse and breathing. Video never leaves the device.' },
   { id: 'board', sec: 5, caption: 'Mission board: today\'s checklist, alertness, sleep pressure, daylight.' },
-  { id: 'space', sec: 5, caption: 'NASA data in context: mission radiation, space weather, crew blood data.' },
-  { id: 'history', sec: 4, caption: 'Each result is compared with your own baseline, not a population average.' },
+  { id: 'space', sec: 5, caption: 'NASA data in context: mission radiation, crew blood, bed rest studies.' },
+  { id: 'overview', sec: 4, caption: 'One screen: each body region against your own baseline, not an average.' },
   { id: 'packet', sec: 5, caption: 'A review packet goes to a nurse or flight surgeon by file or QR code.' },
   { id: 'end', sec: 3, caption: 'In orbit, and in remote northern communities. Space Apps 2026.' },
 ];

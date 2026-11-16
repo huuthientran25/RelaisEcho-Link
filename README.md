@@ -56,7 +56,7 @@ Full list with links: `DATA_SOURCES.md`. Software and font licences: `LICENSES.m
 
 ## What is tested, and what is not
 
-- `npm test`: 113 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
+- `npm test`: 114 unit tests on the signal processing, models, data handling and repository checks. No dependencies.
 - A synthetic video with a known 72 bpm colour pulse and 15 breaths per minute runs through the whole browser pipeline (`tests/e2e_synthetic.mjs`) and returns 72 and 15. This shows the code path works.
 - An automated accessibility audit (axe-core) of eight screens (home, board, history, crew data, reaction test, nurse view, checkup setup, device check) in light and dark mode found no violations at v0.50.
 - **Not shown: accuracy on real people.** Camera pulse error is known to rise on darker skin (a published meta analysis reports about 4 beats per minute for Fitzpatrick types I to V and about 14 for type VI), cold skin is untested, and every threshold in `js/config.js` is a design choice. That is why every estimate is labelled EXPERIMENTAL and the app refuses to give a number when a capture fails its checks.

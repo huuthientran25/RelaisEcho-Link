@@ -1019,6 +1019,7 @@ async function renderBoard() {
   renderAlertTile();
   renderCrewTile();
   renderBedTile();
+  renderVo2Tile();
 }
 
 function updateSleepTile() {
@@ -2073,8 +2074,8 @@ function reelScroll(sel, block = 'start') {
   el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block });
 }
 function reelCard(html) { const c = $('reelCard'); c.hidden = !html; c.innerHTML = html || ''; }
-const REEL_TITLE = `<div><img src="icons/logo-blue-128.png" alt=""><h2>RelaisÉcho Link</h2><p>A guided camera checkup, compared with your own baseline</p><p>NASA Space Apps Challenge 2026 · Montreal</p></div>`;
-const REEL_END = `<div><img src="icons/logo-blue-128.png" alt=""><h2>RelaisÉcho Link</h2><p>Runs in the browser. Works offline. Video never leaves the device.</p><p>Research prototype, not a diagnostic device. Sample data shown.</p></div>`;
+const REEL_TITLE = `<div><span class="logo-wm"><img src="icons/logo-blue-128.png" alt=""><span class="wm-badge reel-wm">AI-generated logo</span></span><h2>RelaisÉcho Link</h2><p>A guided camera checkup, compared with your own baseline</p><p>NASA Space Apps Challenge 2026 · Montreal</p></div>`;
+const REEL_END = `<div><span class="logo-wm"><img src="icons/logo-blue-128.png" alt=""><span class="wm-badge reel-wm">AI-generated logo</span></span><h2>RelaisÉcho Link</h2><p>Runs in the browser. Works offline. Video never leaves the device.</p><p>Research prototype, not a diagnostic device. Sample data shown.</p></div>`;
 const REEL_ACTIONS = {
   title: () => { show('home'); reelCard(REEL_TITLE); },
   setup: () => { reelCard(null); show('setup'); reelLater(1700, () => reelScroll('#symptomTicks', 'center')); },
@@ -2082,9 +2083,10 @@ const REEL_ACTIONS = {
   space: () => {
     document.querySelector('[data-mission="mars"]')?.click();
     reelScroll('#h-t-rad');
-    reelLater(2600, () => reelScroll('#h-t-crew'));
+    reelLater(1800, () => reelScroll('#h-t-crew'));
+    reelLater(3400, () => reelScroll('#h-t-bed'));
   },
-  history: () => { show('history'); reelLater(1900, () => reelScroll('#symptomBox', 'center')); },
+  overview: () => { show('overview'); reelLater(1600, () => document.querySelector('#ovBody [data-ov-region=heart]')?.click()); },
   packet: () => { show('review'); $('btnSamplePacket').click(); reelLater(2400, () => reelScroll('.review-photo', 'center')); },
   end: () => { reelCard(REEL_END); },
 };
@@ -2667,4 +2669,29 @@ async function renderBedTile() {
     <svg class="spark bed-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Median change in plasma volume against each person's own pre bed rest value: ${bins.map((b) => `${b.label} ${b.median_pct} percent, n ${b.n}`).join('; ')}">${g}</svg>
     <p>${below} of ${n} person-windows during bed rest sat below that person's own lowest value before bed rest. The fluid shift starts in the first week and is partly reversed within days of getting up (median ${bins.at(-1).median_pct}%).</p>
     <p class="fine">${bedData.people} people from ${bedData.campaigns.length} NASA campaigns, pooled across exercise and control groups. Bars: median; lines: middle half. This is why the app compares you with your own baseline.</p>`;
+}
+
+/* ---------- NASA CFT70 aerobic capacity (data/bedrest-vo2.json, built by scripts/build_vo2.py) ---------- */
+let vo2Data = null;
+async function renderVo2Tile() {
+  try { if (!vo2Data) vo2Data = await (await fetch('data/bedrest-vo2.json')).json(); }
+  catch { $('vo2Body').innerHTML = '<p class="fine">Exercise data not available offline yet.</p>'; return; }
+  const gs = vo2Data.groups;
+  const W = 520, H = 200, L = 46, R = 10, T = 14, B = 46;
+  const lo = Math.min(-35, ...gs.map((g) => g.q1_pct)), hi = Math.max(10, ...gs.map((g) => g.q3_pct));
+  const y = (v) => T + ((hi - v) / (hi - lo)) * (H - T - B);
+  const bw = (W - L - R) / gs.length;
+  let g = `<line x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" class="baseline"/>`;
+  for (const v of [10, 0, -10, -20, -30]) if (v >= lo && v <= hi) g += `<text x="${L - 6}" y="${(y(v) + 5).toFixed(1)}" class="ax" text-anchor="end">${v}%</text>`;
+  gs.forEach((d, i) => {
+    const cx = L + bw * i + bw / 2, w = bw * 0.42, top = Math.min(y(0), y(d.median_pct)), hgt = Math.max(1, Math.abs(y(d.median_pct) - y(0)));
+    g += `<rect x="${(cx - w / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${w.toFixed(1)}" height="${hgt.toFixed(1)}" class="${d.id === 'control' ? 'bar-post' : 'bar'}"/>`;
+    g += `<line x1="${cx}" x2="${cx}" y1="${y(d.q3_pct).toFixed(1)}" y2="${y(d.q1_pct).toFixed(1)}" class="whisk"/>`;
+    g += `<text x="${cx}" y="${H - 26}" class="ax" text-anchor="middle">${esc(d.label)}</text><text x="${cx}" y="${H - 8}" class="ax" text-anchor="middle">n ${d.n}</text>`;
+  });
+  const c = gs.find((d) => d.id === 'control'), ex = gs.filter((d) => d.id !== 'control');
+  $('vo2Body').innerHTML = `<p class="big-num">${c.median_pct}%<span class="unit"> median fitness (peak oxygen uptake) with bed rest only</span></p>
+    <svg class="spark bed-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Median change in peak oxygen uptake after 70 days of bed rest: ${gs.map((d) => `${d.label} ${d.median_pct} percent, n ${d.n}`).join('; ')}">${g}</svg>
+    <p>${c.lost_over_5pct} of ${c.n} people with bed rest only lost more than 5%; with exercise, ${ex.reduce((a, d) => a + d.lost_over_5pct, 0)} of ${ex.reduce((a, d) => a + d.n, 0)} did (medians ${ex.map((d) => `${d.median_pct}%`).join(' and ')}). Exercise protected fitness, while plasma volume still fell in every group (Bed rest fluid shift tile).</p>
+    <p class="fine">${vo2Data.people} people, mostly men. Bars: median; lines: middle half. Each person against their own test before bed rest.</p>`;
 }

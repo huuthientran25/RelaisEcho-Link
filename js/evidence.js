@@ -157,4 +157,10 @@ export const EVIDENCE = {
     source: 'NASA Life Sciences Portal, Bed Rest Standard Measures: Plasma Volume (PI Steven Platts), doi 10.83263/4dzb-2267: Campaign 1, Campaign 3 and the 70 day CFT70 study.',
     limits: 'Bed rest is an analog, not spaceflight. Groups with and without exercise countermeasures are pooled. Mostly male volunteers. Bed rest days and windows differ between campaigns. Redistribution terms of the raw files are not confirmed, so the raw data are not in this repository.',
   },
+  vo2: {
+    title: 'Exercise during bed rest (NASA data)',
+    method: "Peak oxygen uptake (L/min) on the first treadmill or cycle test after 70 days of head down bed rest, against each person's own test before bed rest, in percent. The tile shows the median and middle half for each group and how many lost more than 5 percent. Built by scripts/build_vo2.py; only these summaries ship with the app.",
+    source: 'NASA Life Sciences Portal, Aerobic Capacity, Flight Analog (PI Alan D. Moore Jr.), doi 10.83263/w056-8t76, CFT70 study files MR080G_CFT70_PRE_ALL and MR080G_CFT70_POST1_ALL. Three rows in the raw files are shifted one column and were corrected before summarizing.',
+    limits: 'Bed rest is an analog, not spaceflight. Small groups, nearly all men. Exercise sub-arms are pooled; the flywheel group is shown on its own. Redistribution terms of the raw files are not confirmed, so they are not in this repository.',
+  },
 };

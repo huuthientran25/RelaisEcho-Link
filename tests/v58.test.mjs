@@ -56,6 +56,16 @@ test('eye opening: mm from the lid gap, open-eye percentile ignores blinks, 1 mm
   assert.equal(compareLids({ right: 9.5, left: 9 }, { right: 10, left: 9 }).verdict, 'same');
 });
 
+test('bed rest exercise summary: control lost fitness, exercise groups kept most of it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const d = JSON.parse(readFileSync(new URL('../data/bedrest-vo2.json', import.meta.url), 'utf8'));
+  assert.match(d.source, /10\.83263\/w056-8t76/);
+  const g = Object.fromEntries(d.groups.map((x) => [x.id, x]));
+  assert.ok(g.control.median_pct < -15 && g.exercise.median_pct > -6 && g.fly.median_pct > -6);
+  assert.equal(d.people, 37);
+  for (const x of d.groups) assert.deepEqual(Object.keys(x).sort(), ['id', 'label', 'lost_over_5pct', 'median_pct', 'n', 'q1_pct', 'q3_pct']);
+});
+
 test('bed rest summary ships aggregates only, with a falling first week', async () => {
   const { readFileSync } = await import('node:fs');
   const d = JSON.parse(readFileSync(new URL('../data/bedrest-pv.json', import.meta.url), 'utf8'));

@@ -442,3 +442,12 @@ main:has(> #screen-overview:not([hidden])) { max-width: 1380px; padding-top: 14p
 .ac-pad [data-ac=up] { grid-area: up; } .ac-pad [data-ac=left] { grid-area: left; } .ac-pad [data-ac=right] { grid-area: right; } .ac-pad [data-ac=down] { grid-area: down; } .ac-pad [data-ac=nope] { grid-area: nope; font-size: 15px; }
 .ac-pad .btn { font-size: 26px; min-height: 56px; }
 .spark .bar { fill: var(--navy); } .spark .bar-post { fill: var(--muted); } .spark .whisk { stroke: var(--alert); stroke-width: 2.5; }
+
+/* Space Apps rule: SI-generated images carry a visible watermark. The logo is AI-generated (ChatGPT). */
+.logo-wm { position: relative; display: inline-block; line-height: 0; flex: none; }
+.wm-badge { position: absolute; right: -6px; bottom: -4px; font: 700 9px/1 system-ui, sans-serif; letter-spacing: 0.04em; padding: 2px 3px; border-radius: 3px; background: #FFFFFF; color: #0B1F2A; border: 1px solid #0B1F2A; }
+.hero-fig { margin: 0 0 8px; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.hero-fig .hero-logo { margin-bottom: 0; }
+.hero-fig .wm-badge { font-size: 12px; padding: 2px 4px; right: -4px; bottom: -2px; }
+.wm-cap { font-size: 13px; color: var(--muted); }
+.reel-wm { font-size: 13px; padding: 3px 6px; right: -10px; bottom: -6px; }
