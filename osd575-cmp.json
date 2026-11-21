@@ -2238,5 +2238,92 @@
     ]
    }
   ]
+ },
+ "proteomics": {
+  "source": "NASA OSDR OSD-563 (GLDS-563), Inspiration4 plasma proteomics, processed data (limma 3.52). Group level, 4 crew.",
+  "threshold": "adjusted p value below 0.05",
+  "comparisons": [
+   {
+    "id": "I4-FP1",
+    "comparison": "(R+1) vs (L-92, L-44, L-3)",
+    "proteins": 1765,
+    "changed": 59,
+    "up": 32,
+    "down": 27,
+    "top": [
+     {
+      "gene": "CALU",
+      "fold": 6.33,
+      "adj_p": 0.03
+     },
+     {
+      "gene": "TARS1",
+      "fold": 5.73,
+      "adj_p": 0.028
+     },
+     {
+      "gene": "FGA.1",
+      "fold": 0.18,
+      "adj_p": 0.047
+     },
+     {
+      "gene": "FBLN5",
+      "fold": 0.23,
+      "adj_p": 0.006
+     },
+     {
+      "gene": "ICAM3",
+      "fold": 0.26,
+      "adj_p": 0.013
+     },
+     {
+      "gene": "ABCF2",
+      "fold": 0.28,
+      "adj_p": 0.017
+     }
+    ]
+   },
+   {
+    "id": "I4-FP2",
+    "comparison": "(R+1, R+45, R+82) vs (L-92, L-44, L-3)",
+    "proteins": 1520,
+    "changed": 56,
+    "up": 25,
+    "down": 31,
+    "top": [
+     {
+      "gene": "FGA.1",
+      "fold": 0.18,
+      "adj_p": 0.013
+     },
+     {
+      "gene": "ATP2C1",
+      "fold": 3.24,
+      "adj_p": 0.033
+     },
+     {
+      "gene": "SNCA",
+      "fold": 3.07,
+      "adj_p": 0.0022
+     },
+     {
+      "gene": "COL4A2",
+      "fold": 0.34,
+      "adj_p": 0.0022
+     },
+     {
+      "gene": "PF4V1",
+      "fold": 2.79,
+      "adj_p": 0.0058
+     },
+     {
+      "gene": "RPL27",
+      "fold": 2.69,
+      "adj_p": 0.037
+     }
+    ]
+   }
+  ],
+  "overlap_first_two": 40
  }
 }

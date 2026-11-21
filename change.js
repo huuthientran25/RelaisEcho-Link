@@ -58,6 +58,14 @@ export function blandAltman(pairs) {
   return { n, bias: r1(bias), sd: r1(sd), low: r1(bias - 1.96 * sd), high: r1(bias + 1.96 * sd), points };
 }
 
+// Validation study planning (v2.8). The standard error of a 95% limit of agreement is about sqrt(3 s^2 / n), where
+// s is the standard deviation of the differences (Bland, "How can I decide the sample size for a study of agreement
+// between two methods of measurement?", after Bland and Altman 1986). So the limits are known to within
+// +/- 1.96 * sqrt(3 / n) * s, and n = 3 * (1.96 * s / w)^2 pairs pin them to within +/- w. Bland usually recommends
+// 100 pairs, which gives about +/- 0.34 s.
+export function loaPrecision(n, sd) { return n >= 2 && sd > 0 ? Math.round(1.96 * Math.sqrt(3 / n) * sd * 10) / 10 : null; }
+export function pairsNeeded(sd, halfWidth) { return sd > 0 && halfWidth > 0 ? Math.ceil(3 * ((1.96 * sd) / halfWidth) ** 2) : null; }
+
 // Once there are at least 5 reference pairs, the band becomes twice your own mean error (MODELED rule),
 // never narrower than 2. Until then the published placeholder is used.
 export const MIN_BENCH_PAIRS = 5;
@@ -67,3 +75,32 @@ export function noiseFloor(bench, kind) {
   if (!b || b.n < MIN_BENCH_PAIRS || b.mae == null) return { value: fallback, source: 'published figures' };
   return { value: Math.max(2, Math.round(2 * b.mae)), source: `your bench test (${b.n} pairs)` };
 }
+
+// Bench test report (v2.2): everything a small comparison study needs on one page, failures included.
+// Conditions are the comma separated tags typed or tapped on the results screen ("window light, head movement").
+export const BENCH_CONDITIONS = ['window light', 'dim light', 'lamp light', 'head movement', 'glasses', 'darker skin tone', 'lighter skin tone'];
+const tagsOf = (s) => String(s || '').toLowerCase().split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+export function benchReport(sessions) {
+  const withRef = (sessions || []).filter((s) => s.reference && (s.reference.pulseBpm != null && s.reference.pulseBpm !== '' || s.reference.breathsPerMin != null && s.reference.breathsPerMin !== ''));
+  const one = (kind) => {
+    const refOf = (s) => (kind === 'pulse' ? s.reference.pulseBpm : s.reference.breathsPerMin);
+    const estOf = (s) => (kind === 'pulse' ? s.pulse?.bpm : s.resp?.rpm);
+    const qOf = (s) => (kind === 'pulse' ? s.pulse?.quality : s.resp?.quality);
+    const rows = withRef.filter((s) => refOf(s) !== '' && refOf(s) != null && Number.isFinite(+refOf(s)));
+    const ok = rows.filter((s) => estOf(s) != null);
+    const pairs = ok.map((s) => [estOf(s), +refOf(s)]);
+    const ba = blandAltman(pairs);
+    const mae = pairs.length ? Math.round((pairs.reduce((a, [e, r]) => a + Math.abs(e - r), 0) / pairs.length) * 10) / 10 : null;
+    const byTag = new Map();
+    for (const s of ok) for (const t of tagsOf(s.reference.conditions)) { const a = byTag.get(t) || []; a.push(Math.abs(estOf(s) - +refOf(s))); byTag.set(t, a); }
+    const byCondition = [...byTag].map(([condition, errs]) => ({ condition, n: errs.length, mae: Math.round((errs.reduce((a, b) => a + b, 0) / errs.length) * 10) / 10 }))
+      .sort((a, b) => b.n - a.n || a.condition.localeCompare(b.condition));
+    return { attempts: rows.length, n: pairs.length, failed: rows.length - pairs.length, lowQuality: ok.filter((s) => qOf(s) === 'low').length, mae, ba, byCondition };
+  };
+  const parts = new Set(withRef.map((s) => String(s.reference.participant || '').trim()).filter(Boolean));
+  const devices = [...new Set(withRef.map((s) => String(s.reference.device || '').trim()).filter(Boolean))];
+  const dates = withRef.map((s) => s.createdAt).filter(Boolean).sort();
+  return { pulse: one('pulse'), resp: one('resp'), participants: parts.size, devices, from: dates[0] || null, to: dates.at(-1) || null, checkups: withRef.length };
+}
+// Participant codes only, never names: one to three letters then one to three digits (P01, A7, ABC123).
+export const isParticipantCode = (v) => v === '' || /^[A-Za-z]{1,3}\d{1,3}$/.test(String(v).trim());

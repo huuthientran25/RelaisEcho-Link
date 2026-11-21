@@ -174,7 +174,37 @@ def add_nulisa(out, serum_path, urine_path):
     }
 
 
+def add_proteomics(out, xlsx_path):
+    """OSD-563 (GLDS-563) Inspiration4 plasma proteomics: group level limma results, per comparison sheet.
+    Needs openpyxl (pip install openpyxl). Keeps counts and the strongest changes only; no per person values exist in this file."""
+    import openpyxl
+    wb = openpyxl.load_workbook(xlsx_path, read_only=True)
+    comps = []
+    sig_sets = {}
+    for sh in wb.sheetnames:
+        rows = list(wb[sh].iter_rows(values_only=True))
+        meta = {r[0]: r[1] for r in rows[:6] if r and r[0]}
+        hdr = rows[6]
+        data = [dict(zip(hdr, r)) for r in rows[7:] if r and r[0]]
+        sig = [d for d in data if d['adj.P.Val'] is not None and d['adj.P.Val'] < 0.05]
+        sig_sets[sh] = {d['Gene'] for d in sig}
+        top = sorted(sig, key=lambda d: -abs(d['logFC']))[:6]
+        comps.append({'id': sh, 'comparison': meta.get('### Comparison'), 'proteins': len(data), 'changed': len(sig),
+                      'up': sum(1 for d in sig if d['logFC'] > 0), 'down': sum(1 for d in sig if d['logFC'] < 0),
+                      'top': [{'gene': d['Gene'], 'fold': round(2 ** d['logFC'], 2), 'adj_p': float('%.2g' % d['adj.P.Val'])} for d in top]})
+    ids = list(sig_sets)
+    out['proteomics'] = {'source': 'NASA OSDR OSD-563 (GLDS-563), Inspiration4 plasma proteomics, processed data (limma 3.52). Group level, 4 crew.',
+                         'threshold': 'adjusted p value below 0.05', 'comparisons': comps,
+                         'overlap_first_two': len(sig_sets[ids[0]] & sig_sets[ids[1]]) if len(ids) > 1 else None}
+
+
 if __name__ == '__main__':
+    if sys.argv[1] == '--proteomics':
+        out = json.load(open(sys.argv[3]))
+        add_proteomics(out, sys.argv[2])
+        json.dump(out, open(sys.argv[3], 'w'), indent=1, ensure_ascii=False)
+        print('added OSD-563 proteomics summary')
+        sys.exit(0)
     main(sys.argv[1], sys.argv[2])
     if len(sys.argv) >= 5:
         out = json.load(open(sys.argv[2]))

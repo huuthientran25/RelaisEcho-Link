@@ -38,11 +38,13 @@ test('every Evidence card has a complete French version that keeps its numbers',
   const { EVIDENCE } = await import('../js/evidence.js');
   const { EVIDENCE_FR } = await import('../js/evidence-fr.js');
   assert.deepEqual(Object.keys(EVIDENCE_FR).sort(), Object.keys(EVIDENCE).sort());
-  const nums = (s) => (s.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => x.replace(',', '.')).sort();
+  // Thousands are written 92,457 in English and 92 457 in French: join them before comparing.
+  const pick = (s) => (s.match(/\d+(?:[.,]\d+)?/g) || []).map((x) => x.replace(',', '.')).sort();
+  const nums = (s, fr = false) => pick(fr ? s.replace(/(\d)[ \u00a0\u202f](\d{3})(?!\d)/g, '$1$2') : s.replace(/(\d),(\d{3})(?!\d)/g, '$1$2'));
   for (const k of Object.keys(EVIDENCE)) {
     for (const f of ['title', 'method', 'source', 'limits']) {
       assert.ok(EVIDENCE_FR[k][f] && EVIDENCE_FR[k][f].trim(), `${k}.${f} missing`);
-      if (f !== 'title') assert.deepEqual(nums(EVIDENCE_FR[k][f]), nums(EVIDENCE[k][f]), `${k}.${f}: numbers differ`);
+      if (f !== 'title') assert.deepEqual(nums(EVIDENCE_FR[k][f], true), nums(EVIDENCE[k][f]), `${k}.${f}: numbers differ`);
     }
   }
 });

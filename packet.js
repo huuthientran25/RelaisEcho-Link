@@ -2,7 +2,7 @@
 // Review packet: a small, honest summary a remote nurse or flight surgeon can read.
 // States what was measured, how good the capture was, and what was NOT assessed.
 
-import { sleepBucket, symptomLabels, hasUrgent } from './symptoms.js';
+import { SLEEP_BUCKETS, sleepBucket, symptomLabels, hasUrgent } from './symptoms.js';
 
 export const LIMITS = [
   'Camera estimates of pulse and breathing are experimental and not validated for clinical use.',
@@ -10,7 +10,23 @@ export const LIMITS = [
   'No diagnosis is made. New or severe symptoms need direct clinical contact.',
 ];
 
-export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null, experimental = [], acuity = null, trends = [], benchAgreement = null } = {}) {
+// Readings the person typed in from their own devices. Passed on as typed: the app has not measured or checked them.
+export function deviceReadings(d) {
+  if (!d) return null;
+  const out = {};
+  if (d.spo2 != null) out.oxygen_saturation_pct = d.spo2;
+  if (d.pulse != null) out.pulse_bpm = d.pulse;
+  if (d.tempC != null) out.temperature_c = d.tempC;
+  if (d.sys != null && d.dia != null) out.blood_pressure_mmhg = { systolic: d.sys, diastolic: d.dia };
+  return Object.keys(out).length ? { ...out, label: 'Typed in by the person from their own devices; not measured or checked by the app' } : null;
+}
+export function deviceText(dr) {
+  if (!dr) return '';
+  return [dr.oxygen_saturation_pct != null ? `oxygen saturation ${dr.oxygen_saturation_pct}%` : '', dr.pulse_bpm != null ? `pulse ${dr.pulse_bpm} bpm` : '',
+    dr.temperature_c != null ? `temperature ${dr.temperature_c} °C` : '', dr.blood_pressure_mmhg ? `blood pressure ${dr.blood_pressure_mmhg.systolic}/${dr.blood_pressure_mmhg.diastolic} mmHg` : ''].filter(Boolean).join(', ');
+}
+
+export function buildPacket(session, cmp, { includeImages = false, alertness = null, change = null, vision = null, experimental = [], acuity = null, trends = [], benchAgreement = null, illness = null } = {}) {
   const src = session.source === 'file' ? 'recorded video' : 'live camera';
   const packet = {
     schema: 'relaisecho-packet/0.1',
@@ -46,6 +62,9 @@ export function buildPacket(session, cmp, { includeImages = false, alertness = n
     self_report_urgent: hasUrgent(session.context?.checklist),
     self_report_sleep: sleepBucket(session.context?.sleepH)?.label || null,
     self_report: session.context?.symptoms || '',
+    device_readings: deviceReadings(session.devices),
+    illness_watch: illness && illness.level !== 'none' ? { level: illness.level, fever: illness.fever, temperature_c: illness.tempC, symptoms: illness.symptomWords || [], signals: illness.signals,
+      rule: 'MODELED: possible = fever (38.0 C or more, or feverish ticked) or illness symptoms with a pulse, breathing or temperature rise against the person\'s own recent normal; watch = one of these alone. Not a diagnosis.' } : null,
     reference_values: session.reference || null,
     not_assessed: LIMITS,
   };
@@ -61,6 +80,8 @@ export function packetText(p) {
     `Pulse: ${r.pulse_bpm.value ?? 'no result'} bpm (${r.pulse_bpm.quality}; ${r.pulse_bpm.windows})`,
     `Breathing: ${r.breathing_per_min.value ?? 'no result'} /min (${r.breathing_per_min.quality})`,
   ];
+  if (p.device_readings) lines.push(`Own devices (typed in, not checked by the app): ${deviceText(p.device_readings)}`);
+  if (p.illness_watch) lines.push(`Illness early warning: ${p.illness_watch.level === 'possible' ? 'possible illness signs' : 'worth watching'} (${[p.illness_watch.temperature_c != null && p.illness_watch.temperature_c >= 38 ? `${p.illness_watch.temperature_c} °C` : '', ...(p.illness_watch.symptoms || []), ...(p.illness_watch.signals || [])].filter(Boolean).join('; ')}), modeled, not a diagnosis`);
   if (p.comparison.original_baseline) lines.push(`Original baseline ${p.comparison.original_baseline.date.slice(0, 10)}: pulse ${p.comparison.original_baseline.pulse_bpm ?? '-'}, breathing ${p.comparison.original_baseline.breathing_per_min ?? '-'}`);
   for (const d of p.dental) lines.push(`Dental ${d.view}: ${d.captured ? 'captured' : 'not captured'}${d.reviewer_marks.length ? `, ${d.reviewer_marks.length} mark(s)` : ''}${d.auto_compare ? `; auto compare: ${d.auto_compare.flags?.length ? d.auto_compare.flags.join(' ') : d.auto_compare.comparable ? 'no colour change beyond limits' : 'not compared'}` : ''}`);
   if (p.alertness) lines.push(`Alertness test ${p.alertness.date.slice(0, 16).replace('T', ' ')} UTC: median ${p.alertness.median_ms ?? '-'} ms, ${p.alertness.lapses} lapses, ${p.alertness.false_starts} false starts (experimental)`);
@@ -69,7 +90,7 @@ export function packetText(p) {
   if (p.acuity_self_check) { const a = p.acuity_self_check; lines.push(`Eye chart ${a.date.slice(0, 10)} at ${a.distance_m} m: right ${a.right_eye?.snellen ?? '-'} (${a.right_eye?.vs_first ?? '-'}), left ${a.left_eye?.snellen ?? '-'} (${a.left_eye?.vs_first ?? '-'}) (experimental self check)`); }
   const ag = p.comparison?.bench_agreement;
   if (ag) for (const [l, a, u] of [['Pulse', ag.pulse_bpm, 'bpm'], ['Breathing', ag.breathing_per_min, '/min']]) if (a) lines.push(`Bench agreement, ${l.toLowerCase()}: ${a.pairs} pairs, bias ${a.bias} ${u}, limits ${a.limits_of_agreement[0]} to ${a.limits_of_agreement[1]} ${u} (own reference device)`);
-  for (const t of p.trends || []) lines.push(`Trend: ${t.measure} ${t.kind === 'sustained' ? `${t.side} the band ${t.run} checks in a row (sustained)` : `drifting ${t.side === 'above' ? 'up' : 'down'} about ${Math.abs(t.per_week)} ${t.unit} a week, still inside the band`}${t.experimental ? ' [experimental]' : ''}`);
+  for (const t of p.trends || []) lines.push(`Trend: ${t.measure} ${t.kind === 'early_warning' ? `early warning, smoothed trend ${t.side} the person's own recent normal` : t.kind === 'sustained' ? `${t.side} the band ${t.run} checks in a row (sustained)` : `drifting ${t.side === 'above' ? 'up' : 'down'} about ${Math.abs(t.per_week)} ${t.unit} a week, still inside the band`}${t.experimental ? ' [experimental]' : ''}`);
   for (const x of p.experimental_checks || []) lines.push(`${x.title} ${x.date.slice(0, 10)}: ${Object.entries(x.values).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}`).join(', ')}${x.differs?.length ? `; differs from own first check: ${x.differs.join(', ')}` : x.verdict === 'reference' ? '; first check' : ''} (experimental${x.check === 'circ' ? ', indexes, not blood pressure or oxygen saturation' : ''})`);
   if (p.integrity?.fingerprint) lines.push(`Fingerprint: ${p.integrity.fingerprint}`);
   if (p.self_report_urgent) lines.push('URGENT ITEM TICKED: chest pain or shortness of breath. Contact the person directly.');
@@ -86,7 +107,7 @@ export function packetText(p) {
 const SYM_CODE = { Headache: 'HA', 'Stuffy nose or puffy face': 'NF', 'Blurry or changed vision': 'VI', 'Nausea or dizziness': 'ND', 'Back pain': 'BK', 'Short sleep (5 h or less)': 'SL', 'Slept badly': 'SL', 'Tooth or gum pain': 'TG', 'Feverish or chills': 'FV', 'Short of breath': 'SB', 'Chest pain': 'CP' };
 const TREND_CODE = { Pulse: 'P', Breathing: 'R', 'Reaction time, median': 'RT', 'Gum redness change, front photo': 'GUM', 'Mouth opening (lips)': 'JAW' };
 export const SMS_MAX = 160;
-export const SMS_LEGEND = 'RE = RelaisÉcho checkup, BL baseline / FU follow up, time UTC. URGENT = chest pain (CP) or short of breath (SB) ticked: contact the person now. P pulse bpm, R breaths/min: "ok" inside own band, +N or -N beyond it, ~ low quality, xN = N checks in a row outside. RT reaction ms. SYM ticked: HA headache, NF nose or face, VI vision, ND nausea, BK back, SL short sleep (5 h or less), TG tooth or gum, FV fever, SB short of breath, CP chest pain. DENT gum a* / teeth b* change. EXP checks that differ. EYE new grid squares, ACU eye chart worse. NOTE = person wrote a note.';
+export const SMS_LEGEND = 'RE = RelaisÉcho checkup, BL baseline / FU follow up, time UTC. URGENT = chest pain (CP) or short of breath (SB) ticked: contact the person now. P pulse bpm, R breaths/min: "ok" inside own band, +N or -N beyond it, ~ low quality, xN = N checks in a row outside. ILL illness early warning P possible W watch. DEV typed in from own devices, not checked by the app: O oxygen saturation %, T temperature C, B blood pressure, HR pulse. RT reaction ms. SYM ticked: HA headache, NF nose or face, VI vision, ND nausea, BK back, SL short sleep (5 h or less), TG tooth or gum, FV fever, SB short of breath, CP chest pain. SLP sleep last night as answered: le3 = 3 h or less, 4-5, 6-7, 8+ hours. DENT gum a* / teeth b* change. EXP checks that differ. EYE new grid squares, ACU eye chart worse. NOTE = person wrote a note.';
 export function packetSms(p) {
   const r = p.results || {};
   const ch = p.comparison?.change_vs_original || {};
@@ -103,8 +124,17 @@ export function packetSms(p) {
   if (p.self_report_urgent) tokens.push(`URGENT ${(p.self_report_checklist || []).filter((x) => x === 'Chest pain' || x === 'Short of breath').map((x) => SYM_CODE[x]).join('+')}`);
   tokens.push(vital('P', r.pulse_bpm?.value, ch.pulse, r.pulse_bpm?.quality, 'Pulse'));
   tokens.push(vital('R', r.breathing_per_min?.value, ch.breathing, r.breathing_per_min?.quality, 'Breathing'));
+  if (p.illness_watch) tokens.push(`ILL ${p.illness_watch.level === 'possible' ? 'P' : 'W'}`);
+  const dr = p.device_readings;
+  if (dr) {
+    const d = [dr.oxygen_saturation_pct != null ? `O${dr.oxygen_saturation_pct}` : '', dr.temperature_c != null ? `T${dr.temperature_c}` : '',
+      dr.blood_pressure_mmhg ? `B${dr.blood_pressure_mmhg.systolic}/${dr.blood_pressure_mmhg.diastolic}` : '', dr.pulse_bpm != null ? `HR${dr.pulse_bpm}` : ''].filter(Boolean);
+    if (d.length) tokens.push(`DEV ${d.join(' ')}`);
+  }
   const sym = (p.self_report_checklist || []).map((x) => SYM_CODE[x]).filter(Boolean);
   if (sym.length) tokens.push(`SYM ${sym.join(',')}`);
+  const slp = SLEEP_BUCKETS.find((b) => b.label === p.self_report_sleep);
+  if (slp) tokens.push(`SLP ${slp.id}`);
   if (p.alertness) tokens.push(`RT${p.alertness.median_ms}${sus('Reaction time, median')}`);
   const dent = [];
   for (const d of p.dental || []) {
@@ -153,8 +183,23 @@ export function decodeSms(text) {
       lines.push(`${what} ${m[2]} ${unit}${m[3] ? ' (low or medium quality capture)' : ''}: ${vs}${m[5] ? `, outside the band ${m[5]} checks in a row` : ''}.`);
       continue;
     }
+    m = p.match(/^ILL ([PW])$/);
+    if (m) { lines.push(m[1] === 'P' ? 'Illness early warning: possible illness signs (modeled, not a diagnosis).' : 'Illness early warning: worth watching (modeled, not a diagnosis).'); continue; }
+    m = p.match(/^DEV (.+)$/);
+    if (m) {
+      const bits = m[1].split(' ').map((x) => {
+        let k = x.match(/^O(\d+)$/); if (k) return `oxygen saturation ${k[1]}%`;
+        k = x.match(/^T(\d+(?:\.\d)?)$/); if (k) return `temperature ${k[1]} °C`;
+        k = x.match(/^B(\d+)\/(\d+)$/); if (k) return `blood pressure ${k[1]}/${k[2]} mmHg`;
+        k = x.match(/^HR(\d+)$/); if (k) return `pulse ${k[1]} bpm`;
+        return x;
+      });
+      lines.push(`From the person's own devices (typed in, not checked by the app): ${bits.join(', ')}.`); continue;
+    }
     m = p.match(/^SYM (.+)$/);
     if (m) { lines.push(`Symptoms ticked: ${m[1].split(',').map((c) => SYM_NAME[c] || c).join(', ')}.`); continue; }
+    m = p.match(/^SLP (le3|4-5|6-7|8\+)$/);
+    if (m) { lines.push(`Sleep last night (self report): ${sleepBucket(m[1]).label}.`); continue; }
     m = p.match(/^RT(\d+)(?:x(\d+))?$/);
     if (m) { lines.push(`Reaction test median ${m[1]} ms${m[2] ? `, outside the band ${m[2]} tests in a row` : ''}.`); continue; }
     m = p.match(/^DENT (.+)$/);

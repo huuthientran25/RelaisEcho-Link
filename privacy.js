@@ -6,6 +6,7 @@
 export const NETWORK = [
   { host: 'this site', what: 'The app\'s own files', when: 'On the first visit and when a new version is published. After that it works offline.' },
   { host: 'storage.googleapis.com', what: 'The face tracking model (a file of numbers, about 4 MB)', when: 'Once, the first time a camera check starts. Nothing about you is sent with the request.' },
+  { host: 'www.nasa.gov', what: 'NASA\'s list of human system risks, linked from the Mission board', when: 'Only if you open the link. The app itself never contacts it.' },
   { host: 'api.nasa.gov', what: 'Solar flare and particle event lists (NASA DONKI)', when: 'Only when you press the button on the Space weather tile. The request carries two dates and an API key.' },
 ];
 

@@ -17,6 +17,12 @@ export const EXP = {
   pallor: { bandEi: 3 },
   neck: { seconds: 12, minPitchFrac: 0.5 },
   tremor: { seconds: 15, loHz: 3, hiHz: 12, minFps: 20, camFs: 30, motionFs: 60, freqBandHz: 1.5, shareBand: 0.15 },
+  // Standing balance with the phone held against the chest. Bands are wide because one 30 second phone trial is
+  // less repeatable than a force plate (De Groote et al. 2020). All values are design choices.
+  balance: { prepSec: 6, seconds: 30, fs: 50, minFps: 20, loHz: 0.1, hiHz: 5, trimSec: 2, bandPct: 50, ratioBand: 0.6 },
+  // Touchscreen pointing, after NASA's Fine Motor Skills battery (Holden et al. 2023, Human Factors). Target sizes
+  // in CSS pixels (about 9 mm and 4.5 mm on most phones; CSS pixels are not exact millimetres). Bands are design choices.
+  point: { practice: 3, perSize: 12, bigPx: 56, smallPx: 28, minGapPx: 90, timeoutMs: 5000, timeBandPct: 20, missBand: 15, tputBandPct: 20 },
   circ: { seconds: 30, fs: 30, windowSec: 10, stepSec: 2, lagMinMs: -150, lagMaxMs: 300, minCorr: 0.5, minSnrDb: -1, maxBpmGap: 6, pttBandMs: 25, rorBandPct: 10 },
 };
 
@@ -28,6 +34,8 @@ export const CHECKS = [
   { id: 'pallor', title: 'Inner eyelid colour', time: 'about 20 seconds', line: 'Pull down one lower eyelid and look up. Measures how red the inner eyelid is compared with the white of the eye.' },
   { id: 'neck', title: 'Neck check (thyroid area)', time: 'about 20 seconds', line: 'Tip your head back and swallow a sip of water. Saves matched neck photos before and during the swallow for a reviewer.' },
   { id: 'tremor', title: 'Hand steadiness', time: 'about 40 seconds', line: 'Hold your arm out, one hand at a time. Measures the speed and share of any rhythmic shake, with the phone motion sensor or the camera.' },
+  { id: 'balance', title: 'Standing balance', time: 'about 75 seconds', line: 'Stand with feet together and the phone held flat against your chest, eyes open and then eyes closed. Measures how much your body sways, with the phone motion sensor. No camera.' },
+  { id: 'point', title: 'Touchscreen pointing', time: 'about 1 minute', line: 'Tap targets of two sizes as fast and as accurately as you can with one finger. Measures speed and accuracy, the skill NASA found astronauts lose for a few weeks after landing. No camera.' },
   { id: 'circ', title: 'Pulse timing and colour ratio', time: 'about 40 seconds', line: 'Hold an open palm beside your cheek. Gives a blood pressure related timing index and an oxygen related colour index, each only against your own first check.' },
 ];
 export const checkTitle = (id) => (CHECKS.find((c) => c.id === id) || { title: id }).title;
@@ -352,6 +360,76 @@ export function tremorSpectrum(times, channels, fs, cfg = EXP.tremor) {
   return { ok: true, peakHz: r1(pkF), share: tot > 0 ? r2(inBand / tot) : 0, rms: Math.sqrt(rmsSq), fsReal: Math.round(realFs) };
 }
 
+/* ---------- standing balance (phone motion sensor) ---------- */
+// Trunk sway from a phone held against the chest (the method of Hsieh et al. 2019, Gait & Posture 67:160).
+// Each axis is resampled, band passed (0.1 to 5 Hz: this removes gravity and sensor drift and keeps body sway),
+// trimmed at both ends, and the root mean square over the three axes is given in thousandths of g (mg).
+const G = 9.80665;
+export function swayStats(times, channels, cfg = EXP.balance) {
+  if (!times || times.length < cfg.fs * 2) return { ok: false, reason: 'Recording too short.' };
+  const dur = (times[times.length - 1] - times[0]) / 1000;
+  const realFs = (times.length - 1) / Math.max(dur, 1e-6);
+  if (realFs < cfg.minFps) return { ok: false, reason: `Only ${Math.round(realFs)} motion readings per second arrived; at least ${cfg.minFps} are needed.` };
+  if (dur < cfg.seconds * 0.8) return { ok: false, reason: 'The recording stopped early.' };
+  const cut = Math.round(cfg.trimSec * cfg.fs);
+  let sumSq = 0, peak = 0;
+  for (const ch of channels) {
+    const { v } = resampleUniform(times, ch, cfg.fs);
+    const y = bandpass(v, cfg.fs, cfg.loHz, cfg.hiHz).slice(cut, v.length - cut);
+    sumSq += mean(Array.from(y, (q) => q * q));
+    for (const q of y) if (Math.abs(q) > peak) peak = Math.abs(q);
+  }
+  return { ok: true, rmsMg: r1((Math.sqrt(sumSq) / G) * 1000), peakMg: r1((peak / G) * 1000), fsReal: Math.round(realFs) };
+}
+export function summarizeBalance(open, closed) {
+  const o = open || { ok: false, reason: 'No eyes open recording.' };
+  if (!o.ok) return { ok: false, reason: o.reason };
+  const c = closed && closed.ok ? closed : null;
+  return { ok: true, open: { rmsMg: o.rmsMg, peakMg: o.peakMg }, closed: c ? { rmsMg: c.rmsMg, peakMg: c.peakMg } : null,
+    ratio: c && o.rmsMg > 0 ? r2(c.rmsMg / o.rmsMg) : null, fs: o.fsReal,
+    note: c ? '' : (closed && closed.reason ? `Eyes closed part not measured: ${closed.reason}` : 'Eyes closed part skipped.') };
+}
+
+/* ---------- touchscreen pointing ---------- */
+// The order of targets: `perSize` big and `perSize` small, shuffled, after `practice` big ones that do not count.
+export function pointingPlan(seed = Date.now(), cfg = EXP.point) {
+  let x = seed >>> 0;
+  const rnd = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+  const sizes = [...Array(cfg.perSize).fill(cfg.bigPx), ...Array(cfg.perSize).fill(cfg.smallPx)];
+  for (let i = sizes.length - 1; i > 0; i -= 1) { const j = Math.floor(rnd() * (i + 1)); [sizes[i], sizes[j]] = [sizes[j], sizes[i]]; }
+  return { sizes: [...Array(cfg.practice).fill(cfg.bigPx), ...sizes], rnd };
+}
+// A target centre inside the arena, at least minGapPx from the previous centre.
+export function placeTarget(W, H, w, prev, rnd, cfg = EXP.point) {
+  const m = w / 2 + 8;
+  for (let k = 0; k < 50; k += 1) {
+    const p = { x: m + rnd() * Math.max(1, W - 2 * m), y: m + rnd() * Math.max(1, H - 2 * m) };
+    if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) >= cfg.minGapPx) return p;
+  }
+  return { x: W / 2, y: H / 2 };
+}
+// trials: [{ w, d (distance from the previous target centre, px), ms (time to the tap, null if timed out),
+//            dx, dy (tap minus target centre, px), practice }]
+// Throughput (bits per second) is the mean of ID / time with ID = log2(d / w + 1), the Shannon form of Fitts' law
+// with the nominal width (ISO 9241-411 uses the effective width; nominal is simpler and is stated).
+export function summarizePointing(trials, cfg = EXP.point) {
+  const real = (trials || []).filter((t) => !t.practice);
+  if (real.length < cfg.perSize) return { ok: false, reason: 'Too few targets were shown. Try again and tap every target.' };
+  const done = real.filter((t) => t.ms != null);
+  const timeouts = real.length - done.length;
+  if (timeouts > real.length / 3) return { ok: false, reason: `${timeouts} of ${real.length} targets were not tapped in time. Try again when you can give it your full attention.` };
+  const hit = (t) => Math.hypot(t.dx, t.dy) <= t.w / 2;
+  const group = (w) => {
+    const g = done.filter((t) => t.w === w);
+    return { n: g.length, medianMs: g.length ? Math.round(median(g.map((t) => t.ms))) : null, missPct: g.length ? Math.round((g.filter((t) => !hit(t)).length / g.length) * 100) : null,
+      offsetPx: g.length ? r1(median(g.map((t) => Math.hypot(t.dx, t.dy)))) : null };
+  };
+  const big = group(cfg.bigPx), small = group(cfg.smallPx);
+  const tp = done.filter((t) => t.d > 0 && t.ms > 0).map((t) => Math.log2(t.d / t.w + 1) / (t.ms / 1000));
+  return { ok: true, medianMs: Math.round(median(done.map((t) => t.ms))), missPct: Math.round((done.filter((t) => !hit(t)).length / done.length) * 100),
+    throughput: tp.length ? r2(mean(tp)) : null, big, small, timeouts, n: real.length };
+}
+
 /* ---------- pulse timing and colour ratio ---------- */
 // Normalized cross correlation of b against a for lags lo..hi samples (b later = positive lag).
 export function bestLag(a, b, lo, hi) {
@@ -423,6 +501,10 @@ export const METRICS = {
   neck: [{ key: 'swallows', label: 'Swallows seen', unit: '', band: null }],
   tremor: [{ key: 'right.peakHz', label: 'Right hand shake speed', unit: 'Hz', band: EXP.tremor.freqBandHz }, { key: 'right.share', label: 'Right hand rhythmic share (0 to 1)', unit: '', band: EXP.tremor.shareBand },
     { key: 'left.peakHz', label: 'Left hand shake speed', unit: 'Hz', band: EXP.tremor.freqBandHz }, { key: 'left.share', label: 'Left hand rhythmic share (0 to 1)', unit: '', band: EXP.tremor.shareBand }],
+  balance: [{ key: 'open.rmsMg', label: 'Sway, eyes open', unit: 'mg', bandPct: EXP.balance.bandPct }, { key: 'closed.rmsMg', label: 'Sway, eyes closed', unit: 'mg', bandPct: EXP.balance.bandPct },
+    { key: 'ratio', label: 'Eyes closed against eyes open (1 = same)', unit: '', band: EXP.balance.ratioBand }],
+  point: [{ key: 'medianMs', label: 'Time to tap a target', unit: 'ms', bandPct: EXP.point.timeBandPct }, { key: 'missPct', label: 'Taps that missed', unit: '%', band: EXP.point.missBand },
+    { key: 'throughput', label: 'Speed and accuracy together (Fitts throughput)', unit: 'bits/s', bandPct: EXP.point.tputBandPct }, { key: 'small.missPct', label: 'Small targets missed', unit: '%', band: EXP.point.missBand }],
   circ: [{ key: 'pttMs', label: 'Pulse timing, palm after face (blood pressure index)', unit: 'ms', band: EXP.circ.pttBandMs }, { key: 'rorFace', label: 'Colour pulse ratio, face (oxygen index)', unit: '', bandPct: EXP.circ.rorBandPct }],
 };
 const getPath = (o, path) => path.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
@@ -482,4 +564,41 @@ export function expCsv(records) {
     }
   }
   return [head.join(','), ...rows].join('\n') + '\n';
+}
+
+/* ---------- camera oxygen saturation: personal research calibration (RESEARCH, v2.8) ---------- */
+// Pairs of the face colour pulse ratio (rorFace) with a fingertip oximeter reading taken at the same time.
+// A straight line oximeter = a + b * ratio is fitted only for this person. The camera estimate is shown only
+// when it passes two tests: (1) the pairs span at least SPAN points of saturation, and (2) in leave one out
+// checks the line predicts each held out oximeter reading better than simply guessing the person's own average.
+// Test 2 matters because healthy people read 95% to 100%: a method that always says the average looks accurate
+// at home and still cannot see a fall. Published ceiling: a phone camera with the fingertip on the lens and a
+// trained model erred 5.00 points on average over 70% to 100% (Hoffman et al. 2022, npj Digital Medicine).
+export const SPO2_CAL = { MIN_PAIRS: 5, SPAN: 4 };
+export function spo2Calibration(pairs, cfg = SPO2_CAL) {
+  const P = (pairs || []).filter((p) => Number.isFinite(p.ror) && Number.isFinite(p.spo2) && p.spo2 >= 50 && p.spo2 <= 100);
+  const n = P.length;
+  if (n < cfg.MIN_PAIRS) return { ok: false, n, need: cfg.MIN_PAIRS, reason: `${n} of ${cfg.MIN_PAIRS} paired readings so far.` };
+  const ys = P.map((p) => p.spo2), lo = Math.min(...ys), hi = Math.max(...ys);
+  const fit = (Q) => { const mx = mean(Q.map((q) => q.ror)), my = mean(Q.map((q) => q.spo2)); const sxx = Q.reduce((s, q) => s + (q.ror - mx) ** 2, 0);
+    const b = sxx > 0 ? Q.reduce((s, q) => s + (q.ror - mx) * (q.spo2 - my), 0) / sxx : 0; return { a: my - b * mx, b, my }; };
+  let eLine = 0, eMean = 0;
+  for (let i = 0; i < n; i += 1) { const rest = P.filter((_, j) => j !== i), f = fit(rest); eLine += Math.abs(P[i].spo2 - (f.a + f.b * P[i].ror)); eMean += Math.abs(P[i].spo2 - f.my); }
+  const f = fit(P), lineErr = r1(eLine / n), meanErr = r1(eMean / n);
+  const base = { n, low: lo, high: hi, lineErr, meanErr, a: f.a, b: f.b };
+  if (hi - lo < cfg.SPAN) return { ...base, ok: false, reason: `Your oximeter readings so far only span ${lo}% to ${hi}%. A camera estimate cannot be tested on that narrow a range: anything that always guesses your usual value would look accurate.` };
+  if (!(eLine < eMean)) return { ...base, ok: false, reason: `On your own readings the camera line erred ${lineErr} points, no better than guessing your average (${meanErr}). The camera adds nothing yet.` };
+  return { ...base, ok: true };
+}
+export function spo2Estimate(cal, ror) {
+  if (!cal?.ok || !Number.isFinite(ror)) return null;
+  const v = cal.a + cal.b * ror;
+  return { value: Math.round(Math.min(100, v)), err: Math.max(1, cal.lineErr), outside: v < cal.low - 1 || v > cal.high + 1 };
+}
+export function spo2Line(cal, est) {
+  if (!cal) return '';
+  const head = 'Camera oxygen saturation (research, calibrated to you): ';
+  if (!cal.ok) return head + `not shown. ${cal.reason}`;
+  if (!est) return head + `ready (${cal.n} pairs, ${cal.low}% to ${cal.high}%, error ${cal.lineErr} points against ${cal.meanErr} for your average).`;
+  return head + `about ${est.value}%, give or take ${est.err} points (from ${cal.n} of your own paired readings between ${cal.low}% and ${cal.high}%).${est.outside ? ' This is outside the range it was calibrated on, so it is even less reliable.' : ''}${est.value < 95 ? ' Lower than most healthy people read: measure now with your oximeter.' : ''} Never use it instead of an oximeter: it is not tested below ${cal.low}% and cannot rule out low oxygen.`;
 }

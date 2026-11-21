@@ -122,7 +122,9 @@ test('trends for the packet: the short sleep sample shows the climb in pulse, no
   const a = trendsForPacket(short, { original: orig(short), floors: { pulse: 3, resp: 2 } });
   const b = trendsForPacket(steady, { original: orig(steady), floors: { pulse: 3, resp: 2 } });
   assert.ok(Array.isArray(a) && Array.isArray(b));
-  for (const t of a) assert.ok(['sustained', 'drift'].includes(t.kind) && /MODELED/.test(t.rule));
+  for (const t of a) assert.ok(['sustained', 'drift', 'early_warning'].includes(t.kind) && /MODELED/.test(t.rule), JSON.stringify(t));
+  assert.ok(a.some((t) => t.measure === 'Pulse' && t.kind === 'sustained' && t.side === 'above'), 'the climb in pulse is still reported as sustained');
+  assert.equal(b.length, 0, 'a steady record raises nothing, with or without device readings');
   assert.ok(!b.some((t) => t.kind === 'sustained' && !t.experimental), JSON.stringify(b));
   console.log('short sleep trends:', a.map((t) => `${t.measure} ${t.kind} ${t.side} ${t.run ?? t.per_week}`).join(' | ') || 'none');
 });
@@ -221,3 +223,159 @@ test('derived metrics: own spread (z score), Earth ranges, BMI, heartbeats per b
   assert.equal(METRIC_DEFS.hpb.get({ pulse: { bpm: 72 }, resp: { rpm: 15 } }), 4.8);
   assert.equal(METRIC_DEFS.hpb.get({ pulse: { bpm: 72 } }), null);
 });
+
+test('early warning (EWMA) and forecast on the person\'s own values', async () => {
+  const { ewmaChart, ewmaLine, forecastNext, forecastLine, simulateDetection, trendsForPacket } = await import('../js/overview.js');
+  const D = 86400000;
+  const steady = [70, 72, 71, 69, 70, 71, 72, 70, 71, 70, 69, 71].map((v, i) => ({ t: i * D, v, q: 'high' }));
+  const e0 = ewmaChart(steady);
+  assert.equal(e0.signal, false);
+  assert.match(ewmaLine(e0, 'bpm'), /^Early warning: none/);
+  const shifted = steady.slice(0, 8).concat([74, 75, 74, 76, 75].map((v, i) => ({ t: (8 + i) * D, v, q: 'high' })));
+  const e1 = ewmaChart(shifted);
+  assert.equal(e1.signal, true); assert.equal(e1.side, 'above');
+  assert.equal(ewmaChart(steady.slice(0, 8)), null, 'needs more than the 8 baseline values');
+  const line = [60, 61, 62, 63, 64, 65].map((v, i) => ({ t: i * D, v, q: 'high' }));
+  const f = forecastNext(line);
+  assert.ok(Math.abs(f.value - 66) < 1e-9); assert.equal(f.aheadDays, 1); assert.ok(f.hi - f.lo < 1e-6, 'perfect line, no spread');
+  assert.match(forecastLine(f, 'bpm'), /Forecast for the next check \(in about 1 day\): 66 bpm/);
+  assert.equal(forecastNext(line.slice(0, 3)), null);
+  assert.equal(f.method, 'line');
+  const flat = forecastNext(steady);
+  assert.equal(flat.method, 'mean', 'guard: the average is used when a line has not predicted earlier values better');
+  assert.match(forecastLine(flat, 'bpm'), /from the average of the last 6 good values \(a straight line has not predicted/);
+  const few = forecastNext(steady.slice(0, 4));
+  assert.equal(few.method, 'mean'); assert.match(forecastLine(few, 'bpm'), /too few values yet to trust a trend line/);
+  const gap = forecastNext([60, 61, 62, 63, 64].map((v, i) => ({ t: i * D, v, q: 'high' })).concat([{ t: 400 * D, v: 65, q: 'high' }, { t: 800 * D, v: 66, q: 'high' }]));
+  assert.ok(gap && Number.isFinite(gap.value));
+  const { baselineReadiness, readinessLine } = await import('../js/overview.js');
+  assert.deepEqual(baselineReadiness(steady.slice(0, 3)), { n: 3, need: 8, ready: false });
+  assert.match(readinessLine(baselineReadiness(steady.slice(0, 7))), /7 of 8 good quality values.*1 more check and/);
+  assert.equal(readinessLine(baselineReadiness(steady)), '');
+  const sim = simulateDetection({ runs: 400 });
+  assert.ok(sim.ewma.signalPct > sim.run3.signalPct, 'catches a 1.5 SD step more often than 3 in a row');
+  const none = simulateDetection({ runs: 400, shift: 0 });
+  assert.ok(none.ewma.signalPct < 20, 'false alarms stay modest');
+  const sess = shifted.map((p, i) => ({ id: `s${i}`, kind: i ? 'followup' : 'baseline', createdAt: new Date(p.t + Date.UTC(2026, 10, 1)).toISOString(), pulse: { bpm: p.v, quality: 'high' }, resp: { rpm: 15, quality: 'high' }, dental: {} }));
+  const tr = trendsForPacket(sess, { original: { ...sess[0], pulse: { bpm: 71 } }, floors: { pulse: 10, resp: 3 } });
+  assert.ok(tr.some((x) => x.kind === 'early_warning' && x.measure === 'Pulse'), 'packet carries the early warning when no band rule fires');
+});
+
+test('early warning against the recent normal, and the monitoring simulation quoted in the evidence card (v2.5)', async () => {
+  const fs = await import('node:fs');
+  const { ewmaChart, ewmaLine, simulateMonitoring, simulateDetection, EWMA, EWMA_V21 } = await import('../js/overview.js');
+  const D = 86400000;
+  const mk = (a) => a.map((v, i) => ({ t: i * D, v, q: 'high' }));
+  const low = [70, 72, 71, 69, 70, 71, 72, 70, 71, 70, 69, 71], high = low.map((v) => v + 10);
+  // A lasting step up: the warning fires at the step, then clears once the new level is the recent normal.
+  const atStep = ewmaChart(mk(low.concat(high.slice(0, 3))));
+  assert.equal(atStep.signal, true); assert.equal(atStep.side, 'above'); assert.equal(atStep.baseN, 9);
+  assert.match(ewmaLine(atStep, 'bpm'), /^Early warning: the smoothed trend of your latest checks sits above your own recent normal \(70\.7 bpm\)/);
+  const settled = ewmaChart(mk(low.concat(high, high, high)));
+  assert.equal(settled.signal, false, 'the new level has become the recent normal');
+  assert.ok(Math.abs(settled.mu - 80.5) < 0.1); assert.equal(settled.baseN, 28); assert.ok(settled.firstSignalAt === 12 * D);
+  assert.match(ewmaLine(settled, 'bpm'), /^Early warning: none\. Your latest checks stay within what your own recent spread explains \(recent normal 80\.5 bpm\)\.$/);
+  // The rule used up to v2.4 keeps the first 8 values for ever, so the same person stays in warning.
+  assert.equal(ewmaChart(mk(low.concat(high, high, high)), EWMA_V21).signal, true);
+  assert.equal(ewmaChart(mk([5, 5, 5, 5, 5, 5, 5, 5, 6])), null, 'no spread in the recent normal: no verdict');
+  assert.deepEqual([EWMA.L, EWMA.CAP, EWMA.HOLD, EWMA.BASE_N], [3.2, 28, 5, 8]);
+
+  const daily = simulateMonitoring({});
+  assert.deepEqual(daily.ewma, { falsePerYear: 0.97, peopleWithFalsePct: 63, caughtPct: 96, medianDelayDays: 3 });
+  assert.equal(daily.run3.caughtPct, 36);
+  assert.equal(simulateMonitoring({ sensorSd: 5 }).ewma.caughtPct, 42);
+  assert.equal(simulateMonitoring({ sensorSd: 15 }).ewma.caughtPct, 6);
+  const d3 = simulateMonitoring({ everyDays: 3 }).ewma, d7 = simulateMonitoring({ everyDays: 7 }).ewma;
+  assert.deepEqual([d3.falsePerYear, d3.caughtPct, d7.falsePerYear, d7.caughtPct], [0.37, 26, 0.21, 6]);
+  const old = simulateMonitoring({ rule: EWMA_V21 }), noisy = simulateMonitoring({ sensorSd: 5, rule: EWMA_V21 });
+  assert.equal(old.ewma.falsePerYear, 5.93, 'the older rule cried wolf about six times as often');
+  assert.deepEqual([old.ewma.caughtPct, noisy.ewma.caughtPct], [89, 45]);
+  assert.deepEqual([noisy.run3.falsePerYear, noisy.run3.peopleWithFalsePct], [10.2, 82], 'the 3 in a row rule against one baseline checkup is fragile with a noisy sensor');
+  assert.equal(simulateMonitoring({ seasonBpm: 2 }).ewma.falsePerYear, 1.02, 'a seasonal swing barely moves the revised rule');
+  assert.equal(simulateMonitoring({ seasonBpm: 2, rule: EWMA_V21 }).ewma.falsePerYear, 8.26);
+  const none = simulateDetection({ shift: 0 }), step = simulateDetection({}), drift = simulateDetection({ shift: 0, drift: 0.25 });
+  assert.deepEqual([none.ewma.signalPct, none.run3.signalPct, step.ewma.signalPct, step.run3.signalPct, drift.ewma.signalPct, drift.run3.signalPct], [6.8, 9.3, 54.6, 32.9, 68.7, 39.1]);
+  const card = fs.readFileSync(new URL('../js/evidence.js', import.meta.url), 'utf8');
+  for (const quoted of ['0.97 times per person (63% of people', '0.37 times, weekly 0.21 times', 'gave 5.93 on the same test', 'caught in 96% of cases', '42% at 5 bpm and 6% at 15 bpm', 'every 3 days 26%, weekly 6%', 'fired in 6.8% of series', '54.6% against 32.9%', '68.7% against 39.1%']) assert.ok(card.includes(quoted), `evidence card quotes: ${quoted}`);
+  const carte = fs.readFileSync(new URL('../js/evidence-fr.js', import.meta.url), 'utf8');
+  for (const quoted of ['0,97 fois par personne (63 %', '0,37 fois; chaque semaine, 0,21 fois', 'donnait 5,93', '96 % des cas', '42 % à 5 bpm et 6 % à 15 bpm', '26 %; chaque semaine, 6 %', '6,8 % des séries', '54,6 % des séries contre 32,9 %', '68,7 % contre 39,1 %']) assert.ok(carte.includes(quoted), `carte: ${quoted}`);
+});
+
+test('illness early warning: fever, symptoms and own physiology combined (v2.8)', async () => {
+  const fs = await import('node:fs');
+  const { illnessWatch, illnessLine, ILLNESS } = await import('../js/overview.js');
+  const { buildPacket, packetText, packetSms, decodeSms, SMS_LEGEND } = await import('../js/packet.js');
+  const { standouts } = await import('../js/review.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  const D = 86400000;
+  const mk = (i, bpm, x = {}) => ({ id: `s${i}`, kind: i ? 'followup' : 'baseline', createdAt: new Date(Date.UTC(2026, 9, 1) + i * D).toISOString(), pulse: { bpm, quality: 'high' }, resp: { rpm: 14, quality: 'high' }, dental: {}, context: { checklist: x.sym || [] }, devices: x.dev });
+  const base = [64, 66, 65, 63, 64, 65, 66, 64, 65, 63, 64, 66, 65, 64].map((v, i) => mk(i, v));
+  assert.equal(illnessWatch([]), null);
+  assert.equal(illnessWatch(base).level, 'none');
+  assert.equal(illnessWatch([...base, mk(14, 65, { sym: ['headache'] })]).level, 'watch', 'symptoms alone: watch');
+  assert.equal(illnessWatch([...base, mk(14, 65, { sym: ['back'] })]).level, 'none', 'back pain is not an illness symptom here');
+  const up = illnessWatch([...base, mk(14, 80), mk(15, 82)]);
+  assert.equal(up.level, 'watch'); assert.deepEqual(up.signals, ['pulse (camera) above your recent normal']);
+  const both = illnessWatch([...base, mk(14, 80), mk(15, 82, { sym: ['congestion'] })]);
+  assert.equal(both.level, 'possible'); assert.deepEqual(both.symptomWords, ['stuffy nose']);
+  assert.equal(illnessWatch([...base, mk(14, 65, { dev: { tempC: 38.0 } })]).level, 'possible', '38.0 C is a fever (CDC)');
+  assert.equal(illnessWatch([...base, mk(14, 65, { dev: { tempC: 37.9 } })]).level, 'none');
+  assert.equal(ILLNESS.FEVER_C, 38);
+  const early = illnessWatch(base.slice(0, 4));
+  assert.equal(early.ready, false); assert.match(illnessLine(early), /needs 9 good checkups to know your normal; you have 4/);
+  assert.match(illnessLine(both), /^Possible illness signs: symptoms: stuffy nose; pulse \(camera\) above your recent normal\. Rest, recheck within 12 hours/);
+  assert.match(illnessLine(both), /not a diagnosis\.$/);
+  // Into the packet, the short message and the reviewer's reading order.
+  const sess = { ...base.at(-1), id: 'x', createdAt: '2026-10-17T12:00:00.000Z', context: { checklist: ['congestion'] } };
+  const { packet } = buildPacket(sess, { original: null, recent: [] }, { illness: both });
+  assert.equal(packet.illness_watch.level, 'possible'); assert.deepEqual(packet.illness_watch.symptoms, ['stuffy nose']); assert.match(packet.illness_watch.rule, /^MODELED/);
+  assert.equal(buildPacket(sess, { original: null, recent: [] }, { illness: illnessWatch(base) }).packet.illness_watch, null, 'no warning, no field');
+  assert.match(packetText(packet), /Illness early warning: possible illness signs \(stuffy nose; pulse \(camera\) above your recent normal\), modeled, not a diagnosis/);
+  const sms = packetSms(packet); assert.match(sms, /\| ILL P/); assert.ok(sms.length <= 160);
+  assert.ok(decodeSms(sms).lines.includes('Illness early warning: possible illness signs (modeled, not a diagnosis).'));
+  assert.match(SMS_LEGEND, /ILL illness early warning P possible W watch/);
+  assert.ok(standouts({ ...packet, dental: [] }).some((x) => x.level === 'change' && /^Possible illness signs \(modeled\)/.test(x.text)));
+  for (const en of [illnessLine(both), illnessLine(up), illnessLine(early), illnessLine(illnessWatch(base)), packetText(packet).split('\n').find((l) => /^Illness early warning/.test(l)),
+    standouts({ ...packet, dental: [] }).find((x) => /^Possible illness/.test(x.text)).text, 'Illness early warning: possible illness signs (modeled, not a diagnosis).', 'How this works and how often it is wrong']) {
+    const fr = frText(en); assert.ok(fr && fr !== en && !/stuffy|above your|Rest,|symptoms:/.test(fr), `French for: ${en} -> ${fr}`);
+  }
+  const card = fs.readFileSync(new URL('../js/evidence.js', import.meta.url), 'utf8');
+  for (const q of ['30,529 people', '54 tested positive', 'area under the curve of 0.80', '0.71 for symptoms alone', '38 °C (100.4 °F)']) assert.ok(card.includes(q), q);
+});
+
+test('validation kit: sample size, missed checks, and the numbers quoted in VALIDATION_PROTOCOL.md (v2.8)', async () => {
+  const fs = await import('node:fs');
+  const { loaPrecision, pairsNeeded } = await import('../js/change.js');
+  const { simulateMonitoring } = await import('../js/overview.js');
+  assert.equal(pairsNeeded(4.5, 2), 59); assert.equal(pairsNeeded(4.5, 1), 234);
+  assert.equal(loaPrecision(100, 1), 0.3, 'Bland: 100 pairs give about +/- 0.34 s');
+  assert.equal(loaPrecision(1, 4), null); assert.equal(pairsNeeded(0, 2), null);
+  assert.ok(loaPrecision(pairsNeeded(4.5, 2), 4.5) <= 2);
+  const full = simulateMonitoring({}), miss = simulateMonitoring({ missPct: 30 }), both = simulateMonitoring({ sensorSd: 5, missPct: 30 });
+  assert.deepEqual([full.ewma.caughtPct, full.ewma.falsePerYear], [96, 0.97], 'missPct 0 leaves the v2.5 numbers unchanged');
+  assert.deepEqual([miss.ewma.caughtPct, both.ewma.caughtPct], [78, 23]);
+  const doc = fs.readFileSync(new URL('../VALIDATION_PROTOCOL.md', import.meta.url), 'utf8');
+  for (const q of ['no claim of northern validation', 'about 59 pairs', 'about 234', '96% of cases, 78% if 30% of checks are missed, and 23%', 'machine translation for Inuktitut']) assert.ok(doc.includes(q), q);
+});
+
+test('mission day labels and return to baseline after landing (v2.10)', async () => {
+  const { missionLabel, returnToBaseline, returnLine, lineChart } = await import('../js/overview.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  const t = (iso) => +new Date(`${iso}T09:00:00`), mc = { start: '2026-10-10', length: 3 };
+  assert.deepEqual(['2026-10-07', '2026-10-09', '2026-10-10', '2026-10-12', '2026-10-13', '2026-10-25'].map((d) => missionLabel(t(d), mc)), ['L-3', 'L-1', 'FD1', 'FD3', 'R+0', 'R+12']);
+  assert.equal(missionLabel(t('2026-10-10'), null), ''); assert.equal(missionLabel(t('2026-10-10'), { start: 'x', length: 3 }), '');
+  const pts = [['2026-09-20', 64], ['2026-09-27', 66], ['2026-10-03', 65], ['2026-10-08', 63], ['2026-10-13', 80], ['2026-10-15', 74], ['2026-10-20', 66], ['2026-10-24', 65]].map(([d, v]) => ({ t: t(d), v, q: 'high' }));
+  assert.equal(returnToBaseline(pts.slice(0, 4), mc), null, 'no check after landing yet');
+  assert.equal(returnToBaseline(pts.slice(2), mc), null, 'needs 3 pre-flight checks');
+  const r0 = returnToBaseline(pts.slice(0, 5), mc), r1 = returnToBaseline(pts.slice(0, 7), mc), r2 = returnToBaseline(pts, mc);
+  assert.deepEqual([r0.back, r0.insideNow, r0.latestDay], [false, false, 'R+0']);
+  assert.deepEqual([r1.back, r1.insideNow], [false, true], 'one check inside is not yet back');
+  assert.deepEqual([r2.back, r2.backAt, r2.latestDay], [true, 'R+7', 'R+11']);
+  assert.equal(returnToBaseline(pts.map((p, i) => (i < 3 ? { ...p, q: 'low' } : p)), mc), null, 'low quality pre-flight checks do not count');
+  assert.match(returnLine(r0, 'bpm'), /^Since landing \(R\+0\): still outside your pre-flight range \(latest 80 bpm; range 60 to 69 bpm, from 4 pre-flight checks\)\. For context/);
+  assert.match(returnLine(r2, 'bpm'), /back inside your pre-flight range since R\+7/);
+  for (const r of [r0, r1, r2]) { const en = returnLine(r, 'bpm'), fr = frText(en); assert.ok(fr && fr !== en && /Depuis l’atterrissage/.test(fr), `French for ${en}`); }
+  const svg = lineChart(pts, { unit: 'bpm', dayLabel: (x) => missionLabel(x, mc) });
+  assert.match(svg, />9\/20 L-20</); assert.match(svg, />10\/24 R\+11</);
+});
+

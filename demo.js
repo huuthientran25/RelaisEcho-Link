@@ -29,6 +29,7 @@ export const SCENARIOS = [
 
 export function makeDemoSessions(now = new Date(), seed = 42, scenario = 'shortsleep') {
   const r = rng(seed);
+  const rd = rng(seed + 7919); // own stream for the invented device readings, so the other sample values stay as they were
   const day = 24 * 3600 * 1000;
   const out = [];
   const at = (daysAgo, minutes) => {
@@ -65,6 +66,8 @@ export function makeDemoSessions(now = new Date(), seed = 42, scenario = 'shorts
         flags: drift > 6 ? [`Gums look redder than the baseline photo (a* +${drift}).`] : [], notes: [], changedPct: drift > 6 ? 9 : 2 } } };
       else s.dental = { front: { view: 'front', captured: true, marks: [] } };
     }
+    // Invented readings from the person's own devices on every checkup: fingertip oximeter, thermometer, cuff.
+    s.devices = { spo2: breathless ? 93 : 97 + Math.round(rd()), pulse: pulse + Math.round((rd() - 0.5) * 4), tempC: Math.round((36.5 + rd() * 0.4) * 10) / 10, sys: 114 + Math.round(rd() * 8), dia: 72 + Math.round(rd() * 6) };
     // Six checkups have a reference watch reading, so the bench test panel is filled in.
     if (i % 2 === 0) s.reference = { pulseBpm: pulse + Math.round((r() - 0.5) * 4), breathsPerMin: resp + Math.round((r() - 0.5) * 2), device: 'sample watch', conditions: 'sample data' };
     out.push(s);

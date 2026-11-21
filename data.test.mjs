@@ -281,3 +281,105 @@ test('sleep answer: buckets, short sleep flag, packet line', async () => {
   assert.equal(p.packet.self_report_sleep, '4 to 5 h');
   assert.match(packetText(p.packet), /Sleep last night \(self report\): 4 to 5 h/);
 });
+
+test('satellite message carries the sleep answer and decodes it', async () => {
+  const { buildPacket, packetSms, decodeSms } = await import('../js/packet.js');
+  const base = { id: 'x', kind: 'followup', createdAt: '2026-11-15T12:00:00.000Z', pulse: { bpm: 70, quality: 'high' }, resp: { rpm: 14, quality: 'high' }, dental: {} };
+  const sms = packetSms(buildPacket({ ...base, context: { sleepH: '4-5', checklist: ['sleep'] } }, { original: null, recent: [] }).packet);
+  assert.match(sms, /SYM SL \| SLP 4-5/);
+  assert.ok(sms.length <= 160);
+  assert.ok(decodeSms(sms).lines.includes('Sleep last night (self report): 4 to 5 h.'));
+  assert.ok(decodeSms('RE FU 11-15 12:00 | SLP 8+').lines.includes('Sleep last night (self report): 8 h or more.'));
+});
+
+test('bench test report: pairs, failures, conditions, participant codes', async () => {
+  const { benchReport, isParticipantCode } = await import('../js/change.js');
+  const mk = (bpm, ref, cond, part, rpm = null, rref = '') => ({ createdAt: '2026-11-16T10:00:00Z', pulse: { bpm, quality: bpm == null ? 'none' : 'high' }, resp: { rpm, quality: 'high' }, reference: { pulseBpm: ref, breathsPerMin: rref, conditions: cond, participant: part, device: 'oximeter' } });
+  const r = benchReport([mk(70, 72, 'window light', 'P01'), mk(80, 76, 'dim light, head movement', 'P02'), mk(null, 65, 'dim light', 'P02'), mk(66, 66, 'window light', 'P03', 14, 15), { createdAt: 'x', pulse: { bpm: 60 } }]);
+  assert.equal(r.checkups, 4); assert.equal(r.participants, 3); assert.deepEqual(r.devices, ['oximeter']);
+  assert.equal(r.pulse.attempts, 4); assert.equal(r.pulse.n, 3); assert.equal(r.pulse.failed, 1, 'no estimate counts as a failure, not dropped');
+  assert.equal(r.pulse.mae, 2); assert.equal(r.pulse.ba.n, 3);
+  assert.deepEqual(r.pulse.byCondition.find((c) => c.condition === 'window light'), { condition: 'window light', n: 2, mae: 1 });
+  assert.equal(r.resp.n, 1);
+  assert.ok(isParticipantCode('P01') && isParticipantCode('') && !isParticipantCode('Thien') && !isParticipantCode('P 01'));
+});
+
+test('backtest on Inspiration4 crew data matches chance where it should', async () => {
+  const fs = await import('node:fs');
+  const { backtestCrew } = await import('../js/crew.js');
+  const d = JSON.parse(fs.readFileSync(new URL('../data/osd575-cmp.json', import.meta.url), 'utf8'));
+  const r = backtestCrew(d);
+  assert.equal(r.series, 108);
+  assert.equal(r.outsideRange, 54, 'outside the min to max of 3 values: half, as chance predicts');
+  assert.equal(r.outsidePI, 5); assert.equal(r.expectedPI, 5.4);
+  assert.deepEqual(r.standouts[0], { name: 'IL-6', crew: 'C003', z: 50.4 });
+  assert.deepEqual(r.il6, { up: 4, n: 4, chanceOneIn: 256 });
+  assert.deepEqual(r.predictR1, { mean: 12.8, last: 11.2, trend: 16, n: 108 });
+  assert.deepEqual(r.predictR45, { premean: 15.7, persist: 18.2, premeanBetter: 61, n: 107 });
+  assert.deepEqual(r.returned, { 'R+45': 2, 'R+82': 2, 'R+194': 0, never: 1 });
+});
+
+test('adaptive personal ranges with published biological variation (v2.4)', async () => {
+  const fs = await import('node:fs');
+  const { adaptiveRange, adaptiveBacktest, BIO_VARIATION } = await import('../js/crew.js');
+  const one = adaptiveRange([100], 10);
+  assert.equal(one.ownWeight, 0, 'one value: all of the spread comes from the published variation');
+  const many = adaptiveRange([100, 101, 99, 100, 102, 98, 100, 101, 99], 10);
+  assert.equal(many.ownWeight, 67); assert.ok(many.hi - many.lo < one.hi - one.lo, 'steady own values narrow the range');
+  assert.equal(adaptiveRange([], 10), null); assert.equal(adaptiveRange([5], 0), null);
+  const d = JSON.parse(fs.readFileSync(new URL('../data/osd575-cmp.json', import.meta.url), 'utf8'));
+  const r = adaptiveBacktest(d);
+  assert.equal(Object.keys(BIO_VARIATION).length, 14);
+  assert.equal(r.series, 56); assert.equal(r.expected, 2.8);
+  assert.equal(r.own, 4); assert.equal(r.adaptive, 8); assert.equal(r.rcv, 19);
+  assert.deepEqual(r.il6.map((x) => x.changePct), [94, 31, 190, 62]);
+  assert.equal(r.il6[0].risePct, 102);
+  assert.deepEqual(r.il6.filter((x) => x.beyond).map((x) => x.crew), ['C003'], 'only one IL-6 rise clears normal within-person variation');
+});
+
+test('readings typed in from the person\'s own devices: cleaned, charted, packed and decoded (v2.5)', async () => {
+  const { cleanDevices, DEVICE_FIELDS, METRIC_DEFS, REGIONS, seriesFor, deviceLine, buildRegions } = await import('../js/overview.js');
+  const { buildPacket, packetText, packetSms, decodeSms, deviceReadings, deviceText, SMS_LEGEND } = await import('../js/packet.js');
+  const { standouts } = await import('../js/review.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  assert.deepEqual(cleanDevices({ spo2: '97', pulse: '71', tempC: '36.84', sys: '128', dia: '82' }), { spo2: 97, pulse: 71, tempC: 36.8, sys: 128, dia: 82 });
+  assert.deepEqual(cleanDevices({ spo2: '197', tempC: '98.6', pulse: '' }), null, 'typing slips and Fahrenheit are refused, not stored');
+  assert.deepEqual(cleanDevices({ spo2: 96, sys: 120 }), { spo2: 96 }, 'blood pressure needs both numbers');
+  assert.deepEqual(cleanDevices({ sys: 80, dia: 120 }), null, 'upper number must be above the lower');
+  assert.equal(cleanDevices(null), null);
+  for (const f of DEVICE_FIELDS) assert.ok(METRIC_DEFS[f.metric] && REGIONS.some((r) => r.metrics.includes(f.metric)), `${f.key} has a chart and a body region`);
+  assert.equal(REGIONS.length, 7, 'no new body region');
+
+  const base = { id: 'x', kind: 'followup', createdAt: '2026-11-16T12:00:00.000Z', pulse: { bpm: 70, quality: 'high' }, resp: { rpm: 14, quality: 'high' }, dental: {}, context: {} };
+  const { packet } = buildPacket({ ...base, devices: { spo2: 93, pulse: 71, tempC: 36.8, sys: 128, dia: 82 } }, { original: null, recent: [] });
+  assert.deepEqual(packet.device_readings, { oxygen_saturation_pct: 93, pulse_bpm: 71, temperature_c: 36.8, blood_pressure_mmhg: { systolic: 128, diastolic: 82 }, label: 'Typed in by the person from their own devices; not measured or checked by the app' });
+  assert.equal(buildPacket(base, { original: null, recent: [] }).packet.device_readings, null);
+  assert.match(packetText(packet), /Own devices \(typed in, not checked by the app\): oxygen saturation 93%, pulse 71 bpm, temperature 36\.8 °C, blood pressure 128\/82 mmHg/);
+  const sms = packetSms(packet);
+  assert.match(sms, /\| P70 \| R14 \| DEV O93 T36\.8 B128\/82 HR71/); assert.ok(sms.length <= 160);
+  assert.ok(decodeSms(sms).lines.includes('From the person\'s own devices (typed in, not checked by the app): oxygen saturation 93%, temperature 36.8 °C, blood pressure 128/82 mmHg, pulse 71 bpm.'));
+  assert.match(SMS_LEGEND, /DEV typed in from own devices/);
+  const so = standouts({ ...packet, dental: [] });
+  assert.ok(so.some((x) => x.level === 'change' && /^Oxygen saturation 93%, typed in/.test(x.text)), 'a low typed oxygen saturation is read first');
+  assert.ok(!standouts({ ...packet, dental: [], device_readings: { oxygen_saturation_pct: 97 } }).some((x) => /Oxygen saturation/.test(x.text)));
+  assert.equal(deviceText(deviceReadings({ tempC: 37.2 })), 'temperature 37.2 °C');
+
+  const sessions = [97, 98, 97, 93].map((v, i) => ({ id: `d${i}`, kind: i ? 'followup' : 'baseline', createdAt: `2026-11-1${i}T09:00:00.000Z`, pulse: { bpm: 70, quality: 'high' }, resp: { rpm: 14, quality: 'high' }, dental: {}, devices: { spo2: v } }));
+  assert.deepEqual(seriesFor('spo2', sessions).map((p) => p.v), [97, 98, 97, 93]);
+  const lungs = buildRegions(sessions, { original: sessions[0], floors: { pulse: 8, resp: 3 } }).find((r) => r.id === 'lungs');
+  assert.equal(lungs.status, 'review'); assert.match(lungs.reasons.join(' '), /Oxygen saturation, fingertip oximeter 93 % \(first 97\)/);
+  assert.match(deviceLine('spo2', 93), /below that: warm your hand, sit still and recheck/);
+  assert.match(deviceLine('spo2', 98), /inside that/);
+  assert.equal(deviceLine('temp', 36.8), '');
+  for (const en of [deviceLine('spo2', 93), deviceLine('spo2', 98), deviceLine('bpSys', 128), 'oxygen saturation 93%, pulse 71 bpm, temperature 36.8 °C, blood pressure 128/82 mmHg',
+    decodeSms(sms).lines.find((l) => /own devices/.test(l)), so.find((x) => /Oxygen saturation/.test(x.text)).text, 'Oxygen saturation, fingertip oximeter (no data)', 'Temperature, thermometer, °C', 'Blood pressure, upper number, mmHg']) {
+    const fr = frText(en); assert.ok(fr && fr !== en && !/undefined|null/.test(fr), `French for: ${en} -> ${fr}`);
+  }
+  assert.equal(frText('temperature 36.8 °C'), 'température 36,8 °C');
+  const { lineChart } = await import('../js/overview.js');
+  const pts = [97, 98, 99, 100].map((v, i) => ({ t: i * 86400000, v, q: 'high' }));
+  const axis = (svg) => [...svg.matchAll(/class="ax" text-anchor="end">([-\d.]+)</g)].map((m) => Number(m[1]));
+  assert.ok(Math.max(...axis(lineChart(pts, { ref: { base: 97, band: 3, label: 'your first value' } }))) > 100, 'without a ceiling the padded axis passes 100');
+  assert.equal(Math.max(...axis(lineChart(pts, { ref: { base: 97, band: 3, label: 'your first value' }, ceil: 100 }))), 100, 'oxygen saturation axis stops at 100%');
+});
+

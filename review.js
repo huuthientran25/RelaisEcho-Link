@@ -26,6 +26,10 @@ export function standouts(p) {
   const q = (label, r) => { if (r && r.value != null && r.quality && r.quality !== 'high') add('caution', `${label} estimate came from a ${r.quality} quality capture, so read it loosely.`); };
   q('Pulse', p.results?.pulse_bpm); q('Breathing', p.results?.breathing_per_min);
   if (p.results?.pulse_bpm?.value == null && p.results?.breathing_per_min?.value == null) add('caution', 'The capture gave no pulse or breathing result.');
+  const ill = p.illness_watch;
+  if (ill?.level === 'possible') add('change', `Possible illness signs (modeled): ${[ill.temperature_c != null && ill.temperature_c >= 38 ? `temperature ${ill.temperature_c} °C` : '', ill.symptoms?.length ? `symptoms ${ill.symptoms.join(', ')}` : '', ...(ill.signals || [])].filter(Boolean).join('; ')}. Contact the person; not a diagnosis.`);
+  const o2 = p.device_readings?.oxygen_saturation_pct;
+  if (Number.isFinite(o2) && o2 < 95) add('change', `Oxygen saturation ${o2}%, typed in from the person's own oximeter: below the 95% to 100% most healthy people read (FDA). Not checked by the app; cold fingers, movement and darker skin affect oximeters.`);
   const v = p.vision_self_check?.new_vs_reference;
   if (v && v.right + v.left > 0) add('change', `Eye grid: ${v.right + v.left} newly marked square${v.right + v.left === 1 ? '' : 's'} against the person's reference (right ${v.right}, left ${v.left}).`);
   for (const d of p.dental || []) {
@@ -37,6 +41,7 @@ export function standouts(p) {
   for (const x of p.experimental_checks || []) if (x.differs?.length) add('note', `Experimental ${x.title.toLowerCase()}: differs from the person's own first check (${x.differs.join(', ')}). Experimental, often explained by light or distance.`);
   for (const t of p.trends || []) {
     if (t.kind === 'sustained') add(t.experimental ? 'note' : 'change', `${t.measure}: ${t.side} the band ${t.run} checks in a row, a sustained change rather than one odd value${t.experimental ? ' (experimental measure)' : ''}.`);
+    else if (t.kind === 'early_warning') add('note', `${t.measure}: early warning, the smoothed trend sits ${t.side} the person's own recent normal (modeled; recheck).`);
     else if (t.kind === 'drift') add('note', `${t.measure}: drifting ${t.side === 'above' ? 'up' : 'down'} about ${Math.abs(t.per_week)} ${t.unit} a week, still inside the band.`);
   }
   if (p.self_report_checklist?.length) add('note', `Symptoms ticked: ${p.self_report_checklist.join(', ')}.`);

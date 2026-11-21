@@ -10,9 +10,9 @@ import { TorsoTracker, estimateRespMulti } from './resp.js';
 import { DentalCapture, VIEWS, approxDistanceCm } from './dental.js';
 import { saveSession, listSessions, baselineAndRecent, newId, clearAll, setOriginal, deleteSession, setProfile, getProfile, countByProfile, allIds, everySession, eraseDatabase, DEFAULT_PROFILE } from './store.js';
 import { NETWORK, EXPORTS, NEVER, inventory, inventoryLines, fmtBytes } from './privacy.js';
-import { buildPacket, packetText, packetSms, SMS_LEGEND, SMS_MAX, decodeSms, sealPacket, checkIntegrity } from './packet.js';
+import { buildPacket, packetText, packetSms, SMS_LEGEND, SMS_MAX, decodeSms, sealPacket, checkIntegrity, deviceReadings, deviceText } from './packet.js';
 import { EVIDENCE } from './evidence.js';
-import { sleepPressure, missionDose, MISSION_PRESETS, consistency, RADIATION, todaySteps } from './board.js';
+import { sleepPressure, missionDose, MISSION_PRESETS, consistency, RADIATION, todaySteps, NASA_RISKS } from './board.js';
 import { loadSpaceWeather, isFresh } from './spaceweather.js';
 import { SYMPTOMS, URGENT_TEXT, symptomLabels, hasUrgent, symptomCounts, SLEEP_BUCKETS, sleepBucket, bucketFor, shortSleep } from './symptoms.js';
 import { dayLength, fmtHours, PLACES, ISS_SUNRISES_PER_DAY } from './daylight.js';
@@ -20,9 +20,9 @@ import { PVT_CONFIG, summarizePvt, comparePvt, randomIsi } from './pvt.js';
 import { applyLang, phrase } from './i18n.js';
 import { watchFrench, frText } from './i18n-fr.js';
 import { EVIDENCE_FR } from './evidence-fr.js';
-import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS, benchPairs, blandAltman } from './change.js';
+import { changeVsBaseline, benchError, noiseFloor, MIN_BENCH_PAIRS, benchPairs, blandAltman, benchReport, BENCH_CONDITIONS, isParticipantCode, loaPrecision, pairsNeeded } from './change.js';
 import { qrSvg, QR_MAX_BYTES } from './qr.js';
-import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact } from './crew.js';
+import { summarizeCrew, rangeDisagreements, aboveOwnAfterFlight, compact, backtestCrew, adaptiveBacktest, BIO_VARIATION as BIO_KEYS } from './crew.js';
 import { eyeAspect, EyeTracker, lidOpeningMm, summarizeLids, compareLids, LID } from './eyes.js';
 import { makeSpeaker } from './speech.js';
 import { parseBackup, mergePlan } from './backup.js';
@@ -37,7 +37,7 @@ import { earthMars, marsCycle, moonOneWaySec, fmtDelay } from './delay.js';
 import { initExp } from './expui.js';
 import { ACUITY, optoMm, snellen, floorLogmar, AcuityRun, compareAcuity, acuityForPacket } from './acuity.js';
 import { expForPacket, checkTitle, CHECKS as EXP_CHECKS } from './exp.js';
-import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay, trendFor, trendLine, trendsForPacket, blandAltmanSvg, personalStats, statsLine, earthLine, bmi, EARTH_AVG } from './overview.js';
+import { METRIC_DEFS, seriesFor, referenceFor, buildRegions, lineChart, BODY_SVG, missionDay, trendFor, trendLine, trendsForPacket, blandAltmanSvg, personalStats, statsLine, earthLine, bmi, EARTH_AVG, ewmaChart, EWMA, ewmaLine, missionLabel, returnToBaseline, returnLine, forecastNext, forecastLine, baselineReadiness, readinessLine, DEVICE_FIELDS, cleanDevices, deviceLine, illnessWatch, illnessLine } from './overview.js';
 import { N as AMS_N, CARD_MM, DEFAULT_PX_PER_MM, summarize as amsSummary, compareEye, gridSize, cleanCells, visionForPacket } from './amsler.js';
 
 const $ = (id) => document.getElementById(id);
@@ -567,11 +567,11 @@ async function finishScan() {
 
 /* ---------- results ---------- */
 function resultCard(title, value, unit, r, evKey) {
-  const live = state.session.source === 'file' ? 'RECORDED VIDEO' : 'LIVE';
+  const live = state.session.source === 'file' ? 'Recorded video' : 'Live';
   const q = r?.quality || 'none';
   const big = value != null ? `<span class="big">${value}</span> <span class="unit">${unit}</span>` : '<span class="big">No result</span>';
   return `<h2>${title}</h2><p>${big}</p>
-    <p><span class="tag live">${live}</span><span class="tag">EXPERIMENTAL</span></p>
+    <p><span class="tag live">${live}</span><span class="tag">Experimental</span></p>
     <p class="q-${q}">Quality: ${q}${r?.total != null ? ` · ${r.accepted} of ${r.total} windows accepted` : ''}${r?.seconds ? ` · ${Math.round(r.seconds)} usable s` : ''}</p>
     ${r?.channel ? `<p class="fine">Measured from: ${esc(CHANNEL_LABEL[r.channel] || r.channel)}${r.agreeing ? ` · ${r.agreeing} other channel${r.agreeing > 1 ? 's' : ''} agree` : ''}</p>` : ''}
     ${r?.channels?.length ? `<p class="fine">${r.channels.map((c) => `${esc(CHANNEL_LABEL[c.name] || c.name)}: ${c.rpm ?? 'none'}`).join(' · ')}</p>` : ''}
@@ -589,14 +589,14 @@ async function renderResults() {
   let html = '';
   if (sess.eyes && sess.eyes.trackedPct >= 50 && sess.eyes.blinksPerMin != null) {
     const be = original?.eyes && original.eyes.blinksPerMin != null ? original.eyes : null;
-    html += `<div class="card"><h3>Eyes during the scan <span class="tag">EXPERIMENTAL</span></h3>
+    html += `<div class="card"><h3>Eyes during the scan <span class="tag">Experimental</span></h3>
       <p>${sess.eyes.blinksPerMin} blinks per minute · eyes closed ${sess.eyes.closedPct}% of the time · ${sess.eyes.longClosures} closure${sess.eyes.longClosures === 1 ? '' : 's'} of half a second or longer.${be ? ` Original baseline: ${be.blinksPerMin} blinks per minute, closed ${be.closedPct}%.` : ''}</p>
       <p class="fine">Blink rate swings a lot from minute to minute and person to person, so this is shown, not judged. For a fatigue check, the 3 minute alertness test is more sensitive. <button type="button" class="link-btn" data-evidence="eyes">Evidence</button></p></div>`;
   }
   if (sess.eyelid) {
     const bl = original && original.id !== sess.id ? original.eyelid : null;
     const lc = compareLids(sess.eyelid, bl);
-    html += `<div class="card"><h3>Eye opening <span class="tag">EXPERIMENTAL</span></h3>
+    html += `<div class="card"><h3>Eye opening <span class="tag">Experimental</span></h3>
       <p>${lc.rows.map((r) => `${r.side === 'right' ? 'Right' : 'Left'} eye ${r.today ?? '-'} mm${r.base != null ? ` (baseline ${r.base} mm${r.outside ? ', <strong>different</strong>' : ''})` : ''}`).join(' · ')}</p>
       <p class="${lc.verdict === 'different' ? 'warnline' : 'fine'}">${lc.verdict === 'reference' ? 'Saved with your baseline; later checkups are compared with it.' : lc.verdict === 'different' ? `! An eyelid sits more than ${LID.bandMm} mm higher or lower than at your baseline. Squinting, light and tiredness change this; if it stays, or one lid droops, tell a clinician.` : `Within ${LID.bandMm} mm of your baseline.`}</p>
       <p class="fine">Gap between the lids with eyes open, scaled by an assumed 11.7 mm iris. <button type="button" class="link-btn" data-evidence="lids">Evidence</button></p></div>`;
@@ -630,6 +630,8 @@ async function renderResults() {
   }
   $('cmpTable').innerHTML = html;
   ['refPulse', 'refResp', 'refDevice', 'refNotes'].forEach((id) => { $(id).value = ''; });
+  DEVICE_FIELDS.forEach((f) => { $(`dev_${f.key}`).value = sess.devices?.[f.key] ?? ''; });
+  $('devMsg').textContent = '';
 }
 
 function drawWave(samples) {
@@ -654,10 +656,22 @@ function drawWave(samples) {
 
 function saveReference() {
   const n = (id) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : null; };
-  state.session.reference = { pulseBpm: n('refPulse'), breathsPerMin: n('refResp'), device: $('refDevice').value.trim(), conditions: $('refNotes').value.trim() };
+  const part = $('refParticipant').value.trim().toUpperCase();
+  state.session.reference = { pulseBpm: n('refPulse'), breathsPerMin: n('refResp'), device: $('refDevice').value.trim(), conditions: $('refNotes').value.trim(), ...(part && isParticipantCode(part) ? { participant: part } : {}) };
   saveSession(state.session);
 }
 ['refPulse', 'refResp', 'refDevice', 'refNotes'].forEach((id) => $(id).addEventListener('change', saveReference));
+
+// Readings typed in from the person's own devices (oximeter, thermometer, cuff): saved with the checkup as typed.
+function saveDevices() {
+  const raw = Object.fromEntries(DEVICE_FIELDS.map((f) => [f.key, $(`dev_${f.key}`).value.trim()]));
+  const clean = cleanDevices(raw);
+  const typed = DEVICE_FIELDS.filter((f) => raw[f.key] !== '').length, kept = clean ? Object.keys(clean).length : 0;
+  if (clean) state.session.devices = clean; else delete state.session.devices;
+  $('devMsg').textContent = typed > kept ? 'Left out: a value no such device can show, or blood pressure without both numbers (upper above lower).' : kept ? 'Saved with this checkup.' : '';
+  saveSession(state.session);
+}
+DEVICE_FIELDS.forEach((f) => $(`dev_${f.key}`).addEventListener('change', saveDevices));
 
 $('btnRetake').addEventListener('click', () => {
   const old = state.session;
@@ -875,7 +889,8 @@ async function renderPacket() {
   const trends = trendsForPacket(allNow, { original: cmp.original, floors: { pulse: noiseFloor(bench, 'pulse').value, resp: noiseFloor(bench, 'resp').value }, upTo: sess.createdAt });
   const agree = (kind) => { const ba = blandAltman(benchPairs(allNow, kind)); return ba.n >= 3 ? { pairs: ba.n, bias: ba.bias, limits_of_agreement: [ba.low, ba.high] } : null; };
   const benchAgreement = agree('pulse') || agree('resp') ? { method: 'Bland and Altman, app minus the person\'s own reference device; rough below about 20 pairs', pulse_bpm: agree('pulse'), breathing_per_min: agree('resp') } : null;
-  lastPacket = await sealPacket(buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]), experimental, acuity, trends, benchAgreement }));
+  const illness = illnessWatch(allNow, { upTo: sess.createdAt });
+  lastPacket = await sealPacket(buildPacket(sess, cmp, { includeImages: $('includeImages').checked, alertness: alert, change, vision: visionForPacket(visRec, visAll[0]), experimental, acuity, trends, benchAgreement, illness }));
   $('packetText').textContent = packetText(lastPacket.packet); $('smsBox').hidden = true;
   renderPacketStatus(sess);
   gzipText(lastPacket.json).then((gz) => {
@@ -917,6 +932,12 @@ function benchPlots(all) {
   const html = one('pulse', 'Pulse: app against your reference', 'bpm') + one('resp', 'Breathing: app against your reference', '/min');
   return html ? `<h3>Agreement with your reference device</h3>${html}<p class="fine">Bland and Altman plot: each dot is one checkup with a reference value. Most dots should fall between the dashed lines. With under about 20 pairs these limits are rough, and they describe this device, this face and this light only.</p>` : '';
 }
+function benchConditionsHtml(all) {
+  const r = benchReport(all).pulse;
+  if (!r.attempts) return '';
+  const cond = r.byCondition.length ? ` By condition: ${r.byCondition.map((c) => `${c.condition} ${c.mae} bpm (${c.n})`).join('; ')}.` : '';
+  return `<p class="fine">Pulse attempts with a reference: ${r.attempts}, no value from the app: ${r.failed}.${esc(cond)}</p>`;
+}
 async function renderHistory() {
   const all = (await listSessions()).reverse();
   const b = benchError(all);
@@ -925,12 +946,12 @@ async function renderHistory() {
   const sc = symptomCounts(all);
   $('symptomBox').innerHTML = sc.rows.length ? `<div class="card"><h2>Symptoms ticked, last 14 days</h2>
     <p class="fine">Out of ${sc.checkups} checkup${sc.checkups === 1 ? '' : 's'}. A count of what was ticked, not a score.</p>
-    <ul class="sym-counts">${sc.rows.map((r) => `<li><span class="sym-n">${r.count}</span> ${esc(r.label)}${r.urgent ? ' <span class="tag alert">URGENT ITEM</span>' : ''}</li>`).join('')}</ul></div>` : '';
+    <ul class="sym-counts">${sc.rows.map((r) => `<li><span class="sym-n">${r.count}</span> ${esc(r.label)}${r.urgent ? ' <span class="tag alert">Urgent item</span>' : ''}</li>`).join('')}</ul></div>` : '';
   if (navigator.storage?.estimate) navigator.storage.estimate().then((e) => { $('storageNote').textContent = `This browser holds about ${(e.usage / 1048576).toFixed(1)} MB of app data on this device.`; }).catch(() => {});
   $('btnDeleteProfile').hidden = getProfile() === DEFAULT_PROFILE;
   $('benchSummary').innerHTML = `<div class="card"><h2>Your bench test</h2>
     <p>Enter a watch, oximeter or counted breaths reference on the results screen. Once there are ${MIN_BENCH_PAIRS} pairs, comparisons use your own measured error instead of published figures.</p>
-    <ul>${row('Pulse', b.pulse, 'bpm')}${row('Breathing', b.resp, '/min')}</ul>${benchPlots(all)}</div>`;
+    <ul>${row('Pulse', b.pulse, 'bpm')}${row('Breathing', b.resp, '/min')}</ul>${benchConditionsHtml(all)}${benchPlots(all)}</div>`;
   const currentOriginal = (await baselineAndRecent()).original?.id;
   const pvtLine = (s) => `<div class="hist-item"><span><strong>alertness</strong> · ${fmtDate(s.createdAt)}</span>
       <span>Median ${s.alertness.medianMs ?? '-'} ms · lapses ${s.alertness.lapses} · false starts ${s.alertness.falseStarts}</span>
@@ -947,25 +968,69 @@ async function renderHistory() {
   $('historyList').innerHTML = all.length ? all.map((s) => s.kind === 'alertness' ? pvtLine(s) : s.kind === 'vision' ? visLine(s) : s.kind === 'exp' && s.exp ? expLine(s) : s.kind === 'acuity' && s.acuity ? acLine(s) : `<div class="hist-item">
       <span><strong>${esc(s.kind)}</strong> · ${fmtDate(s.createdAt)} · ${s.source === 'file' ? 'video file' : 'camera'}</span>
       <span>Pulse ${s.pulse?.bpm ?? '-'} (${s.pulse?.quality ?? 'none'}) · Breathing ${s.resp?.rpm ?? '-'} (${s.resp?.quality ?? 'none'})
-      ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}
+      ${s.reference?.pulseBpm ? ` · ref pulse ${s.reference.pulseBpm}` : ''}${s.reference?.breathsPerMin ? ` · ref breathing ${s.reference.breathsPerMin}` : ''}${s.devices ? ` · own devices: ${esc(deviceText(deviceReadings(s.devices)))}` : ''}
       · dental ${Object.values(s.dental || {}).filter((d) => d.captured).length}/3${s.context?.checklist?.length ? ` · ticked: ${symptomLabels(s.context.checklist).map(esc).join(', ')}` : ''}</span>
       <button type="button" class="link-btn" data-open-packet="${esc(s.id)}">Packet</button>
       <button type="button" class="link-btn" data-delete-one="${esc(s.id)}">Delete</button>
-      ${s.kind === 'baseline' && s.complete ? (s.id === currentOriginal ? '<span class="tag live">ORIGINAL BASELINE</span>' : `<button type="button" class="link-btn" data-make-original="${esc(s.id)}">Use as original baseline</button>`) : ''}</div>`).join('')
+      ${s.kind === 'baseline' && s.complete ? (s.id === currentOriginal ? '<span class="tag live">Original baseline</span>' : `<button type="button" class="link-btn" data-make-original="${esc(s.id)}">Use as original baseline</button>`) : ''}</div>`).join('')
     : '<p class="fine">No checkups yet.</p>';
 }
 
+$('refChips').innerHTML = BENCH_CONDITIONS.map((c) => `<button type="button" class="chip-btn" data-ref-cond="${esc(c)}">+ ${esc(c)}</button>`).join('');
+$('refChips').addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ref-cond]')?.dataset.refCond; if (!c) return;
+  const cur = $('refNotes').value.split(',').map((x) => x.trim()).filter(Boolean);
+  if (!cur.includes(c)) cur.push(c);
+  $('refNotes').value = cur.join(', ');
+});
+$('refParticipant').addEventListener('input', () => {
+  const v = $('refParticipant').value.trim();
+  $('refParticipant').setCustomValidity(isParticipantCode(v) ? '' : 'Use a code like P01, not a name.');
+});
+// One page bench test report, as a standalone HTML file that prints cleanly.
+function benchReportHtml(r) {
+  const sec = (label, unit, x) => {
+    if (!x.attempts) return `<h2>${label}</h2><p>No reference values entered.</p>`;
+    const ba = x.ba;
+    return `<h2>${label}</h2>
+<table><tr><th>Checkups with a reference</th><td>${x.attempts}</td></tr>
+<tr><th>Pairs (app gave a value)</th><td>${x.n}</td></tr>
+<tr><th>No value from the app (failures)</th><td>${x.failed}</td></tr>
+<tr><th>Pairs from low quality captures</th><td>${x.lowQuality}</td></tr>
+<tr><th>Mean absolute error</th><td>${x.mae ?? '-'} ${unit}</td></tr>
+<tr><th>Bias (app minus reference)</th><td>${ba.bias != null ? `${ba.bias > 0 ? '+' : ''}${ba.bias} ${unit}` : '-'}</td></tr>
+<tr><th>Limits of agreement (bias ± 1.96 SD)</th><td>${ba.low != null ? `${ba.low} to ${ba.high} ${unit}` : 'needs 2 pairs'}</td></tr></table>
+${x.byCondition.length ? `<h3>By condition</h3><table><tr><th>Condition</th><th>Pairs</th><th>Mean absolute error</th></tr>${x.byCondition.map((c) => `<tr><td>${esc(c.condition)}</td><td>${c.n}</td><td>${c.mae} ${unit}</td></tr>`).join('')}</table>` : ''}
+${ba.sd ? `<h3>Planning a validation study</h3><p class="fine">With ${ba.n} pairs the limits of agreement are only known to within about ± ${loaPrecision(ba.n, ba.sd)} ${unit}. If the differences keep this spread (standard deviation ${ba.sd} ${unit}), pinning each limit to within ± 1, 2 or 3 ${unit} would need about ${[1, 2, 3].map((w) => pairsNeeded(ba.sd, w)).join(', ')} pairs; 100 pairs give about ± ${loaPrecision(100, ba.sd)} ${unit} (Bland and Altman). Pairs should come from many different people, not one person repeated.</p>` : ''}
+${blandAltmanSvg(ba, { unit, title: `${label}: app minus reference` })}`;
+  };
+  const day = (d) => (d ? d.slice(0, 10) : '-');
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>RelaisÉcho Link bench test report</title>
+<style>body{font:15px/1.45 system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;color:#13233a}h1{font-size:24px;margin:0 0 4px}h2{font-size:19px;margin:22px 0 6px}h3{font-size:16px}
+table{border-collapse:collapse;margin:6px 0 10px}th,td{border:1px solid #c9d3df;padding:4px 10px;text-align:left}th{background:#eef3f8;font-weight:600}
+svg{max-width:100%;height:auto}.fine{font-size:13px;color:#4a5a70}.spark .line,.ba-plot circle{fill:#1f5fa8}line{stroke:#7a8aa0}text{font-size:12px;fill:#13233a}@media print{body{margin:0}}</style></head><body>
+<h1>Bench test report</h1>
+<p class="fine">RelaisÉcho Link ${esc($('appVersion')?.textContent || '')} · made ${new Date().toISOString().slice(0, 10)} · ${r.checkups} checkup${r.checkups === 1 ? '' : 's'} with a reference, ${day(r.from)} to ${day(r.to)} · ${r.participants || 'no'} participant code${r.participants === 1 ? '' : 's'} · reference device: ${r.devices.length ? r.devices.map(esc).join(', ') : 'not recorded'}</p>
+${sec('Pulse', 'bpm', r.pulse)}${sec('Breathing', 'per minute', r.resp)}
+<h2>How to read this</h2>
+<p class="fine">Failures are kept: a scan that gave no value counts against the method, it is not dropped. With few pairs the limits of agreement are themselves uncertain. Results depend on camera, light, movement and skin tone, so report the conditions with the numbers. This is a bench comparison, not a clinical validation, and RelaisÉcho Link is not a diagnostic device.</p>
+</body></html>`;
+}
+$('btnBenchReport').addEventListener('click', async () => {
+  const r = benchReport(await listSessions());
+  download(`relaisecho-bench-report-${new Date().toISOString().slice(0, 10)}.html`, benchReportHtml(r), 'text/html');
+});
 $('btnBenchCsv').addEventListener('click', async () => {
   const rows = (await listSessions()).filter((s) => s.reference && (s.reference.pulseBpm || s.reference.breathsPerMin));
   const head = ['created', 'kind', 'source', 'est_pulse_bpm', 'ref_pulse_bpm', 'pulse_error_bpm', 'pulse_quality', 'windows_accepted', 'windows_total',
-    'est_breaths_min', 'ref_breaths_min', 'breath_error', 'breath_quality', 'resp_channel', 'camera_fps', 'usable_s', 'elapsed_s', 'device', 'conditions'];
+    'est_breaths_min', 'ref_breaths_min', 'breath_error', 'breath_quality', 'resp_channel', 'camera_fps', 'usable_s', 'elapsed_s', 'device', 'conditions', 'participant'];
   const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = rows.map((s) => {
     const pe = s.pulse?.bpm != null && s.reference.pulseBpm != null ? s.pulse.bpm - s.reference.pulseBpm : '';
     const re = s.resp?.rpm != null && s.reference.breathsPerMin != null ? s.resp.rpm - s.reference.breathsPerMin : '';
     return [s.createdAt, s.kind, s.source, s.pulse?.bpm, s.reference.pulseBpm, pe, s.pulse?.quality, s.pulse?.accepted, s.pulse?.total,
       s.resp?.rpm, s.reference.breathsPerMin, re, s.resp?.quality, s.resp?.channel, s.cameraFps, Math.round(s.usableSeconds || 0), Math.round(s.elapsedSeconds || 0),
-      s.reference.device, s.reference.conditions].map(q).join(',');
+      s.reference.device, s.reference.conditions, s.reference.participant].map(q).join(',');
   });
   download('relaisecho-bench-test.csv', [head.join(','), ...lines].join('\n'), 'text/csv');
 });
@@ -979,6 +1044,11 @@ $('btnClear').addEventListener('click', async () => {
 });
 
 /* ---------- sample replay ---------- */
+$('riskMapBody').innerHTML = NASA_RISKS.map((r) => `<tr><th scope="row">${esc(r.risk)}</th><td>${esc(r.has)}</td><td>${esc(r.cannot)}</td></tr>`).join('');
+// Home: decode the example satellite message with the same decoder the nurse view uses.
+{ const raw = $('heroSms')?.textContent.trim();
+  if (raw) { $('heroSmsCount').textContent = `${raw.length} of ${SMS_MAX} characters`;
+    $('heroSmsDecoded').innerHTML = decodeSms(raw).lines.slice(1).map((l) => `<li>${esc(l)}</li>`).join(''); } }
 $('btnSample').hidden = !CONFIG.sampleReplay; // shown only when a recording is bundled (see js/config.js)
 $('btnSample').addEventListener('click', async () => {
   try {
@@ -1025,7 +1095,7 @@ async function renderBoard() {
       <p class="fine">Reminder in your calendar at ${fmtClock(new Date(c.original.createdAt))}: <button type="button" class="link-btn" data-ics="DAILY">daily</button> · <button type="button" class="link-btn" data-ics="WEEKLY">weekly</button></p>`;
   }
   // Sleep form defaults: last saved values, else last night 23:00 to 07:00.
-  const saved = prefs.get('sleep');
+  const saved = getSleep();
   const now = new Date();
   const wake = new Date(now); wake.setHours(7, 0, 0, 0); if (wake > now) wake.setDate(wake.getDate() - 1);
   const bed = new Date(+wake - 8 * H_MS);
@@ -1051,6 +1121,10 @@ async function renderBoard() {
 
 /* ---------- sleep: one answer fills the checkup, the Board and the Overview ---------- */
 // Log of nights per person on this device: { 'YYYY-MM-DD' (morning of waking): { id, h, src } }.
+// Last night's sleep times, per person on this device (the legacy device wide value is kept for the default person).
+const sleepKey = () => `sleep:${getProfile()}`;
+function getSleep() { const v = prefs.get(sleepKey()); return v || (getProfile() === DEFAULT_PROFILE ? prefs.get('sleep') : null) || null; }
+function setSleep(v) { prefs.set(sleepKey(), v); }
 const dayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const sleepLogKey = () => `sleepLog:${getProfile()}`;
 function sleepLog() { const l = prefs.get(sleepLogKey()); return l && typeof l === 'object' ? l : {}; }
@@ -1068,16 +1142,16 @@ function usualFromLog(now = new Date()) {
 // Turn a bucket into bed and wake times for the model: wake at the usual wake time (else 07:00), never in the future.
 function applyBucket(id, src) {
   const b = sleepBucket(id); if (!b) return;
-  const saved = prefs.get('sleep') || {};
+  const saved = getSleep() || {};
   const now = new Date(), w0 = saved.end ? new Date(saved.end) : null;
   const wake = new Date(now);
   if (w0 && !Number.isNaN(+w0)) wake.setHours(w0.getHours(), w0.getMinutes(), 0, 0); else wake.setHours(7, 0, 0, 0);
   if (wake > now) wake.setTime(+now);
-  prefs.set('sleep', { start: toLocalInput(new Date(+wake - b.h * H_MS)), end: toLocalInput(wake), usual: saved.usual ?? '', src, bucket: id });
+  setSleep({ start: toLocalInput(new Date(+wake - b.h * H_MS)), end: toLocalInput(wake), usual: saved.usual ?? '', src, bucket: id });
 }
-function fillSleepInputs() { const sv = prefs.get('sleep') || {}; $('sleepStart').value = sv.start || ''; $('sleepEnd').value = sv.end || ''; $('usualSleep').value = sv.usual ?? ''; }
+function fillSleepInputs() { const sv = getSleep() || {}; $('sleepStart').value = sv.start || ''; $('sleepEnd').value = sv.end || ''; $('usualSleep').value = sv.usual ?? ''; }
 function exactTimesToday() {
-  const sv = prefs.get('sleep');
+  const sv = getSleep();
   return sv?.src === 'times' && sv.end && Date.now() - +new Date(sv.end) < 20 * H_MS;
 }
 function sleepFromCheckup(id) {
@@ -1107,19 +1181,19 @@ $('sleepLog')?.addEventListener('change', (e) => {
   const k = e.target.dataset?.night; if (!k) return;
   setNight(k, e.target.value || null, undefined, 'board');
   if (k === dayKey(new Date()) && e.target.value) { applyBucket(e.target.value, 'board'); fillSleepInputs(); }
-  updateSleepTile();
+  updateSleepTile(); renderAlertTile();
 });
 document.querySelector('.sleep-quick')?.addEventListener('click', (e) => {
   const id = e.target.closest('[data-sleep-h]')?.dataset.sleepH; if (!id) return;
   setNight(dayKey(new Date()), id, undefined, 'board');
-  applyBucket(id, 'board'); fillSleepInputs(); updateSleepTile();
+  applyBucket(id, 'board'); fillSleepInputs(); updateSleepTile(); renderAlertTile();
 });
 
 function updateSleepTile(fromUser = false) {
   const start = new Date($('sleepStart').value), end = new Date($('sleepEnd').value);
   const usualRaw = $('usualSleep').value;
-  const prev = prefs.get('sleep') || {};
-  prefs.set('sleep', { start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw), src: fromUser ? 'times' : prev.src, bucket: fromUser ? null : prev.bucket });
+  const prev = getSleep() || {};
+  setSleep({ start: $('sleepStart').value, end: $('sleepEnd').value, usual: usualRaw === '' ? '' : Number(usualRaw), src: fromUser ? 'times' : prev.src, bucket: fromUser ? null : prev.bucket });
   const fromLog = usualRaw === '' ? usualFromLog() : null;
   const r = sleepPressure({ sleepStart: start, sleepEnd: end, now: new Date(), usualSleepH: usualRaw !== '' ? Number(usualRaw) : fromLog?.h });
   if (fromUser && r && !r.asleepNow) setNight(dayKey(end), bucketFor(r.sleptH).id, r.sleptH, 'times');
@@ -1136,7 +1210,7 @@ function updateSleepTile(fromUser = false) {
         : 'Above the model\'s sleep band: the model expects strong sleepiness. Plan rest before demanding tasks.';
   const short = r.sleptH < 6 ? '<p class="warnline">! Under 6 hours last night. In ISS astronauts, nights this short were linked to slower reaction test scores.</p>' : '';
   $('sleepBody').innerHTML = `<p class="big-num">${r.s.toFixed(2)}<span class="unit"> sleep pressure (0 to 1)</span></p>
-    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h${(prefs.get('sleep') || {}).bucket ? ` (answer: ${esc(sleepBucket(prefs.get('sleep').bucket)?.label || '')})` : ''} · usual ${r.usualH.toFixed(1)} h${fromLog ? ` (average of ${fromLog.n} logged nights)` : ''} · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
+    <p>${read}</p><p class="fine">Slept ${r.sleptH.toFixed(1)} h${(getSleep() || {}).bucket ? ` (answer: ${esc(sleepBucket(getSleep().bucket)?.label || '')})` : ''} · usual ${r.usualH.toFixed(1)} h${fromLog ? ` (average of ${fromLog.n} logged nights)` : ''} · ISS crews averaged about 6.1 h against 8.5 h scheduled.</p>${short}`;
   // Chart: curve, threshold band, now marker.
   const W = 600, Hh = 180, padL = 8, padR = 8, padT = 28, padB = 30;
   const x = (t) => padL + ((t - r.from) / (r.to - r.from)) * (W - padL - padR);
@@ -1417,7 +1491,7 @@ async function pvtFinish() {
   const practiceNote = pvt.save && sameWay < 3 ? ' Early tests are still affected by practice, so the comparison firms up after about three tests.' : '';
   $('pvtRun').hidden = true; $('pvtIntro').hidden = true; $('pvtResult').hidden = false;
   $('pvtResult').innerHTML = `<div class="card result">
-      <p><span class="tag live">LIVE</span><span class="tag">EXPERIMENTAL</span></p>
+      <p><span class="tag live">Live</span><span class="tag">Experimental</span></p>
       <p class="big">${sum.medianMs ?? '-'}<span class="unit"> ms median reaction time</span></p>
       <p>${sum.lapses} lapse${sum.lapses === 1 ? '' : 's'} (355 ms or slower, or missed) · ${sum.falseStarts} false start${sum.falseStarts === 1 ? '' : 's'} · ${sum.valid} of ${sum.stimuli} responses counted</p>
       <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${esc(verdict + practiceNote)}</p>
@@ -1472,8 +1546,24 @@ async function renderAlertTile() {
       : cmp.verdict === 'slower' ? `${cmp.pct}% slower than your reference test.` : `${Math.abs(cmp.pct)}% faster than your reference test.`;
   body.innerHTML = `<p class="big-num">${last.medianMs ?? '-'}<span class="unit"> ms median</span></p>
     <p>${last.lapses} lapse${last.lapses === 1 ? '' : 's'} · ${last.falseStarts} false start${last.falseStarts === 1 ? '' : 's'} · ${fmtDate(tests[tests.length - 1].createdAt)}</p>
-    <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${msg}</p>
+    <p class="${cmp && cmp.verdict === 'slower' ? 'warnline' : 'okline'}">${msg}</p>${sleepVsReaction(tests)}
     <p><button type="button" class="btn" data-nav="alertness">Test again</button></p>`;
+}
+// Reaction test after short versus longer nights, from the sleep log. Own tests only; medians of medians.
+function sleepVsReaction(tests) {
+  const log = sleepLog();
+  const med = (a) => { const v = [...a].sort((x, y) => x - y); const n = v.length; return n % 2 ? v[(n - 1) / 2] : Math.round((v[n / 2 - 1] + v[n / 2]) / 2); };
+  const short = [], longer = [];
+  for (const t of tests) {
+    const night = log[dayKey(new Date(t.createdAt))];
+    const ms = t.alertness?.medianMs;
+    if (!night || !Number.isFinite(ms)) continue;
+    (shortSleep(night.id) ? short : longer).push(ms);
+  }
+  if (!short.length && !longer.length) return '';
+  if (short.length < 2 || longer.length < 2) return `<p class="fine">Sleep and reaction: ${short.length + longer.length} of your tests fall on nights logged on the Board. With at least 2 after short nights (5 h or less) and 2 after longer nights, this tile compares them.</p>`;
+  const a = med(short), b = med(longer), pct = Math.round(((a - b) / b) * 100);
+  return `<p class="fine">After short nights (5 h or less): median ${a} ms over ${short.length} test${short.length === 1 ? '' : 's'}. After longer nights: median ${b} ms over ${longer.length} test${longer.length === 1 ? '' : 's'}. ${Math.abs(pct)}% ${pct >= 0 ? 'slower' : 'faster'} after short nights. Your own tests, few of them: a pattern to watch, not a finding.</p>`;
 }
 
 /* ---------- spoken coaching ---------- */
@@ -1583,9 +1673,15 @@ async function renderCrewTile() {
   try {
     const d = await loadCrew();
     const r = rangeDisagreements(d);
-    $('crewTileBody').innerHTML = `<p class="big-num">${r.normalButUnusual}<span class="unit"> of ${r.r1Total}</span></p>
-      <p>results the day after landing were inside the lab's normal range but outside that person's own pre-flight values. A population range alone would not notice them.</p>
-      ${(() => { const il6 = d.analytes.find((x) => x.key === 'il_6'); if (!il6) return ''; const sm = Object.values(summarizeCrew(il6, d.timepoints)).filter(Boolean); const up = sm.filter((v) => v.r1 > v.preMax).length; return `<p><strong>IL-6</strong>, an inflammation marker with no lab range, rose above its own pre-flight values in ${up} of ${sm.length} crew members the day after landing.</p>`; })()}`;
+    const bt = backtestCrew(d);
+    $('crewTileBody').innerHTML = `<p class="big-num">${bt.il6.up}<span class="unit"> of ${bt.il6.n}</span></p>
+      <p>crew members had <strong>IL-6</strong>, an inflammation marker, above all three of their own pre-flight values the day after landing. By chance alone that happens about 1 time in ${bt.il6.chanceOneIn}. Set against how much IL-6 normally varies within a healthy person, the rise was clearly beyond it in ${adaptiveBacktest(d).il6.filter((x) => x.beyond).length} of ${bt.il6.n}.</p>
+      <p class="fine">Backtest of personal baselines on this data: with a 95% personal range built from three pre-flight values, ${bt.outsidePI} of ${bt.series} day 1 results stood out (chance alone gives about ${bt.expectedPI.toFixed(1)}), led by ${esc(bt.standouts[0]?.name || '')} in crew member ${esc(bt.standouts[0]?.crew || '')}. Lab range against own range: ${r.normalButUnusual} of ${r.r1Total} day 1 results were inside the lab range but outside the person's own three pre-flight values; with only three earlier values about half of any new results land outside them by chance, so this shows how differently the two references read, not ${r.normalButUnusual} real changes.</p>`;
+    const pr = d.proteomics?.comparisons;
+    if (pr?.length) {
+      const [a, b] = pr;
+      $('crewTileBody').insertAdjacentHTML('beforeend', `<p class="fine"><strong>Plasma proteins (OSD-563):</strong> of ${a.proteins} proteins measured, ${a.changed} differed the day after landing at the group level (${a.up} up, ${a.down} down; adjusted p below 0.05)${b && d.proteomics.overlap_first_two != null ? `, and ${d.proteomics.overlap_first_two} of them also differed when all postflight visits up to day 82 were pooled` : ''}. Group averages of 4 people: exploratory, and one more reason to read each person against their own baseline.</p>`);
+    }
   } catch { /* data file missing: keep the static text */ }
 }
 
@@ -1599,7 +1695,22 @@ async function renderCrew() {
     sel.addEventListener('change', drawCrew);
   }
   const r = rangeDisagreements(d);
-  $('crewSummary').innerHTML = `Across the ${d.analytes.filter((x) => x.rangeMin != null).length} standard blood tests with a lab range: <strong>${r.normalButUnusual} of ${r.r1Total}</strong> day-after-landing results were "normal" for the population but outside that person's own pre-flight values, and <strong>${r.preOutsideLab} of ${r.preTotal}</strong> pre-flight results (their usual) would already be flagged by the population range. Three pre-flight values is a small baseline, so some of this is ordinary variation.${(() => { const inf = aboveOwnAfterFlight(d); return inf.total ? ` For the ${d.analytes.filter((a) => a.rangeMin == null).length} inflammation markers, which have no lab range at all, <strong>${inf.above} of ${inf.total}</strong> day-after-landing values rose above that person's highest pre-flight value: their own baseline is the only yardstick there is.` : ''; })()}`;
+  $('crewSummary').innerHTML = `Across the ${d.analytes.filter((x) => x.rangeMin != null).length} standard blood tests with a lab range: <strong>${r.normalButUnusual} of ${r.r1Total}</strong> day-after-landing results were "normal" for the population but outside that person's own pre-flight values, and <strong>${r.preOutsideLab} of ${r.preTotal}</strong> pre-flight results (their usual) would already be flagged by the population range. With only three pre-flight values, about half of any new result lands outside them by chance alone (see the backtest below).${(() => { const inf = aboveOwnAfterFlight(d); return inf.total ? ` For the ${d.analytes.filter((a) => a.rangeMin == null).length} inflammation markers, which have no lab range at all, <strong>${inf.above} of ${inf.total}</strong> day-after-landing values rose above that person's highest pre-flight value: their own baseline is the only yardstick there is.` : ''; })()}`;
+  const bt = backtestCrew(d);
+  $('crewSummary').insertAdjacentHTML('beforeend', `<h2 class="h-sub">Backtest: do personal baselines and simple predictions work on this data?</h2>
+    <ul class="fine">
+      <li>Own range of three pre-flight values: ${bt.outsideRange} of ${bt.series} day 1 results fell outside it; chance alone gives about ${bt.expectedRange}. Too few values for this rule.</li>
+      <li>95% personal prediction range: ${bt.outsidePI} of ${bt.series} stood out (chance about ${bt.expectedPI.toFixed(1)}): ${bt.standouts.map((x) => `${esc(x.name)} ${esc(x.crew)} (${x.z > 0 ? '+' : ''}${x.z} SD)`).join(', ')}. Back inside by day 45: ${bt.returned['R+45']}, by day 82: ${bt.returned['R+82']}, by day 194: ${bt.returned['R+194']}, not by the last visit: ${bt.returned.never}.</li>
+      <li>Predicting day 1 from pre-flight values (median error): last value ${bt.predictR1.last}%, pre-flight mean ${bt.predictR1.mean}%, straight line ${bt.predictR1.trend}%. A trend through three sparse points did worst.</li>
+      <li>Predicting day 45: assuming a return to the pre-flight mean missed by ${bt.predictR45.premean}%, assuming the day 1 change persists by ${bt.predictR45.persist}%; the return assumption was closer in ${bt.predictR45.premeanBetter} of ${bt.predictR45.n} series.</li>
+    </ul>
+    <h2 class="h-sub">Borrowing published biological variation</h2>
+    ${(() => { const ab = adaptiveBacktest(d); const il = ab.il6; const big = il.filter((x) => x.beyond); return `<ul class="fine">
+      <li>Healthy people vary from week to week by a known amount for ${Object.keys(BIO_KEYS).length} of these tests (EuBIVAS and the EFLM database). An adaptive range starts from that published variation and moves to the person's own spread as their values add up, the idea behind the Athlete Biological Passport.</li>
+      <li>On the ${ab.series} series that have published variation: the range from three own values alone flagged ${ab.own} day 1 results, the adaptive range flagged ${ab.adaptive}, and published variation alone flagged ${ab.rcv}; chance gives about ${ab.expected.toFixed(1)}. Published variation alone flags too much here because it leaves out the lab's measurement error (sodium is reported in whole numbers).</li>
+      <li>IL-6 normally swings about 32% within a healthy person, so a rise has to pass about ${il[0]?.risePct}% to stand clear of that. All ${il.length} crew rose (${il.map((x) => `${esc(x.crew)} +${x.changePct}%`).join(', ')}), but only ${big.length} of ${il.length} (${big.map((x) => esc(x.crew)).join(', ')}) passed it. The direction is consistent; the size is beyond normal variation in one person.</li>
+    </ul>`; })()}
+    <p class="fine">Four people, one 3 day flight: exploratory. The lesson for the app: a personal baseline needs more than three values before it can flag reliably, which is why the early warning waits for 8.</p>`);
   drawCrew();
 }
 
@@ -1647,7 +1758,7 @@ function pvtEyesHtml(e, refEyes) {
   if (e.trackedPct < 50) return `<p class="warnline">! Eyes were tracked for only ${e.trackedPct}% of the test (face out of view or too dark), so no eye result is given.</p>`;
   const cmp = refEyes && refEyes.blinksPerMin != null && e.blinksPerMin != null
     ? ` Your reference test: ${refEyes.blinksPerMin} blinks per minute, eyes closed ${refEyes.closedPct}%.` : '';
-  return `<h3>Eyes <span class="tag">EXPERIMENTAL</span></h3>
+  return `<h3>Eyes <span class="tag">Experimental</span></h3>
     <p>${e.blinksPerMin ?? '-'} blinks per minute · eyes closed ${e.closedPct ?? '-'}% of the time · ${e.longClosures} closure${e.longClosures === 1 ? '' : 's'} of half a second or longer.${cmp}</p>
     <p class="fine">Tracked ${e.trackedPct}% of the test. Eye analysis took about ${e.analysisMs} ms per frame on this device; tests with the camera are only compared with other camera tests. <button type="button" class="link-btn" data-evidence="eyes">Evidence</button></p>`;
 }
@@ -1734,9 +1845,19 @@ async function loadDemo(scenario = prefs.get('demoScenario') || 'shortsleep') {
   prefs.set('profile', DEMO_PROFILE);
   prefs.set('demoScenario', scenario);
   if (!prefs.get(`body:${DEMO_PROFILE}`)) prefs.set(`body:${DEMO_PROFILE}`, { sex: 'male', ...EARTH_AVG.male, source: 'US adult male average, sample' });
+  // Invented sample sleep log, 14 nights: short nights on the last three days in the short sleep scenario.
+  const nights = {};
+  for (let ago = 0; ago < 14; ago++) {
+    const d = new Date(now); d.setDate(d.getDate() - ago);
+    const id = scenario === 'shortsleep' && ago <= 2 ? '4-5' : ago % 3 === 0 ? '8+' : '6-7';
+    nights[dayKey(d)] = { id, h: sleepBucket(id).h, src: 'sample' };
+  }
+  prefs.set(`sleepLog:${DEMO_PROFILE}`, nights);
+  prefs.set(`sleep:${DEMO_PROFILE}`, null); // the sample person's last night comes from the log above
   renderProfileBar();
 }
-$('btnDemo').addEventListener('click', async () => { await loadDemo(); show('board'); });
+async function loadFullSample() { await loadSampleCrew(); await loadDemo('shortsleep'); ovState.region = null; ovState.metric = null; }
+$('btnDemo').addEventListener('click', async () => { await loadFullSample(); show('overview'); });
 
 // A sample crew of four invented people, one per scenario, to show the "Everyone on this device" list.
 async function loadSampleCrew() {
@@ -1756,6 +1877,7 @@ async function loadSampleCrew() {
   prefs.set('demoScenario', 'shortsleep');
   renderProfileBar();
 }
+$('btnOvFull').addEventListener('click', async () => { await loadFullSample(); show('overview'); $('restoreMsg').textContent = 'Full sample loaded: one sample person with sleep log and reaction tests, plus a sample crew of four. All invented.'; });
 $('btnOvCrew').addEventListener('click', async () => { await loadSampleCrew(); show('overview'); $('ovRoster').scrollIntoView({ block: 'start' }); });
 
 /* ---------- trends ---------- */
@@ -1830,6 +1952,7 @@ function reviewHtml(p) {
       <table><thead><tr><th scope="col"><span class="sr-only">Measure</span></th><th scope="col">This checkup</th><th scope="col">Original baseline${c.original_baseline ? `<br><span class="fine">${when(c.original_baseline.date)}</span>` : ''}</th><th scope="col">Quality</th></tr></thead>
       <tbody><tr><th scope="row">Pulse, bpm</th><td>${r.pulse_bpm.value ?? '-'}</td><td>${c.original_baseline?.pulse_bpm ?? '-'}</td><td>${esc(r.pulse_bpm.quality)} · ${esc(r.pulse_bpm.windows)}</td></tr>
       <tr><th scope="row">Breathing, /min</th><td>${r.breathing_per_min.value ?? '-'}</td><td>${c.original_baseline?.breathing_per_min ?? '-'}</td><td>${esc(r.breathing_per_min.quality)}</td></tr></tbody></table>
+      ${p.device_readings ? `<p><strong>From the person's own devices (typed in, not checked by the app):</strong> ${esc(deviceText(p.device_readings))}</p>` : ''}
       ${ch ? `<ul class="change-list">${chLine('Pulse', ch.pulse)}${chLine('Breathing', ch.breathing)}</ul>` : '<p class="fine">No original baseline in this packet, so no change is assessed.</p>'}
       ${p.comparison?.bench_agreement ? `<p class="fine"><strong>This device against the person's reference device:</strong> ${[['Pulse', p.comparison.bench_agreement.pulse_bpm, 'bpm'], ['Breathing', p.comparison.bench_agreement.breathing_per_min, '/min']].filter(([, a]) => a).map(([l, a, u]) => `${l}: ${esc(a.pairs)} pairs, bias ${esc(a.bias)} ${u}, limits ${esc(a.limits_of_agreement[0])} to ${esc(a.limits_of_agreement[1])} ${u}`).join(' · ')}. Rough below about 20 pairs.</p>` : ''}
       ${r.pulse_bpm.note ? `<p class="fine">Pulse note: ${esc(r.pulse_bpm.note)}</p>` : ''}${r.breathing_per_min.note ? `<p class="fine">Breathing note: ${esc(r.breathing_per_min.note)}</p>` : ''}
@@ -1869,7 +1992,7 @@ $('btnSamplePacket').addEventListener('click', async () => {
   const { packet } = await sealPacket(buildPacket(sessD, { original, recent: checkups.slice(-4, -1) }, { alertness: alert, change, includeImages: true, experimental: expForPacket(makeDemoExp(new Date())),
     trends: trendsForPacket([...demo, ...makeDemoExp(new Date())], { original, floors: { pulse: pf.value, resp: rf.value } }),
     benchAgreement: (() => { const a = (k) => { const ba = blandAltman(benchPairs(demo, k)); return ba.n >= 3 ? { pairs: ba.n, bias: ba.bias, limits_of_agreement: [ba.low, ba.high] } : null; }; return { method: 'Bland and Altman, app minus the person\'s own reference device; rough below about 20 pairs', pulse_bpm: a('pulse'), breathing_per_min: a('resp') }; })() }));
-  $('reviewOut').innerHTML = `<p class="tag pub">SAMPLE PACKET, INVENTED DATA</p>${integrityHtml(await checkIntegrity(packet))}${reviewHtml(packet)}${replyFormHtml()}`;
+  $('reviewOut').innerHTML = `<p class="tag pub">Sample packet, invented data</p>${integrityHtml(await checkIntegrity(packet))}${reviewHtml(packet)}${replyFormHtml()}`;
   wireReplyForm(packet);
 });
 
@@ -1895,7 +2018,7 @@ async function dentalAuto(cmp, out, today, base) {
   today.auto = { ...r, changedPct: cm.changedPct, method: 'CIELAB colour of tooth-like and gum-like pixels inside the mouth outline; experimental' };
   saveSession(state.session);
   const row = (label, v, unit = '') => (v == null ? '' : `<li>${label}: ${v > 0 ? '+' : ''}${v}${unit}</li>`);
-  out.innerHTML = `<h3>Automatic comparison <span class="tag">EXPERIMENTAL</span></h3>
+  out.innerHTML = `<h3>Automatic comparison <span class="tag">Experimental</span></h3>
     ${r.flags.length ? `<ul class="change-list">${r.flags.map((f) => `<li class="warnline">${esc(f)}</li>`).join('')}</ul>` : r.comparable ? '<p class="okline">No colour change beyond the set limits.</p>' : ''}
     ${r.notes.map((n) => `<p class="fine">${esc(n)}</p>`).join('')}
     <ul class="fine">${row('Brightness vs baseline, L*', r.lightingDelta)}${row('Tooth yellowness, b*', r.toothYellowDelta)}${row('Tooth lightness, L*', r.toothLightDelta)}${row('Gum redness, a*', r.gumRedDelta)}${row('Visible tooth area', r.toothAreaChangePct, '%')}<li>Pixels that changed colour clearly: ${cm.changedPct}%</li></ul>
@@ -2245,7 +2368,7 @@ function reelMusicStart() {
   a.volume = REEL_MUSIC.volume;
   try { a.currentTime = 0; } catch { /* not loaded yet */ }
   a.play().catch(() => { /* autoplay blocked (for example /?reel=1 without a click): the reel runs silent */ });
-  $('reelWm').textContent = `SI-generated demo (AI-assisted) · Sample data · ${REEL_MUSIC.label}`;
+  $('reelWm').textContent = `Sample data · ${REEL_MUSIC.label}`;
 }
 function reelMusicStop() { if (reel.audio) { reel.audio.pause(); try { reel.audio.currentTime = 0; } catch { /* fine */ } } }
 const reelLater = (ms, fn) => { reel.timers.push(setTimeout(() => { if (reel.on) fn(); }, ms)); };
@@ -2256,17 +2379,15 @@ function reelScroll(sel, block = 'start') {
   el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block });
 }
 function reelCard(html) { const c = $('reelCard'); c.hidden = !html; c.innerHTML = html || ''; }
-const REEL_TITLE = `<div><span class="logo-wm"><img src="icons/logo-blue-128.png" alt=""><span class="wm-badge reel-wm">AI-generated logo</span></span><h2>RelaisÉcho Link</h2><p>A guided camera checkup, compared with your own baseline</p><p>NASA Space Apps Challenge 2026 · Montreal</p></div>`;
-const REEL_END = `<div><span class="logo-wm"><img src="icons/logo-blue-128.png" alt=""><span class="wm-badge reel-wm">AI-generated logo</span></span><h2>RelaisÉcho Link</h2><p>Runs in the browser. Works offline. Video never leaves the device.</p><p>Research prototype, not a diagnostic device. Sample data shown.</p></div>`;
+const REEL_TITLE = `<div><img class="reel-logo" src="icons/logo-blue-128.png" alt="" width="96" height="96"><h2>RelaisÉcho Link</h2><p>A guided camera checkup, compared with your own baseline</p><p>NASA Space Apps Challenge 2026 · Montreal</p></div>`;
+const REEL_END = `<div><img class="reel-logo" src="icons/logo-blue-128.png" alt="" width="96" height="96"><h2>RelaisÉcho Link</h2><p>Runs in the browser. Works offline. Video never leaves the device.</p><p>Research prototype, not a diagnostic device. Sample data shown.</p></div>`;
 const REEL_ACTIONS = {
   title: () => { show('home'); reelCard(REEL_TITLE); },
   setup: () => { reelCard(null); show('setup'); reelLater(1700, () => reelScroll('#symptomTicks', 'center')); },
-  board: () => { show('board'); reelLater(2300, () => reelScroll('#h-t-sleep')); },
-  space: () => {
-    document.querySelector('[data-mission="mars"]')?.click();
-    reelScroll('#h-t-rad');
-    reelLater(1800, () => reelScroll('#h-t-crew'));
-    reelLater(3400, () => reelScroll('#h-t-bed'));
+  space: () => { show('board'); reelLater(200, () => reelScroll('#h-t-crew')); reelLater(2900, () => reelScroll('#h-t-inf')); },
+  board: () => {
+    reelScroll('#h-t-sleep');
+    reelLater(2000, () => { document.querySelector('[data-mission="mars"]')?.click(); reelScroll('#h-t-rad'); });
   },
   overview: () => { show('overview'); reelLater(1600, () => document.querySelector('#ovBody [data-ov-region=heart]')?.click()); },
   packet: () => { show('review'); $('btnSamplePacket').click(); reelLater(2400, () => reelScroll('.review-photo', 'center')); },
@@ -2301,7 +2422,7 @@ async function reelStart({ countdown = 3, onBegin = null } = {}) {
   if (!reel.on) return;
   document.body.classList.add('reel-on');
   document.body.classList.toggle('reel-rec', !!reel.recorder);
-  $('reelWm').textContent = 'SI-generated demo (AI-assisted) · Sample data';
+  $('reelWm').textContent = 'Sample data';
   $('reelLayer').hidden = false;
   $('reelProg').style.width = '0%';
   $('reelCaption').textContent = countdown ? 'Start your screen recorder now. Press Esc to stop.' : '';
@@ -2526,7 +2647,7 @@ async function visFinish() {
   };
   const anyNew = refRec && (compareEye(rec.vision.right, refRec.vision.right).verdict === 'new' || compareEye(rec.vision.left, refRec.vision.left).verdict === 'new');
   $('visResult').innerHTML = `<div class="card result">
-      <p><span class="tag">EXPERIMENTAL</span> <span class="tag">SHOWN, NOT JUDGED</span></p>
+      <p><span class="tag">Experimental</span> <span class="tag">Shown, not judged</span></p>
       <div class="vis-pair">${eyeHtml('right')}${eyeHtml('left')}</div>
       <p class="fine">Pink squares: marked today.${refRec ? ` Dashed outlines: marked in your reference check of ${fmtDate(refRec.createdAt)}.` : ''}</p>
       ${anyNew ? '<p>New marks can come from a different distance, lighting or tiredness. Repeat the check once, the same way as your reference. If the new marks stay, tell your clinician or flight surgeon; if the change was sudden, treat it as urgent.</p>' : ''}
@@ -2541,7 +2662,7 @@ async function renderEyeTile() {
   const acLine = await acTileLine();
   if (!recs.length) {
     body.innerHTML = `<p>A one minute per eye grid check and a letter chart. On the ISS, crew vision checks include an Amsler grid and a visual acuity chart, because spaceflight can change the back of the eye.</p>
-      <p><button type="button" class="btn primary" data-nav="vision">Do the eye grid</button> <button type="button" class="btn" data-nav="acuity">Eye chart</button></p>${acLine}`;
+      <p><button type="button" class="btn" data-nav="vision">Do the eye grid</button> <button type="button" class="btn" data-nav="acuity">Eye chart</button></p>${acLine}`;
     return;
   }
   const last = recs[recs.length - 1], ref = recs.length > 1 ? recs[0] : null;
@@ -2607,7 +2728,7 @@ if (state.screen === 'board') expApi.renderTile();
 /* ---------- overview: everything on one screen ---------- */
 const ovState = { region: null, metric: null };
 function sleepLastNight() {
-  const sv = prefs.get('sleep');
+  const sv = getSleep();
   const logged = sleepLog()[dayKey(new Date())];
   if ((!sv?.start || !sv?.end || Date.now() - +new Date(sv.end) > 20 * H_MS) && logged && Number.isFinite(logged.h)) return logged.h;
   if (!sv?.start || !sv?.end) return null;
@@ -2618,10 +2739,39 @@ function sleepLastNight() {
 const OV_WORD = { urgent: 'urgent tick', review: 'look again', logged: 'logged', none: 'not measured' };
 const OV_GO = { pulse: ['setup', 'Start a checkup'], resp: ['setup', 'Start a checkup'], gum: ['setup', 'Start a checkup'], alert: ['alertness', 'Do the reaction test'],
   eyegrid: ['vision', 'Do the eye grid'], gaze: ['exp', 'Open experimental checks'], pupil: ['exp', 'Open experimental checks'], pallor: ['exp', 'Open experimental checks'],
-  jaw: ['exp', 'Open experimental checks'], tremor: ['exp', 'Open experimental checks'], ptt: ['exp', 'Open experimental checks'], ror: ['exp', 'Open experimental checks'] };
+  jaw: ['exp', 'Open experimental checks'], tremor: ['exp', 'Open experimental checks'], sway: ['exp', 'Open experimental checks'], point: ['exp', 'Open experimental checks'], ptt: ['exp', 'Open experimental checks'], ror: ['exp', 'Open experimental checks'],
+  spo2: ['setup', 'Start a checkup'], devPulse: ['setup', 'Start a checkup'], temp: ['setup', 'Start a checkup'], bpSys: ['setup', 'Start a checkup'], bpDia: ['setup', 'Start a checkup'] };
 let ovCache = null;
+// Universal and local time, and a rest suggestion only when today's data supports one.
+async function renderNow() {
+  const box = $('ovNow'); if (!box) return;
+  const now = new Date();
+  const utc = `${pad2(now.getUTCHours())}:${pad2(now.getUTCMinutes())}`;
+  const local = fmtClock(now);
+  const why = [];
+  const sv = getSleep();
+  if (sv?.start && sv?.end) {
+    const r = sleepPressure({ sleepStart: new Date(sv.start), sleepEnd: new Date(sv.end), now, usualSleepH: sv.usual === '' || sv.usual == null ? usualFromLog()?.h : Number(sv.usual) });
+    if (r && !r.asleepNow && now - new Date(sv.end) < 20 * H_MS && r.band === 'above') why.push(`modeled sleep pressure ${r.s.toFixed(2)} is above the sleep band`);
+  }
+  const h = sleepLastNight();
+  const tests = await pvtTests();
+  const last = tests.at(-1);
+  if (h != null && h <= 5 && last && tests.length > 1 && now - new Date(last.createdAt) < 24 * H_MS) {
+    const cmp = comparePvt(last.alertness, tests[0].alertness);
+    if (cmp?.verdict === 'slower') why.push(`last night was ${h} h and the reaction test in the last 24 h was ${cmp.pct}% slower than your reference`);
+  }
+  const advice = why.length ? `<p class="warnline">Rest suggested: ${why.join('; ')}. Plan sleep or a break before demanding tasks if you can.</p>`
+    : `<p class="fine">No rest flag from today's data (sleep pressure and reaction test).</p>`;
+  box.innerHTML = `<p class="ov-times"><span>UTC <strong translate="no">${utc}</strong></span> <span>Local <strong translate="no">${local}</strong></span></p>${advice}`;
+}
+setInterval(() => { if (!$('screen-overview')?.hidden) renderNow().catch(() => {}); }, 30000);
 async function renderOverview() {
+  renderNow().catch(() => {});
   const all = await listSessions();
+  { const w = illnessWatch(all); const box = $('ovIllness');
+    if (box) { box.hidden = !w; box.className = `card ov-illness${w?.level === 'possible' ? ' warn' : w?.level === 'watch' ? ' watch' : ''}`;
+      box.innerHTML = w ? `<h2 class="h-sub">Illness early warning <span class="badge">modeled</span></h2><p>${esc(illnessLine(w))}</p><p class="fine"><button type="button" class="link-btn" data-evidence="illness">How this works and how often it is wrong</button></p>` : ''; } }
   const { original } = await baselineAndRecent();
   const bench = benchError(all);
   const floors = { pulse: noiseFloor(bench, 'pulse').value, resp: noiseFloor(bench, 'resp').value };
@@ -2659,7 +2809,9 @@ async function renderOverview() {
   $('ovKpis').innerHTML = kpi('Pulse', lastC?.pulse?.bpm, 'bpm', word(pc), pc && (pc.kind === 'up' || pc.kind === 'down'))
     + kpi('Breathing', lastC?.resp?.rpm, '/min', word(rc), rc && (rc.kind === 'up' || rc.kind === 'down'))
     + kpi('Reaction', lastT?.alertness.medianMs, 'ms', !lastT ? 'No test yet' : tests.length < 2 ? 'First test' : slower ? 'Over 10% slower than first' : 'Within 10% of first', slower)
-    + kpi('Sleep', sleepH, 'h', sleepH == null ? 'Enter last night on the Board' : sleepH < 6 ? 'Under 6 h last night' : 'Last night', sleepH != null && sleepH < 6);
+    + kpi('Sleep', sleepH, 'h', sleepH == null ? 'Enter last night on the Board' : sleepH < 6 ? 'Under 6 h last night' : 'Last night', sleepH != null && sleepH < 6)
+    + (() => { const m = prefs.get('radMission') || { leoDays: 180, transitDays: 0, surfaceDays: 0 }; const d = missionDose(m); const lo = Math.round(d.low), hi = Math.round(d.high);
+      return kpi('Radiation', lo === hi ? lo : `${lo} to ${hi}`, 'mSv', `${Math.round(d.fracLow * 100)} to ${Math.round(d.fracHigh * 100)}% of NASA's career limit (modeled)`, d.fracHigh >= 1).replace('class="ov-kpi"', 'class="ov-kpi ov-kpi-range"'); })();
   drawOvChart();
   // What to look at, and the next step
   const flagged = regions.filter((r) => r.reasons.length).sort((a, b) => (a.status === 'urgent' ? -1 : 0) - (b.status === 'urgent' ? -1 : 0));
@@ -2794,16 +2946,20 @@ function drawOvChart() {
     $('ovChartNote').textContent = ''; $('ovValues').innerHTML = ''; $('ovTrend').hidden = true; $('ovStats').hidden = true;
     return;
   }
-  $('ovChart').innerHTML = lineChart(pts, { unit: def.unit, ref, title: def.label });
+  const fc = forecastNext(pts);
+  if (fc && def.max != null) for (const k of ['value', 'lo', 'hi']) fc[k] = Math.min(fc[k], def.max); // no forecast above what the measure can read
+  const mcl = prefs.get('missionClock');
+  $('ovChart').innerHTML = lineChart(pts, { unit: def.unit, ref, title: def.label, forecast: fc, ceil: def.max ?? null, dayLabel: mcl ? (t) => missionLabel(t, mcl) : null });
   const tr = trendFor(pts, ref);
+  const ew = ewmaChart(pts, def.res ? { ...EWMA, MIN_SD: def.res / 2 } : EWMA);
   const ageDays = Math.floor((Date.now() - pts[pts.length - 1].t) / 86400000);
   const trText = [trendLine(tr, def.unit), ageDays >= 14 ? `The latest value is ${ageDays} days old: a new check would say more about today.` : ''].filter(Boolean).join(' ');
   $('ovTrend').hidden = !trText; $('ovTrend').textContent = trText;
   $('ovTrend').className = `ov-trend ${tr.kind}`;
   const st = personalStats(pts);
-  const extra = [statsLine(st, def.unit), earthLine(ovState.metric, pts[pts.length - 1].v)].filter(Boolean);
+  const extra = [returnLine(returnToBaseline(pts, prefs.get('missionClock')), def.unit), readinessLine(baselineReadiness(pts)), ewmaLine(ew, def.unit), forecastLine(fc, def.unit), statsLine(st, def.unit), earthLine(ovState.metric, pts[pts.length - 1].v), deviceLine(ovState.metric, pts[pts.length - 1].v)].filter(Boolean);
   $('ovStats').hidden = !extra.length;
-  $('ovStats').innerHTML = extra.map((x) => `<span>${esc(x)}</span>`).join(' ');
+  $('ovStats').innerHTML = extra.map((x) => `<span${/^Early warning: the/.test(x) ? ' class="ov-ew-on"' : ''}>${esc(x)}</span>`).join(' ');
   const exp = def.src.startsWith('exp:');
   $('ovChartNote').textContent = `${pts.length} value${pts.length === 1 ? '' : 's'}${ref ? ` · line: ${ref.label}${ref.band ? `, shaded band ±${Math.round(ref.band * 100) / 100}` : ''}` : ' · no baseline yet'}${exp ? ' · experimental' : ''}. Red dots sit outside the band; hollow dots were low quality captures.`;
   $('ovValues').innerHTML = `<table><thead><tr><th scope="col">Date</th><th scope="col">${esc(def.label)}</th></tr></thead><tbody>${pts.slice().reverse().map((p) => `<tr><td>${fmtDate(new Date(p.t).toISOString())}</td><td>${p.v}${def.unit && def.unit !== 'index' ? ` ${esc(def.unit)}` : ''}</td></tr>`).join('')}</tbody></table>`;
@@ -2898,7 +3054,7 @@ async function acFinish() {
     return `<tr><th scope="row">${e === 'right' ? 'Right' : 'Left'} eye</th><td>${t.logmar.toFixed(2)}</td><td>${esc(t.snellen)}${t.atScreenLimit ? ' or better (screen limit)' : ''}</td><td class="${c.verdict === 'worse' ? 'warnline' : ''}">${vs}</td></tr>`;
   };
   const worse = ['right', 'left'].some((e) => compareAcuity(rec.acuity[e], ref?.acuity?.[e]).verdict === 'worse');
-  $('acResult').innerHTML = `<div class="card result"><p><span class="tag">EXPERIMENTAL</span> <span class="tag">SHOWN, NOT JUDGED</span></p>
+  $('acResult').innerHTML = `<div class="card result"><p><span class="tag">Experimental</span> <span class="tag">Shown, not judged</span></p>
     <h2>Eye chart result</h2>
     <table><thead><tr><th scope="col">Eye</th><th scope="col">logMAR</th><th scope="col">Snellen</th><th scope="col">Against your first check</th></tr></thead><tbody>${eyeRow('right')}${eyeRow('left')}</tbody></table>
     <p class="fine">logMAR: 0 is 20/20; each 0.1 higher is one line larger. Distance ${ac.dist / 1000} m${rec.acuity.calibrated ? ', calibrated screen' : ', screen not calibrated'}.</p>

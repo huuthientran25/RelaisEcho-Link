@@ -151,3 +151,24 @@ import { readFileSync } from 'node:fs';
     assert.equal(pick('fr', 'home.h1', 'x'), STRINGS.fr['home.h1']);
   });
 }
+
+test('v2.9: NASA risk map and the home page satellite message', async () => {
+  const fs = await import('node:fs');
+  const { NASA_RISKS, NASA_RISK_URL } = await import('../js/board.js');
+  const { decodeSms, SMS_MAX } = await import('../js/packet.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  assert.equal(NASA_RISKS.length, 7); assert.equal(NASA_RISK_URL, 'https://www.nasa.gov/human-system-risks');
+  for (const r of NASA_RISKS) for (const k of ['risk', 'has', 'cannot']) { assert.ok(r[k]); assert.notEqual(frText(r[k]), r[k], `French for ${r[k]}`); }
+  assert.ok(NASA_RISKS.find((r) => /Radiation/.test(r.risk)).has.includes('not measured'), 'radiation is modeled, never claimed as measured');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const raw = html.match(/id="heroSms"[^>]*>([^<]+)</)[1].trim();
+  assert.ok(raw.length <= SMS_MAX);
+  const lines = decodeSms(raw).lines;
+  assert.ok(lines.length >= 5 && lines.every((l) => !/unknown|not understood/i.test(l)), lines.join(' | '));
+  assert.ok(!/class="eyebrow"/.test(html), 'no label above the home headline');
+  assert.ok(!/>[A-Z]{4,}( [A-Z]{2,})*</.test(html.replace(/>(NASA|OSD|UTC|SMS|ECG|OCT|SANS|IL-6|CSV|PDF|BMI|CMP)</g, '')), 'no all caps labels in the page');
+  assert.equal((html.match(/class="btn primary"/g) || []).filter(Boolean).length >= 1, true);
+  const hero = html.slice(html.indexOf('<div class="hero">'), html.indexOf('</div>', html.indexOf('hero-actions')));
+  assert.equal((hero.match(/btn primary/g) || []).length, 1, 'one main button in the hero');
+});
+

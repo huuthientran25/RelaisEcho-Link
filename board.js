@@ -140,3 +140,18 @@ export function todaySteps({ sessions, alertTests, sleep, now = new Date() }) {
   const allDone = steps.every((s) => s.done);
   return { steps, allDone, message: allDone ? 'Everything is done for today. Steady habits make real changes easier to spot.' : `${steps.filter((s) => s.done).length} of ${steps.length} done today.` };
 }
+
+// NASA risk map (v2.9). Risk names as NASA lists them (nasa.gov/human-system-risks and nasa.gov/hrp/risks, read
+// 21 Nov 2026; orthostatic intolerance and cardiovascular adaptations from Human Research Program risk summaries).
+// For each: what this app measures that bears on it, and what it cannot measure. No status per risk: the app does
+// not score NASA risks, it only shows where its measures fit.
+export const NASA_RISK_URL = 'https://www.nasa.gov/human-system-risks';
+export const NASA_RISKS = [
+  { risk: 'Sleep loss, circadian desynchronization and work overload', has: 'Sleep log, 3 minute reaction test, sleep pressure model, mission clock, rest suggestion on Overview', cannot: 'Sleep stages, circadian phase, workload' },
+  { risk: 'Altered sensorimotor and vestibular function', has: 'Standing balance, touchscreen pointing, hand steadiness, eye following (experimental)', cannot: 'Vestibular tests, walking and functional mission tasks' },
+  { risk: 'Orthostatic intolerance and cardiovascular adaptations', has: 'Camera pulse, pulse and blood pressure typed from your own devices, early warning against your own normal', cannot: 'Tilt or stand test, heart rhythm (ECG), heart imaging' },
+  { risk: 'Spaceflight associated neuro-ocular syndrome (SANS)', has: 'Vision grid self check, pupil response (experimental)', cannot: 'Retinal imaging (OCT), optic disc swelling, eye pressure' },
+  { risk: 'Altered immune response', has: 'Illness early warning (fever, symptoms, pulse, breathing, temperature), NASA Inspiration4 crew blood data on the crew screen', cannot: 'Blood counts, inflammation markers, viral reactivation' },
+  { risk: 'Radiation carcinogenesis', has: 'Modeled mission dose against NASA\'s career limit (not measured)', cannot: 'Any measured dose; no dosimeter' },
+  { risk: 'Behavioral changes and psychiatric disorders', has: 'Not covered', cannot: 'Mood, stress, team dynamics' },
+];

@@ -22,8 +22,7 @@ export const TEXT_FR = {
   'Open source under Apache 2.0. Not affiliated with or endorsed by NASA or the Canadian Space Agency.': 'Code source ouvert sous licence Apache 2.0. Ni affilié à la NASA ou à l’Agence spatiale canadienne, ni approuvé par elles.',
   'Logo: AI-generated with ChatGPT; marked “AI” wherever it appears.': 'Logo : généré par IA avec ChatGPT; marqué « AI » partout où il apparaît.',
   'Logo: AI-generated (ChatGPT)': 'Logo : généré par IA (ChatGPT)',
-  'SI-generated demo (AI-assisted) · Sample data': 'Démo générée par SI (assistée par IA) · Données d’exemple',
-  'SI-generated demo (AI-assisted) · Sample data · Music: AI-generated': 'Démo générée par SI (assistée par IA) · Données d’exemple · Musique : générée par IA',
+  'Sample data · Music: AI-generated': 'Données d’exemple · Musique : générée par IA',
   // home
   'Install for offline use': 'Installer pour l’utiliser hors ligne',
   'Explore with sample data': 'Explorer avec des données d’exemple',
@@ -34,7 +33,7 @@ export const TEXT_FR = {
   ': camera speed, face model, offline readiness.': `${NB}: vitesse de la caméra, modèle du visage, prêt hors ligne.`,
   'More to try:': 'À essayer aussi :',
   'Experimental checks': 'Contrôles expérimentaux',
-  ': jaw, eye following, pupils, inner eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result, none validated.': `${NB}: mâchoire, poursuite oculaire, pupilles, couleur de la paupière, cou, stabilité de la main, délai du pouls. Chacun comparé à votre premier résultat, aucun n’est validé.`,
+  ': jaw, eye following, pupils, inner eyelid colour, neck, hand steadiness, standing balance, pointing, pulse timing. Each against your own first result, none validated.': `${NB}: mâchoire, poursuite oculaire, pupilles, couleur de la paupière, cou, stabilité de la main, équilibre debout, pointage, délai du pouls. Chacun comparé à votre premier résultat, aucun n’est validé.`,
   ': two weeks of invented checkups.': `${NB}: deux semaines de bilans inventés.`,
   'Mission board': 'Tableau de mission',
   ": today's checklist, sleep pressure, radiation budget, NASA crew data.": `${NB}: liste du jour, pression de sommeil, budget de radiation, données d’équipage de la NASA.`,
@@ -58,7 +57,7 @@ export const TEXT_FR = {
   'Length (days)': 'Durée (jours)',
   Save: 'Enregistrer',
   Clear: 'Effacer',
-  'For a field rotation, a winter posting or a mission. Shown here only; it changes no result.': 'Pour une rotation sur le terrain, une affectation d’hiver ou une mission. Affiché ici seulement; ne change aucun résultat.',
+  'For a field rotation, a winter posting or a mission. Charts then label days as NASA does (L-3 before launch, FD5 in flight, R+2 after landing, with landing at the end of the clock) and say when each measure is back inside your pre-flight range. It changes no result.': 'Pour une rotation de terrain, une affectation d’hiver ou une mission. Les graphiques indiquent alors les jours comme le fait la NASA (L-3 avant le lancement, FD5 en vol, R+2 après l’atterrissage, l’atterrissage étant la fin de l’horloge) et disent quand chaque mesure revient dans votre plage d’avant le vol. Cela ne change aucun résultat.',
   'Explore a scenario (sample data)': 'Explorer un scénario (données d’exemple)',
   Load: 'Charger',
   'Body chart': 'Schéma du corps',
@@ -152,7 +151,7 @@ export const TEXT_FR = {
   "Straight line light time from today's planet positions. Relays and antenna schedules add more.": 'Temps de lumière en ligne droite d’après la position des planètes aujourd’hui. Les relais et les horaires d’antennes en ajoutent.',
   'What you mark, compared with your own first check. Not a test for any disease.': 'Ce que vous marquez, comparé à votre premier contrôle. Ce n’est le test d’aucune maladie.',
   'Eye chart evidence': 'Sources du tableau de lettres',
-  'Jaw, eyes, pupils, eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result only.': 'Mâchoire, yeux, pupilles, couleur de la paupière, cou, stabilité de la main, délai du pouls. Chacun comparé seulement à votre premier résultat.',
+  'Jaw, eyes, pupils, eyelid colour, neck, hand steadiness, pulse timing. Each against your own first result only.': 'Mâchoire, yeux, pupilles, couleur de la paupière, cou, stabilité de la main, équilibre debout, pointage, délai du pouls. Chacun comparé seulement à votre premier résultat.',
   'Bed rest fluid shift': 'Déplacement des liquides en alitement',
   'Loading…': 'Chargement…',
   'NASA head down bed rest, an analog for spaceflight. Each person against their own values before bed rest.': 'Alitement tête vers le bas de la NASA, un analogue du vol spatial. Chaque personne comparée à ses propres valeurs avant l’alitement.',
@@ -187,6 +186,89 @@ export const TEXT_FR = {
   'Pupil light response': 'Réaction des pupilles à la lumière',
   'Inner eyelid colour': 'Couleur de l’intérieur de la paupière',
   'Neck check (thyroid area)': 'Contrôle du cou (région de la thyroïde)',
+  'Touchscreen pointing': 'Pointage sur l’écran tactile',
+  'about 1 minute': 'environ 1 minute',
+  'Tap targets of two sizes as fast and as accurately as you can with one finger. Measures speed and accuracy, the skill NASA found astronauts lose for a few weeks after landing. No camera.': 'Touchez des cibles de deux tailles aussi vite et aussi précisément que possible avec un doigt. Mesure la vitesse et la précision, l’habileté que la NASA a vue diminuer chez les astronautes pendant quelques semaines après l’atterrissage. Sans caméra.',
+  'Sit at a table and hold the phone in your other hand, or lay it flat. Use the index finger of the hand you write with.': 'Assoyez-vous à une table et tenez le téléphone dans l’autre main, ou posez-le à plat. Utilisez l’index de la main avec laquelle vous écrivez.',
+  'The screen fills with a dark area. Tap each yellow circle as fast and as accurately as you can; the next one appears at once.': 'L’écran devient une zone sombre. Touchez chaque cercle jaune aussi vite et aussi précisément que possible; le suivant apparaît aussitôt.',
+  'The first 3 are practice. 24 count: 12 big, 12 small, in random order. Tap Stop to leave.': 'Les 3 premiers servent d’essai. 24 comptent : 12 grands, 12 petits, dans un ordre au hasard. Touchez Arrêter pour quitter.',
+  'Practice: tap the yellow circle.': 'Essai : touchez le cercle jaune.',
+  'Time to tap a target': 'Temps pour toucher une cible',
+  'Taps that missed': 'Touchers ratés',
+  'Speed and accuracy together (Fitts throughput)': 'Vitesse et précision ensemble (débit de Fitts)',
+  'Small targets missed': 'Petites cibles ratées',
+  'Touchscreen pointing, time to tap': 'Pointage sur l’écran tactile, temps pour toucher',
+  'Too few targets were shown. Try again and tap every target.': 'Trop peu de cibles ont été montrées. Recommencez et touchez chaque cible.',
+  'Nine short checks with the camera, motion sensor or touchscreen, each compared with your own first result.': 'Neuf courts contrôles avec la caméra, le capteur de mouvement ou l’écran tactile, chacun comparé à votre premier résultat.',
+  'Live': 'En direct',
+  'Recorded video': 'Vidéo enregistrée',
+  'Published': 'Publié',
+  'NASA data': 'Données NASA',
+  'Educational': 'Éducatif',
+  'Urgent item': 'Élément urgent',
+  'Sample packet, invented data': 'Dossier d’exemple, données inventées',
+  'Shown, not judged': 'Affiché, non jugé',
+  'Modeled': 'Modélisé',
+  'How these measures map to NASA\'s health risks': 'Comment ces mesures se rattachent aux risques pour la santé définis par la NASA',
+  'Risk names as NASA lists them. The app does not score these risks; it shows where its measures fit and what they miss.': 'Noms des risques tels que la NASA les énumère. L’application n’évalue pas ces risques; elle montre où ses mesures s’insèrent et ce qui leur échappe.',
+  'NASA risk': 'Risque NASA',
+  'What this app measures': 'Ce que l’application mesure',
+  'What it cannot measure': 'Ce qu’elle ne peut pas mesurer',
+  'NASA human system risks': 'Risques pour le système humain (NASA)',
+  'Sleep loss, circadian desynchronization and work overload': 'Manque de sommeil, désynchronisation circadienne et surcharge de travail',
+  'Sleep log, 3 minute reaction test, sleep pressure model, mission clock, rest suggestion on Overview': 'Journal du sommeil, test de réaction de 3 minutes, modèle de pression de sommeil, horloge de mission, suggestion de repos dans l’aperçu',
+  'Sleep stages, circadian phase, workload': 'Stades du sommeil, phase circadienne, charge de travail',
+  'Altered sensorimotor and vestibular function': 'Fonction sensorimotrice et vestibulaire altérée',
+  'Standing balance, touchscreen pointing, hand steadiness, eye following (experimental)': 'Équilibre debout, pointage sur l’écran tactile, stabilité de la main, poursuite oculaire (expérimental)',
+  'Vestibular tests, walking and functional mission tasks': 'Tests vestibulaires, marche et tâches fonctionnelles de mission',
+  'Orthostatic intolerance and cardiovascular adaptations': 'Intolérance orthostatique et adaptations cardiovasculaires',
+  'Camera pulse, pulse and blood pressure typed from your own devices, early warning against your own normal': 'Pouls par la caméra, pouls et tension saisis depuis vos propres appareils, alerte précoce par rapport à votre normale',
+  'Tilt or stand test, heart rhythm (ECG), heart imaging': 'Test d’inclinaison ou de mise debout, rythme cardiaque (ECG), imagerie du cœur',
+  'Spaceflight associated neuro-ocular syndrome (SANS)': 'Syndrome neuro-oculaire associé aux vols spatiaux (SANS)',
+  'Vision grid self check, pupil response (experimental)': 'Autocontrôle avec la grille visuelle, réponse des pupilles (expérimental)',
+  'Retinal imaging (OCT), optic disc swelling, eye pressure': 'Imagerie de la rétine (OCT), gonflement du disque optique, pression de l’œil',
+  'Altered immune response': 'Réponse immunitaire altérée',
+  'Illness early warning (fever, symptoms, pulse, breathing, temperature), NASA Inspiration4 crew blood data on the crew screen': 'Alerte précoce de maladie (fièvre, symptômes, pouls, respiration, température), données sanguines de l’équipage Inspiration4 de la NASA dans l’écran de l’équipage',
+  'Blood counts, inflammation markers, viral reactivation': 'Formule sanguine, marqueurs d’inflammation, réactivation virale',
+  'Radiation carcinogenesis': 'Cancérogenèse due aux radiations',
+  'Modeled mission dose against NASA\'s career limit (not measured)': 'Dose de mission modélisée par rapport à la limite de carrière de la NASA (non mesurée)',
+  'Any measured dose; no dosimeter': 'Toute dose mesurée; aucun dosimètre',
+  'Behavioral changes and psychiatric disorders': 'Changements de comportement et troubles psychiatriques',
+  'Not covered': 'Non couvert',
+  'Mood, stress, team dynamics': 'Humeur, stress, dynamique d’équipe',
+  'NASA\'s list of human system risks, linked from the Mission board': 'La liste des risques pour le système humain de la NASA, en lien depuis le tableau de mission',
+  'Only if you open the link. The app itself never contacts it.': 'Seulement si vous ouvrez le lien. L’application elle-même ne le contacte jamais.',
+  'NASA risk map table': 'Tableau des risques NASA',
+  'Show my last result': 'Afficher mon dernier résultat',
+  'Camera oxygen saturation (research)': 'Saturation en oxygène par la caméra (recherche)',
+  'Fingertip oximeter reading right now (%)': 'Mesure de l’oxymètre de doigt en ce moment (%)',
+  'Each reading you add is one calibration pair for your camera.': 'Chaque mesure ajoutée est une paire d’étalonnage pour votre caméra.',
+  'Illness early warning': 'Alerte précoce de maladie',
+  'modeled': 'modélisé',
+  'How this works and how often it is wrong': 'Comment cela fonctionne et à quelle fréquence cela se trompe',
+  'No illness signs today: no fever, no illness symptoms, and pulse, breathing and temperature within your own recent normal.': 'Aucun signe de maladie aujourd’hui : pas de fièvre, pas de symptômes de maladie, et pouls, respiration et température dans votre normale récente.',
+  'Illness early warning: possible illness signs (modeled, not a diagnosis).': 'Alerte précoce de maladie : signes possibles de maladie (modélisé, pas un diagnostic).',
+  'Illness early warning: worth watching (modeled, not a diagnosis).': 'Alerte précoce de maladie : à surveiller (modélisé, pas un diagnostic).',
+  'Standing balance': 'Équilibre debout',
+  'about 75 seconds': 'environ 75 secondes',
+  'Stand with feet together and the phone held flat against your chest, eyes open and then eyes closed. Measures how much your body sways, with the phone motion sensor. No camera.': 'Tenez-vous debout, pieds joints, le téléphone à plat contre la poitrine, les yeux ouverts puis fermés. Mesure le balancement de votre corps avec le capteur de mouvement du téléphone. Sans caméra.',
+  'Stand within reach of a wall or a sturdy chair, shoes off, feet together. Turn the sound on.': 'Tenez-vous à portée d’un mur ou d’une chaise solide, sans chaussures, pieds joints. Activez le son.',
+  'Press Start, then hold the phone flat against the middle of your chest with both hands, screen toward you.': 'Appuyez sur Démarrer, puis tenez le téléphone à plat contre le milieu de la poitrine avec les deux mains, l’écran vers vous.',
+  'One beep: stand as still as you can with eyes open for 30 seconds. Two beeps: close your eyes and keep still. Three beeps: finished, open your eyes.': 'Un bip : restez aussi immobile que possible, les yeux ouverts, pendant 30 secondes. Deux bips : fermez les yeux et restez immobile. Trois bips : c’est terminé, ouvrez les yeux.',
+  'Skip the eyes closed part if you feel unsteady, and open your eyes and hold on at once if you start to tip.': 'Sautez la partie yeux fermés si vous vous sentez instable; ouvrez les yeux et tenez-vous tout de suite si vous commencez à basculer.',
+  'Eyes open only (skip the eyes closed part)': 'Yeux ouverts seulement (sauter la partie yeux fermés)',
+  'Feet together, phone flat against your chest. It starts at the beep.': 'Pieds joints, téléphone à plat contre la poitrine. Le test commence au bip.',
+  'Eyes open. Stand as still as you can.': 'Yeux ouverts. Restez aussi immobile que possible.',
+  'Two beeps: close your eyes and keep standing still.': 'Deux bips : fermez les yeux et restez immobile.',
+  'Eyes closed. Stand still until the three beeps.': 'Yeux fermés. Restez immobile jusqu’aux trois bips.',
+  'Motion sensor permission was not given, so this check cannot run.': 'L’accès au capteur de mouvement n’a pas été accordé; ce contrôle ne peut donc pas se faire.',
+  'No motion sensor readings arrived. This check needs a phone or tablet with a motion sensor.': 'Aucune mesure du capteur de mouvement n’est arrivée. Ce contrôle demande un téléphone ou une tablette avec un capteur de mouvement.',
+  'Sway, eyes open': 'Balancement, yeux ouverts',
+  'Sway, eyes closed': 'Balancement, yeux fermés',
+  'Eyes closed against eyes open (1 = same)': 'Yeux fermés par rapport aux yeux ouverts (1 = pareil)',
+  'Standing sway, eyes open': 'Balancement debout, yeux ouverts',
+  'Phone motion sensor, phone held against the chest, feet together. Movements between 0.1 and 5 Hz, root mean square over the three axes, in thousandths of g.': 'Capteur de mouvement du téléphone, tenu contre la poitrine, pieds joints. Mouvements entre 0,1 et 5 Hz, moyenne quadratique sur les trois axes, en millièmes de g.',
+  'The recording stopped early.': 'L’enregistrement s’est arrêté trop tôt.',
   'Hand steadiness': 'Stabilité de la main',
   'Pulse timing and colour ratio': 'Délai du pouls et rapport de couleurs',
   'differs from first': 'diffère du premier',
@@ -221,7 +303,7 @@ export const TEXT_FR = {
   '), Inspiration4 comprehensive metabolic panel and Eve Technologies inflammation panels.': '), bilan métabolique complet d’Inspiration4 et panels d’inflammation d’Eve Technologies.',
   'Across the 15 standard blood tests with a lab range:': 'Sur les 15 analyses sanguines courantes qui ont une plage de laboratoire :',
   'day-after-landing results were "normal" for the population but outside that person\'s own pre-flight values, and': 'résultats du lendemain de l’atterrissage étaient « normaux » pour la population, mais hors des valeurs d’avant le vol de la personne, et',
-  'pre-flight results (their usual) would already be flagged by the population range. Three pre-flight values is a small baseline, so some of this is ordinary variation. For the 12 inflammation markers, which have no lab range at all,': 'résultats d’avant le vol (leur habituel) seraient déjà signalés par la plage de population. Trois valeurs d’avant le vol forment une petite référence, donc une partie de ceci est une variation ordinaire. Pour les 12 marqueurs d’inflammation, qui n’ont aucune plage de laboratoire,',
+  'pre-flight results (their usual) would already be flagged by the population range. With only three pre-flight values, about half of any new result lands outside them by chance alone (see the backtest below). For the 12 inflammation markers, which have no lab range at all,': 'résultats d’avant le vol (leur habituel) seraient déjà signalés par la plage de population. Avec seulement trois valeurs d’avant le vol, environ la moitié des nouveaux résultats tombent hors de celles-ci par hasard seulement (voir le test rétrospectif ci-dessous). Pour les 12 marqueurs d’inflammation, qui n’ont aucune plage de laboratoire,',
   "day-after-landing values rose above that person's highest pre-flight value: their own baseline is the only yardstick there is.": 'valeurs du lendemain de l’atterrissage ont dépassé la plus haute valeur d’avant le vol de la personne : sa propre référence est le seul étalon qui existe.',
   'Chloride (mmol/L)': 'Chlorure (mmol/L)',
   'Carbon dioxide (bicarbonate) (mmol/L)': 'Dioxyde de carbone (bicarbonate) (mmol/L)',
@@ -300,6 +382,23 @@ export const TEXT_FR = {
   'Sit still, breathe normally and do not talk. Keep your neck and shoulders in view (blue boxes).': 'Restez immobile, respirez normalement et ne parlez pas. Gardez le cou et les épaules dans le cadre (cases bleues).',
   'Stop and use what is usable': 'Arrêter et garder ce qui est utilisable',
   'Show measurement boxes': 'Afficher les zones de mesure',
+  'Readings from your own devices (optional)': 'Mesures de vos propres appareils (facultatif)',
+  'If you have a fingertip oximeter, a thermometer or a blood pressure cuff, type what they show. The readings are saved with this checkup, charted against your own earlier readings and passed to the reviewer as typed. The app does not measure or judge them.': 'Si vous avez un oxymètre de doigt, un thermomètre ou un tensiomètre, saisissez ce qu’ils affichent. Les mesures sont enregistrées avec ce contrôle, tracées par rapport à vos mesures précédentes et transmises telles quelles à la personne qui révise. L’application ne les mesure pas et ne les juge pas.',
+  'Oxygen saturation (%)': 'Saturation en oxygène (%)',
+  'Pulse on the device (bpm)': 'Pouls affiché par l’appareil (bpm)',
+  'Temperature (°C)': 'Température (°C)',
+  'Blood pressure, upper number': 'Tension artérielle, chiffre du haut',
+  'Blood pressure, lower number': 'Tension artérielle, chiffre du bas',
+  'Oximeter tips (FDA): warm, still hand below heart level, no nail polish, wait for a steady number.': 'Conseils pour l’oxymètre (FDA) : main chaude et immobile sous le niveau du cœur, pas de vernis à ongles, attendre un chiffre stable.',
+  'Saved with this checkup.': 'Enregistré avec ce contrôle.',
+  'Left out: a value no such device can show, or blood pressure without both numbers (upper above lower).': 'Non retenu : une valeur qu’un tel appareil ne peut pas afficher, ou une tension sans ses deux chiffres (celui du haut au-dessus de celui du bas).',
+  'Oxygen saturation, fingertip oximeter': 'Saturation en oxygène, oxymètre de doigt',
+  'Pulse, own device': 'Pouls, appareil personnel',
+  'Temperature, thermometer': 'Température, thermomètre',
+  'From the person\'s own devices (typed in, not checked by the app):': 'Appareils de la personne (saisi, non vérifié par l’application) :',
+  'Most healthy people read 95% to 100% on a fingertip oximeter (FDA). The latest reading is inside that. Cold fingers, movement, nail polish and darker skin can make a reading less accurate.': 'La plupart des personnes en bonne santé affichent de 95 % à 100 % sur un oxymètre de doigt (FDA). La dernière mesure s’y trouve. Des doigts froids, le mouvement, le vernis à ongles et une peau plus foncée peuvent rendre une mesure moins précise.',
+  'Most healthy people read 95% to 100% on a fingertip oximeter (FDA). The latest reading is below that: warm your hand, sit still and recheck. Contact a health worker if it stays low or you feel unwell. Cold fingers, movement, nail polish and darker skin can make a reading less accurate.': 'La plupart des personnes en bonne santé affichent de 95 % à 100 % sur un oxymètre de doigt (FDA). La dernière mesure est en dessous : réchauffez votre main, restez immobile et reprenez la mesure. Communiquez avec un intervenant de la santé si elle reste basse ou si vous vous sentez mal. Des doigts froids, le mouvement, le vernis à ongles et une peau plus foncée peuvent rendre une mesure moins précise.',
+  'Hypertension Canada counts home readings that average 135 over 85 or higher as high. One reading is not a diagnosis.': 'Hypertension Canada considère comme élevées les mesures à domicile dont la moyenne atteint 135 sur 85 ou plus. Une seule mesure n’est pas un diagnostic.',
   'Bench test: add reference values (optional)': 'Banc d’essai : ajouter des valeurs de référence (facultatif)',
   'If a fingertip oximeter, watch or counted breaths were recorded at the same time, enter them. They are saved with this checkup and exported from History as a CSV.': 'Si un oxymètre de doigt, une montre ou des respirations comptées ont été notés en même temps, entrez-les. Ils sont enregistrés avec ce bilan et exportés depuis l’Historique en CSV.',
   'Reference pulse (bpm)': 'Pouls de référence (bpm)',
@@ -896,7 +995,42 @@ export const TEXT_FR = {
   'this app does not take the menstrual cycle into account. On Earth, resting pulse during sleep was about 2 bpm higher in the fertile window and about 3 to 4 bpm higher in the mid-luteal phase than during menstruation (Shilaih et al. 2017, wearable study), so a change of a few beats can be the cycle. Data on the menstrual cycle in spaceflight are limited, partly because many astronauts suppress menstruation, and research is ongoing.': 'cette application ne tient pas compte du cycle menstruel. Sur Terre, le pouls au repos pendant le sommeil était d’environ 2 bpm plus élevé pendant la fenêtre de fertilité et d’environ 3 à 4 bpm plus élevé en milieu de phase lutéale que pendant les menstruations (Shilaih et al. 2017, étude avec appareil portable), donc un changement de quelques battements peut venir du cycle. Les données sur le cycle menstruel en vol spatial sont limitées, en partie parce que beaucoup d’astronautes suppriment les menstruations, et la recherche se poursuit.',
   'Heartbeats per breath': 'Battements cardiaques par respiration',
   // sleep answer (v1.2)
+  'How the early warning and forecast work': 'Comment fonctionnent l’alerte précoce et la prévision',
+  'Participant code (no names)': 'Code du participant (pas de nom)',
+  'e.g. P01': 'p. ex. P01',
+  'e.g. window light, head movement': 'p. ex. lumière de fenêtre, mouvement de la tête',
+  'Add a condition': 'Ajouter une condition',
+  'For a bench study: same moment, same person, one reference per checkup. Failed scans count too; History makes a one page report.': 'Pour une étude comparative : même moment, même personne, une référence par bilan. Les mesures ratées comptent aussi; l’Historique produit un rapport d’une page.',
+  'Bench test report (one page)': 'Rapport du test comparatif (une page)',
+  '+ window light': '+ lumière de fenêtre',
+  '+ dim light': '+ faible lumière',
+  '+ lamp light': '+ lumière de lampe',
+  '+ head movement': '+ mouvement de la tête',
+  '+ glasses': '+ lunettes',
+  '+ darker skin tone': '+ teint plus foncé',
+  '+ lighter skin tone': '+ teint plus clair',
+  'crew members had': 'membres d’équipage avaient',
+  'Borrowing published biological variation': 'Emprunter la variation biologique publiée',
+  'Backtest: do personal baselines and simple predictions work on this data?': 'Test rétrospectif : les références personnelles et les prédictions simples fonctionnent-elles sur ces données?',
+  "NASA crew data: IL-6 rose above each person's own pre-flight values, 4 of 4.": 'Données d’équipage NASA : l’IL-6 a dépassé les valeurs d’avant le vol de chaque personne, 4 sur 4.',
+  'Four people, one 3 day flight: exploratory. The lesson for the app: a personal baseline needs more than three values before it can flag reliably, which is why the early warning waits for 8.': 'Quatre personnes, un vol de 3 jours : exploratoire. La leçon pour l’application : une référence personnelle a besoin de plus de trois valeurs avant de signaler de façon fiable, d’où les 8 valeurs qu’attend l’alerte précoce.',
+  'Sample data:': 'Données d’exemple :',
+  'Load the full sample': 'Charger l’exemple complet',
+  'or one person, one scenario': 'ou une personne, un scénario',
+  'Load this scenario': 'Charger ce scénario',
+  'Crew list only (4 people)': 'Liste d’équipage seulement (4 personnes)',
+  'Suggested order:': 'Ordre suggéré :',
+  '1. Checkup': '1. Bilan',
+  '2. Reaction test': '2. Test de réaction',
+  '3. Mission board': '3. Tableau de mission',
+  '4. History': '4. Historique',
+  '5. Nurse packet': '5. Dossier infirmier',
+  'Explore with the full sample': 'Explorer avec l’exemple complet',
+  "No rest flag from today's data (sleep pressure and reaction test).": 'Aucun signal de repos dans les données du jour (pression de sommeil et test de réaction).',
+  'Full sample loaded: one sample person with sleep log and reaction tests, plus a sample crew of four. All invented.': 'Exemple complet chargé : une personne d’exemple avec journal de sommeil et tests de réaction, plus un équipage d’exemple de quatre. Tout est inventé.',
+  'Local': 'Locale',
   'Sleep last night': 'Sommeil la nuit dernière',
+  '! Under 6 hours last night. In ISS astronauts, nights this short were linked to slower reaction test scores.': '! Moins de 6 heures la nuit dernière. Chez les astronautes de l’ISS, des nuits aussi courtes ont été liées à des temps de réaction plus lents.',
   Skip: 'Passer',
   '3 h or less': '3 h ou moins',
   '4 to 5 h': '4 à 5 h',
@@ -909,6 +1043,17 @@ export const TEXT_FR = {
   'Last 7 nights': '7 dernières nuits',
   'from your log, else last night': 'de votre journal, sinon la nuit dernière',
   'Process S of the two process model (Daan, Beersma and Borbély 1984); band ±0.12 because your body clock is not measured. For orientation only.': 'Processus S du modèle à deux processus (Daan, Beersma et Borbély 1984); bande de ±0,12 car votre horloge biologique n’est pas mesurée. À titre indicatif seulement.',
+  // portfolio edition reel and footer
+  'RelaisÉcho Link: in orbit or the far North, the nearest clinic is far away.': 'RelaisÉcho Link : en orbite ou dans le Grand Nord, la clinique la plus proche est loin.',
+  'A phone camera guides a checkup: pulse, breathing and mouth photos.': 'La caméra d’un téléphone guide un bilan : pouls, respiration et photos de la bouche.',
+  'Every result is compared with your own baseline, not a population average.': 'Chaque résultat est comparé à votre propre référence, pas à une moyenne de population.',
+  "NASA crew data: 23 of 60 lab normal results were off the person's own baseline.": 'Données d’équipage NASA : 23 résultats sur 60, normaux pour le labo, sortaient de la référence de la personne.',
+  'Sleep, alertness and mission radiation sit on one mission board.': 'Sommeil, vigilance et rayonnement de mission sur un seul tableau de mission.',
+  'A nurse or flight surgeon gets a short packet, even by satellite text.': 'Une infirmière ou un médecin de vol reçoit un court dossier, même par texto satellite.',
+  'Video stays on device. Built at NASA Space Apps 2026.': 'La vidéo reste sur l’appareil. Conçu au NASA Space Apps 2026.',
+  'Built by Thien Tran at NASA Space Apps 2026, Montreal.': 'Conçu par Thien Tran au NASA Space Apps 2026, Montréal.',
+  'Sample data': 'Données d’exemple',
+  'RelaisÉcho Link logo': 'Logo de RelaisÉcho Link',
   // attributes (aria-label, placeholder, title)
   'Logo generated with ChatGPT (AI)': 'Logo généré avec ChatGPT (IA)',
   'Text size': 'Taille du texte',
@@ -939,6 +1084,38 @@ const REGION_FR = { 'between the brows': 'entre les sourcils', chin: 'menton', '
 const CHANNEL_FR = { 'neck band': 'bande du cou', 'upper torso': 'haut du torse', 'head bob': 'mouvement de la tête', 'head tilt': 'inclinaison de la tête' };
 const UNIT_FR = { ratio: 'rapport', '0 to 1': '0 à 1', 'a* units': 'unités a*', 'per minute': 'par minute', lines: 'lignes', squares: 'carrés', logMAR: 'logMAR' };
 const QUALITY_FR = { high: 'haute', medium: 'moyenne', low: 'basse', none: 'aucune' };
+// "oxygen saturation 97%, pulse 64 bpm, temperature 36.7 °C, blood pressure 118/75 mmHg" (typed device readings)
+const DEVICE_TEXT_RE = /^(?:oxygen saturation \d+%|pulse \d+ bpm|temperature [\d.]+ °C|blood pressure \d+\/\d+ mmHg)(?:, (?:oxygen saturation \d+%|pulse \d+ bpm|temperature [\d.]+ °C|blood pressure \d+\/\d+ mmHg))*$/;
+function deviceTextFr(text) {
+  return text.replace(/oxygen saturation (\d+)%/, 'saturation en oxygène $1 %').replace(/pulse (\d+) bpm/, 'pouls $1 bpm')
+    .replace(/temperature (\d+)(?:\.(\d))? °C/, (_, a, b) => `température ${a}${b ? `,${b}` : ''} °C`).replace(/blood pressure (\d+)\/(\d+) mmHg/, 'tension artérielle $1/$2 mmHg');
+}
+// Camera oxygen saturation research line.
+function spo2Fr(t) {
+  let m;
+  if ((m = t.match(/^not shown\. (\d+) of (\d+) paired readings so far\.$/))) return `non affichée. ${m[1]} paires de mesures sur ${m[2]} jusqu’ici.`;
+  if ((m = t.match(/^not shown\. Your oximeter readings so far only span (\d+)% to (\d+)%\. .*$/))) return `non affichée. Vos mesures d’oxymètre ne couvrent jusqu’ici que ${m[1]} % à ${m[2]} %. On ne peut pas tester une estimation par la caméra sur une plage aussi étroite : n’importe quelle méthode qui devine toujours votre valeur habituelle semblerait exacte.`;
+  if ((m = t.match(/^not shown\. On your own readings the camera line erred ([\d.]+) points, no better than guessing your average \(([\d.]+)\)\. The camera adds nothing yet\.$/))) return `non affichée. Sur vos propres mesures, la droite de la caméra s’est trompée de ${m[1].replace('.', ',')} points, pas mieux que votre moyenne (${m[2].replace('.', ',')}). La caméra n’apporte encore rien.`;
+  if ((m = t.match(/^ready \((\d+) pairs, (\d+)% to (\d+)%, error ([\d.]+) points against ([\d.]+) for your average\)\.$/))) return `prête (${m[1]} paires, ${m[2]} % à ${m[3]} %, erreur de ${m[4].replace('.', ',')} points contre ${m[5].replace('.', ',')} pour votre moyenne).`;
+  if ((m = t.match(/^about (\d+)%, give or take ([\d.]+) points \(from (\d+) of your own paired readings between (\d+)% and (\d+)%\)\.(.*)$/))) {
+    const rest = m[6].replace(' This is outside the range it was calibrated on, so it is even less reliable.', ' C’est hors de la plage d’étalonnage; c’est donc encore moins fiable.')
+      .replace(' Lower than most healthy people read: measure now with your oximeter.', ' Plus bas que chez la plupart des personnes en bonne santé : mesurez tout de suite avec votre oxymètre.')
+      .replace(/ Never use it instead of an oximeter: it is not tested below (\d+)% and cannot rule out low oxygen\./, (_, v) => ` Ne l’utilisez jamais à la place d’un oxymètre : elle n’est pas testée sous ${v} % et ne peut pas exclure un manque d’oxygène.`);
+    return `environ ${m[1]} %, à ${m[2].replace('.', ',')} points près (d’après ${m[3]} de vos propres paires de mesures entre ${m[4]} % et ${m[5]} %).${rest}`;
+  }
+  return t;
+}
+// Reasons listed by the illness early warning.
+function illnessWhyFr(t) {
+  return t.replace(/temperature ([\d.]+) °C \(fever is 38\.0 °C or more\)/, (_, v) => `température ${v.replace('.', ',')} °C (la fièvre commence à 38,0 °C)`)
+    .replace(/temperature ([\d.]+) °C/, (_, v) => `température ${v.replace('.', ',')} °C`)
+    .replace(/^symptoms:? |; symptoms:? /, (x) => x.replace(/symptoms:? /, 'symptômes : '))
+    .replace(/feverish or chills/g, 'fiévreux ou frissons').replace(/stuffy nose/g, 'nez bouché').replace(/headache/g, 'mal de tête').replace(/short of breath/g, 'essoufflement')
+    .replace(/pulse \(own device\) above your recent normal/, 'pouls (appareil personnel) au-dessus de votre normale récente')
+    .replace(/pulse \(camera\) above your recent normal/, 'pouls (caméra) au-dessus de votre normale récente')
+    .replace(/breathing above your recent normal/, 'respiration au-dessus de votre normale récente')
+    .replace(/temperature above your recent normal/, 'température au-dessus de votre normale récente');
+}
 // One History row: "Pulse 72 (high) · Breathing 15 (high) · ref pulse 73 · dental 0/3 · ticked: Headache, Slept badly"
 function historyRowFr(text) {
   const parts = text.split(' · ').map((x) => {
@@ -946,6 +1123,8 @@ function historyRowFr(text) {
     if (m) return `${tr(m[1])} ${m[2]} (${QUALITY_FR[m[3]] || m[3]})`;
     m = x.match(/^ref (pulse|breathing) (\S+)$/);
     if (m) return `${m[1] === 'pulse' ? 'pouls' : 'respiration'} de réf. ${m[2]}`;
+    m = x.match(/^own devices: (.+)$/);
+    if (m) return `appareils personnels : ${deviceTextFr(m[1])}`;
     m = x.match(/^dental (\d)\/3$/);
     if (m) return `dentaire ${m[1]}/3`;
     m = x.match(/^ticked: (.+)$/);
@@ -985,7 +1164,7 @@ const VIEW_FR = { front: 'face', right: 'droite', left: 'gauche' };
 // One "look here first" line: "Measure 299 ms (first 256); Headache or poor sleep ticked and 2 more".
 function reasonFr(r) {
   if (Object.prototype.hasOwnProperty.call(TEXT_FR, r)) return TEXT_FR[r];
-  let m = r.match(/^(.+?) ([-+]?[\d.]+)( per minute| a\* units| 0 to 1| ?[a-zA-Z/%]+)? \((first|baseline|expected) ([-+]?[\d.]+)\)(?:, (\d+) in a row)?$/);
+  let m = r.match(/^(.+?) ([-+]?[\d.]+)( per minute| a\* units| 0 to 1| ?[a-zA-Z/%°]+)? \((first|baseline|expected) ([-+]?[\d.]+)\)(?:, (\d+) in a row)?$/);
   if (m) return `${tr(m[1])} ${m[2]}${m[3] ? (UNIT_FR[m[3].trim()] ? ` ${UNIT_FR[m[3].trim()]}` : m[3]) : ''} (${{ first: 'premier', baseline: 'référence', expected: 'attendu' }[m[4]]} ${m[5]})${m[6] ? `, ${m[6]} fois de suite` : ''}`;
   m = r.match(/^(.+) drifting (up|down), still inside the band$/);
   if (m && TEXT_FR[m[1]]) return `${TEXT_FR[m[1]]} en ${m[2] === 'up' ? 'hausse' : 'baisse'}, encore dans la marge`;
@@ -1097,7 +1276,7 @@ export const PATTERNS_FR = [
   [/^Mission starts in (\d+) days? \((\d+) days long\)$/, (m) => `La mission commence dans ${m[1]} jour${m[1] === '1' ? '' : 's'} (durée ${m[2]} jours)`],
   [/^Mission ended (\d+) days? ago \((\d+) days\)$/, (m) => `Mission terminée il y a ${m[1]} jour${m[1] === '1' ? '' : 's'} (${m[2]} jours)`],
   [/^(\d+) percent of the mission done$/, (m) => `${m[1]} pour cent de la mission accomplis`],
-  [/^(.+), (bpm|ms|mm|\/min|h|lines|squares|°|s|mSv|%)$/, (m) => (TEXT_FR[m[1]] ? `${TEXT_FR[m[1]]}, ${m[2]}` : null)],
+  [/^(.+), (bpm|ms|mm|\/min|h|lines|squares|°C|mmHg|mg|bits\/s|°|s|mSv|%)$/, (m) => (TEXT_FR[m[1]] ? `${TEXT_FR[m[1]]}, ${m[2]}` : null)],
   [/^Sample scenario loaded: ([^.]+)\. (.+)$/, (m) => `Scénario d’exemple chargé : ${tr(m[1])}. ${tr(m[2])}`],
   [/^(.+) \(no data\)$/, (m) => (TEXT_FR[m[1]] ? `${TEXT_FR[m[1]]} (aucune donnée)` : null)],
   [/^(.+), (0 to 1|a\* units|per minute|logMAR|lines|squares)$/, (m) => (TEXT_FR[m[1]] ? `${TEXT_FR[m[1]]}, ${UNIT_FR[m[2]]}` : null)],
@@ -1153,7 +1332,45 @@ export const PATTERNS_FR = [
     (m) => `Moyennes terrestres, adultes américains de 20 ans et plus : hommes ${m[1].replace('.', ',')} cm, ${m[2].replace('.', ',')} kg (IMC ${m[3].replace('.', ',')}); femmes ${m[4].replace('.', ',')} cm, ${m[5].replace('.', ',')} kg (IMC ${m[6].replace('.', ',')}) (CDC, NHANES 2021 à 2023). Une moyenne n’est pas une cible santé.`],
   [/^\s*\(fill in earlier nights any time\)(?:: (\d+) logged, average ([\d.]+) h, (\d+) of 5 h or less)?\.$/, (m) => ` (ajoutez les nuits précédentes quand vous voulez)${m[1] ? ` : ${m[1]} notées, moyenne ${m[2].replace('.', ',')} h, ${m[3]} de 5 h ou moins` : ''}.`],
   [/^Sleep hours, night before (\d{4}-\d\d-\d\d)( \(last night\))?$/, (m) => `Heures de sommeil, nuit avant le ${m[1]}${m[2] ? ' (la nuit dernière)' : ''}`],
-  [/^Sleep last night \(self report\): (.+)$/, (m) => `Sommeil la nuit dernière (autodéclaré) : ${m[1]}`],
+  [/^Sleep last night \(self report\): (3 h or less|4 to 5 h|6 to 7 h|8 h or more)(\.?)$/, (m) => `Sommeil la nuit dernière (autodéclaré) : ${{ '3 h or less': '3 h ou moins', '4 to 5 h': '4 à 5 h', '6 to 7 h': '6 à 7 h', '8 h or more': '8 h ou plus' }[m[1]]}${m[2]}`],
+  [/^After short nights \(5 h or less\): median (\d+) ms over (\d+) tests?\. After longer nights: median (\d+) ms over (\d+) tests?\. (\d+)% (slower|faster) after short nights\. Your own tests, few of them: a pattern to watch, not a finding\.$/, (m) => `Après des nuits courtes (5 h ou moins) : médiane ${m[1]} ms sur ${m[2]} test${m[2] === '1' ? '' : 's'}. Après des nuits plus longues : médiane ${m[3]} ms sur ${m[4]} test${m[4] === '1' ? '' : 's'}. ${m[5]} % plus ${m[6] === 'slower' ? 'lent' : 'rapide'} après les nuits courtes. Vos propres tests, peu nombreux : une tendance à surveiller, pas un résultat.`],
+  [/^Sleep and reaction: (\d+) of your tests fall on nights logged on the Board\. With at least 2 after short nights \(5 h or less\) and 2 after longer nights, this tile compares them\.$/, (m) => `Sommeil et réaction : ${m[1]} de vos tests tombent sur des nuits notées au Tableau. Avec au moins 2 tests après des nuits courtes (5 h ou moins) et 2 après des nuits plus longues, cette tuile les compare.`],
+  [/^Rest suggested: (.+)\. Plan sleep or a break before demanding tasks if you can\.$/, (m) => `Repos suggéré : ${m[1].replace(/modeled sleep pressure ([\d.]+) is above the sleep band/, (_, v) => `pression de sommeil modélisée ${v.replace('.', ',')} au-dessus de la bande de sommeil`).replace(/last night was ([\d.]+) h and the reaction test in the last 24 h was (\d+)% slower than your reference/, (_, a, b) => `${a.replace('.', ',')} h la nuit dernière et test de réaction des dernières 24 h ${b} % plus lent que votre référence`)}. Prévoyez du sommeil ou une pause avant les tâches exigeantes si possible.`],
+  [/^(\d+) to (\d+)% of NASA's career limit \(modeled\)$/, (m) => `${m[1]} à ${m[2]} % de la limite de carrière de la NASA (modélisé)`],
+  [/^Everyone on this device \((\d+) (?:people|person)\)$/, (m) => `Toutes les personnes sur cet appareil (${m[1]} personne${m[1] === '1' ? '' : 's'})`],
+  [/^Early warning: the smoothed trend of your latest checks sits (above|below) your own recent normal \(([-\d.]+)(.*?)\), beyond what your own spread explains\. Recheck and note it for the reviewer\.$/, (m) => `Alerte précoce : la tendance lissée de vos derniers contrôles est ${m[1] === 'above' ? 'au-dessus' : 'en dessous'} de votre normale récente (${m[2].replace('.', ',')}${m[3]}), au-delà de ce que votre propre dispersion explique. Refaites le contrôle et notez-le pour la personne qui lira le dossier.`],
+  [/^Early warning: none\. Your latest checks stay within what your own recent spread explains \(recent normal ([-\d.]+)(.*?)\)\.$/, (m) => `Alerte précoce : aucune. Vos derniers contrôles restent dans ce que votre propre dispersion récente explique (normale récente ${m[1].replace('.', ',')}${m[2]}).`],
+  [DEVICE_TEXT_RE, (m) => deviceTextFr(m[0])],
+  [/^From the person's own devices \(typed in, not checked by the app\): (.+)\.$/, (m) => `Appareils de la personne (saisi, non vérifié par l’application) : ${deviceTextFr(m[1])}.`],
+  [/^Own devices \(typed in, not checked by the app\): (.+)$/, (m) => `Appareils personnels (saisi, non vérifié par l’application) : ${deviceTextFr(m[1])}`],
+  [/^Oxygen saturation (\d+)%, typed in from the person's own oximeter: below the 95% to 100% most healthy people read \(FDA\)\. Not checked by the app; cold fingers, movement and darker skin affect oximeters\.$/, (m) => `Saturation en oxygène ${m[1]} %, saisie à partir de l’oxymètre de la personne : sous les 95 % à 100 % que la plupart des personnes en bonne santé affichent (FDA). Non vérifiée par l’application; les doigts froids, le mouvement et une peau plus foncée influencent les oxymètres.`],
+  [/^Largest single movement: eyes open ([-\d.]+) mg(?:, eyes closed ([-\d.]+) mg)?\. (Eyes closed part skipped\. |Eyes closed part not measured: .*? )?Most people sway more with eyes closed\. Compare only with your own earlier checks done the same way: shoes off, same floor, phone in the same place\.$/, (m) => `Plus grand mouvement : yeux ouverts ${m[1].replace('.', ',')} mg${m[2] ? `, yeux fermés ${m[2].replace('.', ',')} mg` : ''}. ${m[3] ? 'Partie yeux fermés non mesurée. ' : ''}La plupart des gens se balancent davantage les yeux fermés. Comparez seulement avec vos propres contrôles précédents faits de la même façon : sans chaussures, même sol, téléphone au même endroit.`],
+  [/^Only (\d+) motion readings per second arrived; at least (\d+) are needed\.$/, (m) => `Seulement ${m[1]} mesures de mouvement par seconde sont arrivées; il en faut au moins ${m[2]}.`],
+  [/^(\d+) of (\d+) targets were not tapped in time\. Try again when you can give it your full attention\.$/, (m) => `${m[1]} cibles sur ${m[2]} n’ont pas été touchées à temps. Recommencez quand vous pourrez y porter toute votre attention.`],
+  [/^Big targets: (\S+) ms, (\S+)% missed\. Small targets: (\S+) ms, (\S+)% missed\. Not tapped in time: (\d+)\. Compare only with your own earlier checks on the same phone, same hand and same posture: screen size and grip change the numbers\.$/, (m) => `Grandes cibles : ${m[1]} ms, ${m[2]} % ratées. Petites cibles : ${m[3]} ms, ${m[4]} % ratées. Non touchées à temps : ${m[5]}. Comparez seulement avec vos propres contrôles sur le même téléphone, avec la même main et la même posture : la taille de l’écran et la prise changent les chiffres.`],
+  [/^(Possible illness signs|Worth watching): (.+?)\. (Rest, recheck within 12 hours, keep away from others if you can, and tell a health worker or your flight surgeon\. This is a warning to act on, not a diagnosis\.|One sign alone is often a bad night, exercise or the measurement\. Recheck tomorrow at the same time\.)$/, (m) => `${m[1] === 'Worth watching' ? 'À surveiller' : 'Signes possibles de maladie'} : ${illnessWhyFr(m[2])}. ${m[1] === 'Worth watching' ? 'Un seul signe vient souvent d’une mauvaise nuit, de l’exercice ou de la mesure. Refaites le contrôle demain à la même heure.' : 'Reposez-vous, refaites le contrôle d’ici 12 heures, tenez-vous à l’écart des autres si possible et prévenez un intervenant de la santé ou votre médecin de vol. C’est une alerte pour agir, pas un diagnostic.'}`],
+  [/^No illness signs today\. The pulse part needs (\d+) good checkups to know your normal; you have (\d+)\.$/, (m) => `Aucun signe de maladie aujourd’hui. La partie pouls a besoin de ${m[1]} bons contrôles pour connaître votre normale; vous en avez ${m[2]}.`],
+  [/^Possible illness signs \(modeled\): (.+)\. Contact the person; not a diagnosis\.$/, (m) => `Signes possibles de maladie (modélisé) : ${illnessWhyFr(m[1])}. Communiquez avec la personne; ce n’est pas un diagnostic.`],
+  [/^Illness early warning: (possible illness signs|worth watching) \((.*)\), modeled, not a diagnosis$/, (m) => `Alerte précoce de maladie : ${m[1] === 'worth watching' ? 'à surveiller' : 'signes possibles de maladie'} (${illnessWhyFr(m[2])}), modélisé, pas un diagnostic`],
+  [/^Camera oxygen saturation \(research, calibrated to you\): (.*)$/, (m) => `Saturation en oxygène par la caméra (recherche, étalonnée pour vous) : ${spo2Fr(m[1])}`],
+  [/^Since landing \((R\+\d+)\): back inside your pre-flight range since (R\+\d+) \((.+) to (.+), from (\d+) pre-flight checks\)\.$/, (m) => `Depuis l’atterrissage (${m[1]}) : revenu dans votre plage d’avant le vol depuis ${m[2]} (${m[3].replace('.', ',')} à ${m[4].replace('.', ',')}, d’après ${m[5]} contrôles d’avant le vol).`],
+  [/^Since landing \((R\+\d+)\): the latest value is inside your pre-flight range \((.+) to (.+), from (\d+) pre-flight checks\); one more check inside it counts as back\.$/, (m) => `Depuis l’atterrissage (${m[1]}) : la dernière valeur est dans votre plage d’avant le vol (${m[2].replace('.', ',')} à ${m[3].replace('.', ',')}, d’après ${m[4]} contrôles d’avant le vol); encore un contrôle dans cette plage et c’est un retour.`],
+  [/^Since landing \((R\+\d+)\): still outside your pre-flight range \(latest (.+); range (.+) to (.+), from (\d+) pre-flight checks\)\. For context, about 95% of the Inspiration4 crew's measured markers were back within three months\.$/, (m) => `Depuis l’atterrissage (${m[1]}) : encore hors de votre plage d’avant le vol (dernière valeur ${m[2].replace('.', ',')}; plage ${m[3].replace('.', ',')} à ${m[4].replace('.', ',')}, d’après ${m[5]} contrôles d’avant le vol). Pour situer : environ 95 % des marqueurs mesurés chez l’équipage d’Inspiration4 étaient revenus en trois mois.`],
+  [/^Forecast for the next check \(in about (\d+) days?\): ([-\d.]+)(.*?), likely between ([-\d.]+) and ([-\d.]+), from (a straight line through|the average of) the last (\d+) good values(?: \((too few values yet to trust a trend line|a straight line has not predicted your earlier values better), so the simpler forecast is used\))?\.$/, (m) => `Prévision pour le prochain contrôle (dans environ ${m[1]} jour${m[1] === '1' ? '' : 's'}) : ${m[2].replace('.', ',')}${m[3]}, probablement entre ${m[4].replace('.', ',')} et ${m[5].replace('.', ',')}, d’après ${m[6].startsWith('a straight') ? 'une droite passant par' : 'la moyenne de'}${m[6].startsWith('a straight') ? ' les' : 's'} ${m[7]} dernières bonnes valeurs${m[8] ? ` (${m[8].startsWith('too few') ? 'trop peu de valeurs pour se fier à une droite de tendance' : 'une droite n’a pas mieux prédit vos valeurs précédentes'}; la prévision la plus simple est donc utilisée)` : ''}.`],
+  [/^Baseline strength: (\d+) of (\d+) good quality values\. Your own range is still rough, so treat a single value outside it with caution; (\d+) more checks? and the early warning starts\.$/, (m) => `Solidité de la référence : ${m[1]} bonnes valeurs sur ${m[2]}. Votre propre plage est encore approximative; interprétez donc avec prudence une seule valeur qui en sort. Encore ${m[3]} contrôle${m[3] === '1' ? '' : 's'} et l’alerte précoce démarre.`],
+  [/^Healthy people vary from week to week by a known amount for (\d+) of these tests \(EuBIVAS and the EFLM database\)\. An adaptive range starts from that published variation and moves to the person's own spread as their values add up, the idea behind the Athlete Biological Passport\.$/, (m) => `Chez les personnes en bonne santé, la variation d’une semaine à l’autre est connue pour ${m[1]} de ces analyses (EuBIVAS et la base de données de l’EFLM). Une plage adaptative part de cette variation publiée puis se rapproche de la dispersion propre à la personne à mesure que ses valeurs s’accumulent : c’est l’idée du Passeport biologique de l’athlète.`],
+  [/^On the (\d+) series that have published variation: the range from three own values alone flagged (\d+) day 1 results, the adaptive range flagged (\d+), and published variation alone flagged (\d+); chance gives about ([\d.]+)\. Published variation alone flags too much here because it leaves out the lab's measurement error \(sodium is reported in whole numbers\)\.$/, (m) => `Sur les ${m[1]} séries qui ont une variation publiée : la plage tirée des trois valeurs propres seules a signalé ${m[2]} résultats du jour 1, la plage adaptative ${m[3]}, et la variation publiée seule ${m[4]}; le hasard en donne environ ${m[5].replace('.', ',')}. La variation publiée seule signale trop ici, car elle ignore l’erreur de mesure du laboratoire (le sodium est rapporté en nombres entiers).`],
+  [/^IL-6 normally swings about 32% within a healthy person, so a rise has to pass about (\d+)% to stand clear of that\. All (\d+) crew rose \((.+?)\), but only (\d+) of (\d+) \((.*?)\) passed it\. The direction is consistent; the size is beyond normal variation in one person\.$/, (m) => `L’IL-6 varie normalement d’environ 32 % chez une personne en bonne santé; une hausse doit donc dépasser environ ${m[1]} % pour s’en démarquer. Les ${m[2]} membres d’équipage ont monté (${m[3].replace(/%/g, ' %')}), mais seulement ${m[4]} sur ${m[5]} (${m[6]}) l’ont dépassée. Le sens est constant; l’ampleur dépasse la variation normale chez une seule personne.`],
+  [/^(.+): early warning, the smoothed trend sits (above|below) the person's own recent normal \(modeled; recheck\)\.$/, (m) => `${TEXT_FR[m[1]] || m[1]} : alerte précoce, la tendance lissée est ${m[2] === 'above' ? 'au-dessus' : 'en dessous'} de la normale récente de la personne (modélisé; refaire le contrôle).`],
+  [/^Plasma proteins \(OSD-563\):$/, () => 'Protéines plasmatiques (OSD-563) :'],
+  [/^\s*of (\d+) proteins measured, (\d+) differed the day after landing at the group level \((\d+) up, (\d+) down; adjusted p below 0\.05\)(?:, and (\d+) of them also differed when all postflight visits up to day 82 were pooled)?\. Group averages of 4 people: exploratory, and one more reason to read each person against their own baseline\.$/, (m) => ` sur ${m[1]} protéines mesurées, ${m[2]} différaient le lendemain de l’atterrissage au niveau du groupe (${m[3]} en hausse, ${m[4]} en baisse; p ajustée sous 0,05)${m[5] ? `, et ${m[5]} différaient aussi en regroupant toutes les visites après le vol jusqu’au jour 82` : ''}. Moyennes de groupe de 4 personnes : exploratoire, et une raison de plus de lire chaque personne par rapport à sa propre référence.`],
+  [/^Pulse attempts with a reference: (\d+), no value from the app: (\d+)\.(?: By condition: (.+)\.)?$/, (m) => `Essais de pouls avec une référence : ${m[1]}, sans valeur de l’application : ${m[2]}.${m[3] ? ` Par condition : ${m[3].replace(/(\d)\.(\d)/g, '$1,$2')}.` : ''}`],
+  [/^\s*, an inflammation marker, above all three of their own pre-flight values the day after landing\. By chance alone that happens about 1 time in (\d+)\. Set against how much IL-6 normally varies within a healthy person, the rise was clearly beyond it in (\d+) of (\d+)\.$/, (m) => `, un marqueur d’inflammation, au-dessus de leurs trois propres valeurs d’avant le vol le lendemain de l’atterrissage. Par hasard seulement, cela arrive environ 1 fois sur ${m[1]}. Comparée à la variation normale de l’IL-6 chez une personne en bonne santé, la hausse la dépassait nettement chez ${m[2]} sur ${m[3]}.`],
+  [/^Backtest of personal baselines on this data: with a 95% personal range built from three pre-flight values, (\d+) of (\d+) day 1 results stood out \(chance alone gives about ([\d.]+)\), led by (.+?) in crew member (C\d+)\. Lab range against own range: (\d+) of (\d+) day 1 results were inside the lab range but outside the person's own three pre-flight values; with only three earlier values about half of any new results land outside them by chance, so this shows how differently the two references read, not (\d+) real changes\.$/, (m) => `Test rétrospectif des références personnelles sur ces données : avec une plage personnelle à 95 % tirée de trois valeurs d’avant le vol, ${m[1]} résultats du jour 1 sur ${m[2]} se démarquaient (le hasard seul en donne environ ${m[3].replace('.', ',')}), en tête ${TEXT_FR[m[4]] || m[4]} chez le membre d’équipage ${m[5]}. Plage du laboratoire contre plage personnelle : ${m[6]} résultats du jour 1 sur ${m[7]} étaient dans la plage du laboratoire mais hors des trois valeurs d’avant le vol de la personne; avec seulement trois valeurs, environ la moitié des nouveaux résultats tombent hors de celles-ci par hasard, ce qui montre à quel point les deux références diffèrent, pas ${m[8]} vrais changements.`],
+  [/^Own range of three pre-flight values: (\d+) of (\d+) day 1 results fell outside it; chance alone gives about (\d+)\. Too few values for this rule\.$/, (m) => `Plage personnelle de trois valeurs d’avant le vol : ${m[1]} résultats du jour 1 sur ${m[2]} en sortaient; le hasard seul en donne environ ${m[3]}. Trop peu de valeurs pour cette règle.`],
+  [/^95% personal prediction range: (\d+) of (\d+) stood out \(chance about ([\d.]+)\): (.+)\. Back inside by day 45: (\d+), by day 82: (\d+), by day 194: (\d+), not by the last visit: (\d+)\.$/, (m) => `Plage de prédiction personnelle à 95 % : ${m[1]} sur ${m[2]} se démarquaient (hasard environ ${m[3].replace('.', ',')}) : ${m[4].replace(/(\d)\.(\d)/g, '$1,$2').replace(/ SD\)/g, ' ÉT)')}. Revenus dans la plage au jour 45 : ${m[5]}, au jour 82 : ${m[6]}, au jour 194 : ${m[7]}, pas à la dernière visite : ${m[8]}.`],
+  [/^Predicting day 1 from pre-flight values \(median error\): last value ([\d.]+)%, pre-flight mean ([\d.]+)%, straight line ([\d.]+)%\. A trend through three sparse points did worst\.$/, (m) => `Prédire le jour 1 à partir des valeurs d’avant le vol (erreur médiane) : dernière valeur ${m[1].replace('.', ',')} %, moyenne d’avant le vol ${m[2].replace('.', ',')} %, droite ${m[3].replace('.', ',')} %. Une tendance passant par trois points espacés a fait le pire.`],
+  [/^Predicting day 45: assuming a return to the pre-flight mean missed by ([\d.]+)%, assuming the day 1 change persists by ([\d.]+)%; the return assumption was closer in (\d+) of (\d+) series\.$/, (m) => `Prédire le jour 45 : supposer un retour à la moyenne d’avant le vol s’est trompé de ${m[1].replace('.', ',')} %, supposer que le changement du jour 1 persiste de ${m[2].replace('.', ',')} %; l’hypothèse du retour était plus proche dans ${m[3]} séries sur ${m[4]}.`],
   // nurse view
   [/^(Pulse|Breathing) is outside the noise band against the original baseline: (.+)$/, (m) => { const c = changeFr(m[2]); return c ? `${tr(m[1])} : hors de la marge de bruit par rapport à la référence d’origine. ${c}` : null; }],
   [/^(Pulse|Breathing): (.+)$/, (m) => { const c = changeFr(m[2]); return c ? `${tr(m[1])} : ${c[0].toLowerCase()}${c.slice(1)}` : null; }],

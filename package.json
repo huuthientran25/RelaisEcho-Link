@@ -1,14 +1,15 @@
 {
   "name": "relaisecho-link",
-  "version": "1.3.0",
+  "version": "2.10.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
-  "description": "Guided camera checkup: positioning, pulse, breathing and dental capture compared against your own baseline. NASA Space Apps 2026 prototype.",
+  "description": "Guided camera health checkup in the browser: pulse, breathing and dental capture compared with the person's own baseline, with NASA space health data. Built by Thien Tran at NASA Space Apps 2026.",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "stamp": "node scripts/stamp_sw.mjs",
     "serve": "python3 -m http.server 8080"
   },
-  "ai_disclosure": "AI-assisted (SI-generated): code, tests, data summaries and documentation written with Claude (Anthropic) under the team's direction; logo generated with ChatGPT; demo music synthesized by code written with Claude. See AI_DISCLOSURE.md."
+  "ai_disclosure": "AI-assisted: code, tests and documentation written with Claude (Anthropic) under Thien Tran's direction; logo made with ChatGPT; demo music synthesized by code written with Claude. See AI_DISCLOSURE.md.",
+  "author": "Thien Tran"
 }

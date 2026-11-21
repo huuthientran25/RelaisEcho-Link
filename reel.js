@@ -4,13 +4,13 @@
 // Scene lengths are in seconds and must add up to 30. Captions stay short enough to read in the time shown.
 
 export const REEL = [
-  { id: 'title', sec: 4, caption: 'RelaisÉcho Link: a guided camera checkup for people far from a clinic.' },
-  { id: 'setup', sec: 4, caption: 'The camera estimates pulse and breathing. Video never leaves the device.' },
-  { id: 'board', sec: 5, caption: 'Mission board: today\'s checklist, alertness, sleep pressure, daylight.' },
-  { id: 'space', sec: 5, caption: 'NASA data in context: mission radiation, crew blood, bed rest studies.' },
-  { id: 'overview', sec: 4, caption: 'One screen: each body region against your own baseline, not an average.' },
-  { id: 'packet', sec: 5, caption: 'A review packet goes to a nurse or flight surgeon by file or QR code.' },
-  { id: 'end', sec: 3, caption: 'In orbit, and in remote northern communities. Space Apps 2026.' },
+  { id: 'title', sec: 4, caption: 'RelaisÉcho Link: in orbit or the far North, the nearest clinic is far away.' },
+  { id: 'setup', sec: 4, caption: 'A phone camera guides a checkup: pulse, breathing and mouth photos.' },
+  { id: 'overview', sec: 5, caption: 'Every result is compared with your own baseline, not a population average.' },
+  { id: 'space', sec: 5, caption: 'NASA crew data: IL-6 rose above each person\'s own pre-flight values, 4 of 4.' },
+  { id: 'board', sec: 4, caption: 'Sleep, alertness and mission radiation sit on one mission board.' },
+  { id: 'packet', sec: 5, caption: 'A nurse or flight surgeon gets a short packet, even by satellite text.' },
+  { id: 'end', sec: 3, caption: 'Video stays on device. Built at NASA Space Apps 2026.' },
 ];
 
 export const reelTotal = (reel = REEL) => reel.reduce((s, x) => s + x.sec, 0);
@@ -46,7 +46,7 @@ export function pickRecordingType(isSupported, withAudio = false) {
   return hit ? { mimeType: hit[0], ext: hit[1] } : null;
 }
 
-// Background music for the reel. SI-generated: synthesized by code written with Claude (scripts/make_music.py),
+// Background music for the reel. AI-generated: synthesized by code written with Claude (scripts/make_music.py),
 // no samples. The label is shown on screen while it plays and is written into the file's metadata.
 export const REEL_MUSIC = {
   src: 'audio/relaisecho-theme-ai-generated.mp3',

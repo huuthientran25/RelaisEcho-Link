@@ -25,7 +25,7 @@ function face({ pxPerMm = 4, gapMm = 2, chinMm = 0, irisShift = 0 } = {}) {
 }
 
 test('the menu lists the seven experimental checks', () => {
-  assert.deepEqual(CHECKS.map((c) => c.id), ['jaw', 'gaze', 'pupil', 'pallor', 'neck', 'tremor', 'circ']);
+  assert.deepEqual(CHECKS.map((c) => c.id), ['jaw', 'gaze', 'pupil', 'pallor', 'neck', 'tremor', 'balance', 'point', 'circ']);
 });
 
 test('iris scale: 11.7 mm irises give the pixel scale back', () => {
@@ -197,3 +197,92 @@ test('packet and CSV: latest check per kind within 14 days, photos only when ask
   assert.match(csv, /"jaw","yes","maxOpenMm","35","45","yes"/);
   assert.match(csv, /"pupil","no","reason","too alike"/);
 });
+
+test('standing balance: sway from the phone motion sensor (v2.6)', async () => {
+  const { swayStats, summarizeBalance, compareExp, METRICS, EXP: E } = await import('../js/exp.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  const { ewmaChart, EWMA: W } = await import('../js/overview.js');
+  const fs = 60, n = fs * 30, t = Array.from({ length: n }, (_, i) => (i * 1000) / fs);
+  const wave = (amp, f, g = 0) => t.map((x) => g + amp * Math.sin((2 * Math.PI * f * x) / 1000));
+  // 0.02 m/s2 at 0.5 Hz on one axis is 0.02 / sqrt(2) / 9.80665 = 1.44 thousandths of g; gravity on z must not count.
+  const a = swayStats(t, [wave(0.02, 0.5), wave(0, 1), wave(0, 1, 9.81)]);
+  assert.equal(a.ok, true); assert.equal(a.rmsMg, 1.4); assert.equal(a.fsReal, 60);
+  const b = swayStats(t, [wave(0.04, 0.5), wave(0, 1), wave(0, 1, 9.81)]);
+  assert.equal(b.rmsMg, 2.9, 'twice the movement, twice the sway');
+  assert.equal(swayStats(t, [wave(0.02, 0.5), wave(0.05, 20), wave(0, 1, 9.81)]).rmsMg, 1.4, 'a small 20 Hz tremble is outside the sway band');
+  assert.equal(swayStats(t.slice(0, 600), [wave(0.02, 0.5).slice(0, 600)]).ok, false, 'a recording that stops early gives no number');
+  const slow = Array.from({ length: 300 }, (_, i) => i * 100);
+  assert.match(swayStats(slow, [slow.map(() => 0)]).reason, /Only 10 motion readings per second/);
+  const res = summarizeBalance(a, b);
+  assert.deepEqual([res.ok, res.open.rmsMg, res.closed.rmsMg, res.ratio], [true, 1.4, 2.9, 2.07]);
+  const openOnly = summarizeBalance(a, null);
+  assert.equal(openOnly.closed, null); assert.equal(openOnly.ratio, null); assert.match(openOnly.note, /skipped/);
+  assert.equal(summarizeBalance({ ok: false, reason: 'x' }, b).ok, false);
+  assert.equal(E.balance.bandPct, 50);
+  const cmp = compareExp('balance', { ok: true, open: { rmsMg: 3 }, closed: { rmsMg: 4 }, ratio: 1.33 }, { ok: true, open: { rmsMg: 1.5 }, closed: { rmsMg: 3 }, ratio: 2 });
+  assert.deepEqual(cmp.rows.map((r) => r.outside), [true, false, true]);
+  for (const m of METRICS.balance) assert.notEqual(frText(m.label), m.label, `French for ${m.label}`);
+  for (const en of ['Standing balance', 'Eyes closed. Stand still until the three beeps.', 'Largest single movement: eyes open 2.1 mg, eyes closed 3.4 mg.  Most people sway more with eyes closed. Compare only with your own earlier checks done the same way: shoes off, same floor, phone in the same place.',
+    'Largest single movement: eyes open 2.1 mg. Eyes closed part skipped. Most people sway more with eyes closed. Compare only with your own earlier checks done the same way: shoes off, same floor, phone in the same place.']) assert.notEqual(frText(en), en, `French for ${en}`);
+  // Early warning on whole number readings: one changed digit after a flat run is not a signal, a real drop is.
+  const D = 86400000, flat = [98, 98, 98, 98, 98, 98, 98, 98, 98, 98].map((v, i) => ({ t: i * D, v, q: 'high' })), P = { ...W, MIN_SD: 0.5 };
+  assert.equal(ewmaChart(flat.concat([{ t: 10 * D, v: 97, q: 'high' }]), P).signal, false);
+  assert.equal(ewmaChart(flat.concat([{ t: 10 * D, v: 93, q: 'high' }]), P).signal, true);
+  assert.equal(ewmaChart(flat.concat([{ t: 10 * D, v: 97, q: 'high' }])), null, 'without the floor a flat run has no spread and gives no verdict');
+});
+
+test('touchscreen pointing: plan, placement and summary (v2.7)', async () => {
+  const { pointingPlan, placeTarget, summarizePointing, compareExp, METRICS, EXP: E } = await import('../js/exp.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  const P = pointingPlan(5);
+  assert.equal(P.sizes.length, 27); assert.deepEqual(P.sizes.slice(0, 3), [56, 56, 56]);
+  assert.equal(P.sizes.slice(3).filter((w) => w === 28).length, 12);
+  assert.deepEqual(pointingPlan(5).sizes, P.sizes, 'same seed, same order');
+  let prev = null; const pts = [];
+  for (const w of P.sizes) { const p = placeTarget(400, 700, w, prev, P.rnd); assert.ok(p.x >= w / 2 && p.x <= 400 - w / 2 && p.y >= w / 2 && p.y <= 700 - w / 2); if (prev) assert.ok(Math.hypot(p.x - prev.x, p.y - prev.y) >= E.point.minGapPx); pts.push(p); prev = p; }
+  // Big targets: 500 ms, 6 px off (hit). Small: 650 ms, 16 px off (miss: radius 14).
+  const tr = P.sizes.map((w, i) => ({ w, d: 200, ms: w === 56 ? 500 : 650, dx: w === 56 ? 6 : 16, dy: 0, practice: i < 3 }));
+  const r = summarizePointing(tr);
+  assert.deepEqual([r.ok, r.n, r.medianMs, r.missPct, r.big.missPct, r.small.missPct, r.big.medianMs, r.small.medianMs, r.timeouts], [true, 24, 575, 50, 0, 100, 500, 650, 0]);
+  // throughput: mean of log2(200/56+1)/0.5 = 4.39 and log2(200/28+1)/0.65 = 4.66
+  assert.equal(r.throughput, 4.52);
+  assert.equal(summarizePointing(tr.slice(0, 8)).ok, false, 'practice only: no result');
+  const slow = summarizePointing(tr.map((t, i) => (i % 2 ? { ...t, ms: null } : t)));
+  assert.equal(slow.ok, false); assert.match(slow.reason, /^\d+ of 24 targets were not tapped in time/);
+  const few = summarizePointing(tr.map((t, i) => (i === 5 ? { ...t, ms: null } : t)));
+  assert.equal(few.ok, true); assert.equal(few.timeouts, 1);
+  const cmp = compareExp('point', { ok: true, medianMs: 700, missPct: 20, throughput: 3.5, small: { missPct: 40 } }, { ok: true, medianMs: 550, missPct: 10, throughput: 4.5, small: { missPct: 20 } });
+  assert.deepEqual(cmp.rows.map((x) => x.outside), [true, false, true, true]);
+  for (const m of METRICS.point) assert.notEqual(frText(m.label), m.label, `French for ${m.label}`);
+  for (const en of ['Touchscreen pointing', '3 of 24', 'Practice: tap the yellow circle.', slow.reason,
+    'Big targets: 500 ms, 0% missed. Small targets: 650 ms, 100% missed. Not tapped in time: 0. Compare only with your own earlier checks on the same phone, same hand and same posture: screen size and grip change the numbers.']) assert.notEqual(frText(en), en, `French for ${en}`);
+});
+
+test('camera oxygen saturation: personal calibration only shown when it beats guessing the average (v2.8)', async () => {
+  const { spo2Calibration, spo2Estimate, spo2Line, SPO2_CAL } = await import('../js/exp.js');
+  const { frText } = await import('../js/i18n-fr.js');
+  const P = (a) => a.map(([ror, spo2]) => ({ ror, spo2 }));
+  assert.deepEqual([SPO2_CAL.MIN_PAIRS, SPO2_CAL.SPAN], [5, 4]);
+  const few = spo2Calibration(P([[0.6, 97], [0.62, 98]]));
+  assert.equal(few.ok, false); assert.match(spo2Line(few), /2 of 5 paired readings so far/);
+  // Healthy person at home: readings 97 to 98 only. Must not show a number however good the fit looks.
+  const flat = spo2Calibration(P([[0.62, 97], [0.64, 98], [0.61, 97], [0.66, 98], [0.63, 97], [0.65, 98]]));
+  assert.equal(flat.ok, false); assert.match(flat.reason, /only span 97% to 98%/); assert.equal(spo2Estimate(flat, 0.63), null);
+  // Wide range but the camera carries no information: no better than the average.
+  const noise = spo2Calibration(P([[0.70, 98], [0.60, 96], [0.66, 94], [0.61, 92], [0.71, 97], [0.64, 93], [0.69, 95]]));
+  assert.equal(noise.ok, false); assert.match(noise.reason, /no better than guessing your average/);
+  // Wide range and a real relationship: shown, with its own error, never below 1 point, and a low value says use the oximeter.
+  const good = spo2Calibration(P([[0.60, 98], [0.66, 96], [0.72, 94], [0.78, 92], [0.63, 97], [0.75, 93], [0.69, 95]]));
+  assert.equal(good.ok, true); assert.ok(good.lineErr < good.meanErr);
+  const e = spo2Estimate(good, 0.70);
+  assert.deepEqual([e.value, e.err, e.outside], [95, 1, false]);
+  assert.match(spo2Line(good, e), /about 95%, give or take 1 points .* Never use it instead of an oximeter: it is not tested below 92%/);
+  const low = spo2Estimate(good, 0.95);
+  assert.equal(low.outside, true); assert.match(spo2Line(good, low), /outside the range it was calibrated on.*measure now with your oximeter/);
+  assert.ok(spo2Estimate(good, 0.2).value <= 100, 'never above 100');
+  assert.equal(spo2Calibration(P([[0.6, 120], [0.6, 40]])).n, 0, 'impossible readings are ignored');
+  for (const x of [spo2Line(few), spo2Line(flat), spo2Line(noise), spo2Line(good), spo2Line(good, e), spo2Line(good, low)]) {
+    const fr = frText(x); assert.ok(fr !== x && !/Never use|paired readings|only span|give or take|no better/.test(fr), `French for ${x} -> ${fr}`);
+  }
+});
+

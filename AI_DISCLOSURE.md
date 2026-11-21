@@ -1,20 +1,36 @@
-# AI use disclosure
+# How AI was used
 
-Edit this file so it describes what the team actually did.
+RelaisÉcho Link was built by Thien Tran at the NASA Space Apps Challenge 2026 (Montreal, 14 and 15 November 2026) with AI assistance. This file says exactly what the AI tools did, so anyone reading the code knows who did what.
 
-- **Tool:** Claude (Anthropic), Claude Opus 5.5 and Claude Sonnet 5.5, used through claude.ai on 14 and 15 November 2026, after the hackathon started.
-- **What it produced:**
-  - The app code in `js/`, `index.html`, `css/` and `sw.js` (versions v0.1 to v1.2), under the team's direction and feature requests
-  - The unit tests (`tests/`, 129 tests), browser test scripts and the synthetic test video script
-  - `scripts/build_osd575.py`, which converts the NASA OSDR OSD-575 files into `data/osd575-cmp.json`
-  - A research brief on rules, accuracy, open data and northern health context (Claude research mode)
-  - The README and the licence and data source notes
-  - The French interface text (`js/i18n-fr.js`, `js/evidence-fr.js` and `js/i18n.js`): an SI-generated draft, labelled on screen as written with AI help and awaiting a fluent reviewer. No Inuktitut text is generated.
-  - The planning document, the UI mockups and the 30 second video storyboard
-- **What the team did:** all creative decisions were made by the team (Thien Tran): the product idea, the Earth use case, which features to build, keep or cut, the colour scheme and logo choice, and the wording of the pitch. [Add the review, real device tests and bench test results.]
-- **Other AI tools:** ChatGPT Astra (OpenAI) was also used. The logo was generated with ChatGPT; it carries a visible "AI" watermark and an "AI-generated (ChatGPT)" caption wherever it appears in the app, the demo reel and the slides.
-- **AI images or video:** the logo is the only AI generated image; it was generated with ChatGPT (OpenAI) at the team's request, and the app icons were cut from it. Space Apps requires a visible watermark on SI-generated images: the app shows an "AI" mark on the logo plus the caption "Logo: AI-generated (ChatGPT)", the demo reel's title and end cards say "AI-generated logo", and the slide deck's cover says "AI-generated logo (ChatGPT)". The small browser tab and home screen icons are too small to carry text; this file and the footer note cover them. Screenshots in the deck are of the app itself, not generated images.
-- **AI audio:** the music in the 30 second demo video is an original track synthesized from scratch by `scripts/make_music.py`, a program written by Claude (no samples or outside audio). Space Apps asks that AI audio be acknowledged in text and metadata: this line, and the video file's metadata (comment and audio track title), say so. The same track ships in the app as `audio/relaisecho-theme-ai-generated.mp3` for the in-app demo reel; its ID3 title and comment say it is AI-generated, and the reel shows "Music: AI-generated" on screen while it plays.
-- **Code and data metadata:** every source file the team's AI tool wrote (`js/`, `tests/`, `scripts/`, `css/app.css`, `sw.js`, `index.html`) starts with a line marking it as AI-assisted (SI-generated) code; `index.html` also has an `ai-disclosure` meta tag; `package.json` has an `ai_disclosure` field; each bundled data summary in `data/` has an `ai_disclosure` field. Vendored third party code (`vendor/`) and fonts are not AI-generated and are not marked.
-- **Demo video:** the in-app reel shows "SI-generated demo (AI-assisted) · Sample data" in the top right the whole time, so a recording made from it is watermarked. The 30 second video carries a visible "AI-assisted production" watermark, and its metadata names the AI-generated music.
-- **AI inside the app:** none. No language model or generative model runs in the app. The face landmark model is MediaPipe's (see `LICENSES.md`).
+## What I did
+
+- The product idea and the two use cases (astronauts in orbit, remote northern communities).
+- Which features to build, keep or cut, in what order, and how they should behave.
+- The choice of NASA and published data, and the decision to compare each person with their own baseline instead of a population average.
+- Every threshold and design rule (all collected in `js/config.js` and labelled as design choices), the colour scheme, the logo choice and the wording of the pitch.
+- Reviewing the results on screen, reporting problems and deciding what changed.
+
+## What Claude (Anthropic) did, under my direction
+
+- Wrote most of the app code in `js/`, `index.html`, `css/` and `sw.js`.
+- Wrote the unit tests (`tests/`, 132 tests), the browser test scripts and the synthetic test video script.
+- Wrote `scripts/build_osd575.py`, which turns the NASA OSDR OSD-575, OSD-656 and OSD-563 files into the small summaries in `data/`.
+- Wrote the README, the licence and data source notes, and a research brief on accuracy, open data and northern health context.
+- Drafted the French interface text. It is labelled on screen as an AI-assisted draft awaiting a fluent reviewer. No Inuktitut text was generated.
+- Wrote `scripts/make_music.py`, which synthesizes the demo music from scratch (no samples). The demo shows "Music: AI-generated" while it plays.
+
+Every source file written this way starts with a line saying so, and `package.json` and each data summary carry an `ai_disclosure` field.
+
+## Other tools
+
+- **ChatGPT (OpenAI):** the logo was made with ChatGPT for this project; the app icons were cut from it. During the hackathon it carried a visible "AI" mark, as the Space Apps rules required for AI-generated images. This portfolio edition (v2.0) removes that mark; this file keeps the credit.
+- **ChatGPT Astra (OpenAI)** was also used during the hackathon.
+
+## AI inside the app
+
+None. No language model or generative model runs in the app. The face landmark model is Google's MediaPipe Face Landmarker (see `LICENSES.md`).
+
+## Not yet done
+
+- Accuracy on real people has not been tested (see the README's bench test section).
+- The French text has not been reviewed by a fluent speaker.

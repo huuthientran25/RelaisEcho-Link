@@ -1,6 +1,6 @@
 // AI-assisted (SI-generated) code: written with Claude (Anthropic) under the team's direction; all creative decisions by the team. See AI_DISCLOSURE.md.
 // Offline cache for the app shell, the MediaPipe runtime and (if bundled) the face model.
-const CACHE = 'relaisecho-1.3.0-32893140eb';
+const CACHE = 'relaisecho-2.10.0-2da2e0134c';
 const SHELL = [
   './',
   'index.html',
